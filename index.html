@@ -22,22 +22,49 @@
 <link rel="canonical" href="https://agnesgeller.github.io/erp/">
 <link rel="icon" type="image/png" href="./assets/favicon.png">
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
-<link rel="manifest" href="./manifest.webmanifest?v=0.1.3"><link rel="stylesheet" href="./assets/style.css?v=0.1.3">
-<script type="module" src="./assets/js/main.js?v=0.1.3"></script>
+<link rel="manifest" href="./manifest.webmanifest?v=0.1.4"><link rel="stylesheet" href="./assets/style.css?v=0.1.4">
+<script type="module" src="./assets/js/main.js?v=0.1.4"></script>
+<script type="module" src="./assets/js/erp-office.js?v=0.1.4"></script>
 </head>
 <body>
 <header><a class="brand" href="./" aria-label="Díszkertek kezdőlap"><img src="./assets/logo.png" width="52" height="52" alt=""><span>DÍSZKERTEK</span></a>
 <nav class="app-menu" aria-label="Alkalmazás menü">
 <button id="install" type="button" title="Díszkertek telepítése erre az eszközre" aria-describedby="install-help">↓ <span>Telepítés</span></button>
 <button id="update" class="secondary" type="button" title="Az alkalmazás frissítéseinek ellenőrzése" aria-describedby="update-help">↻ <span>Frissítés</span></button>
+<button id="logout" class="secondary" type="button" hidden>Kijelentkezés</button>
 </nav></header>
 <div class="feedback"><p id="install-help" class="sr-only">A támogatott böngésző telepítőjét nyitja meg, vagy az eszközödnek megfelelő telepítési lépéseket mutatja.</p><p id="update-help" class="sr-only">Új alkalmazásverzió ellenőrzése és betöltése.</p><p id="install-status" class="status" role="status" aria-live="polite"></p><p id="update-status" class="status" role="status" aria-live="polite"></p></div>
 <main>
-<div class="identity"><img class="logo" src="./assets/logo.png" alt="Díszkertek logó" width="240" height="240">
+<div class="identity" id="public-identity"><img class="logo" src="./assets/logo.png" alt="Díszkertek logó" width="240" height="240">
 <div><p class="eyebrow">DÍSZKERTEK</p><h1>Integrált vállalatirányítási<br>és ügyfélkapcsolati alkalmazás</h1></div></div>
 
+<p id="office-status" class="office-status" role="status" aria-live="polite"></p>
+<section id="login-area" class="login-area" aria-labelledby="login-title">
+<div><h2 id="login-title">Irodai belépés</h2><p>Munkatársak, munkák és megbízások kezelése.</p></div>
+<form id="login-form" method="post"><fieldset><legend class="sr-only">Bejelentkezési adatok</legend>
+<label for="login-email">E-mail-cím</label><input id="login-email" name="email" type="email" autocomplete="username" inputmode="email" maxlength="254" required>
+<label for="login-password">Jelszó</label><input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required>
+<button type="submit">Belépés</button>
+</fieldset></form></section>
+<section id="office-app" class="workspace" hidden aria-labelledby="workspace-title">
+<div class="workspace-heading"><div><p class="eyebrow" id="workspace-role">Irodai munkatér</p><h1 id="workspace-title">DÍSZKERTEK</h1></div><button type="button" id="reload-workspace" class="secondary">Lista frissítése</button></div>
+<label id="organization-label" hidden>Szervezet<select id="organization-select"></select></label>
+<div class="workspace-columns">
+<section id="people-section" aria-labelledby="people-title"><h2 id="people-title">Munkatársak</h2><ul id="people-list" class="record-list"></ul>
+<form id="worker-form"><fieldset><legend>Új munkatárs</legend><label for="worker-name">Név</label><input id="worker-name" name="name" maxlength="150" autocomplete="off" required><button type="submit">Munkatárs mentése</button></fieldset></form></section>
+<section aria-labelledby="projects-title"><h2 id="projects-title">Munkák és megbízások</h2>
+<label for="project-select">Munka</label><select id="project-select" disabled><option value="">Válassz munkát</option></select>
+<p id="assignment-empty"></p><ul id="assignment-list" class="record-list"></ul>
+<form id="role-form" hidden><fieldset><legend>Új megbízás</legend>
+<label for="assignment-person">Munkatárs</label><select id="assignment-person" required></select>
+<label for="assignment-role">Szerepkör</label><select id="assignment-role" required><option value="crew_lead">Csoportvezető</option><option value="construction_lead">Kertépítési vezető</option><option value="worker">Résztvevő</option></select>
+<label for="assignment-from">Kezdőnap</label><input id="assignment-from" type="date" required>
+<label for="assignment-until">Utolsó nap (nem kötelező)</label><input id="assignment-until" type="date">
+<p class="field-help">A dátumok magyarországi idő szerint értendők.</p><button type="submit">Megbízás mentése</button>
+</fieldset></form></section>
+</div></section>
 </main>
 <footer><a href="tel:+36706349630">+36 70 634 9630</a><a href="mailto:info@diszkertek.hu">info@diszkertek.hu</a><a class="website" href="https://www.diszkertek.hu/" target="_blank" rel="noopener">diszkertek.hu ↗</a><span id="version">DÍSZKERTEK</span></footer>
 <dialog id="install-guide" aria-labelledby="guide-title"><h2 id="guide-title">Alkalmazás telepítése</h2><p id="guide-content"></p><button id="close-guide" type="button">Rendben</button></dialog>
-<noscript>A letöltés és a frissítés használatához engedélyezd a JavaScriptet a böngészőben.</noscript>
+<noscript>A belépés, a telepítés és a frissítés használatához engedélyezd a JavaScriptet a böngészőben.</noscript>
 </body></html>

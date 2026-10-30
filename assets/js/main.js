@@ -1,4 +1,4 @@
-const APP_VERSION = '0.1.3';
+const APP_VERSION = '0.1.4';
 const install = document.querySelector('#install');
 const update = document.querySelector('#update');
 const guide = document.querySelector('#install-guide');
@@ -117,6 +117,8 @@ async function waitForInstallation(worker) {
     });
 }
 update.addEventListener('click', async () => {
+    if (!window.dispatchEvent(new Event('erp:before-update', { cancelable: true })))
+        return;
     update.disabled = true;
     status('update-status', 'Frissítések ellenőrzése…');
     try {

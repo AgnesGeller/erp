@@ -103,3 +103,18 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - A jelen változtatás kizárólag az ERP fájljait érinti; másik app, node_modules vagy adatbázis nem változott. A korábban megkezdett adatbázis-fejlesztés szünetel.
 
 - Publikus ellenőrzés: a GitHub Pages a6c9eb4 kiadása sikeresen közzétéve. A valódi ERP-webcímen betöltődött a 0.1.3; a Frissítés gomb után újratöltés és zöld pipás Sikeres frissítés jelzés látszott. Konzolhiba nem jelentkezett. A README asztali képernyőképe erre az állapotra frissült.
+
+
+## 2026. október 30. – 0.1.4: saját irodai belépés és megbízások
+
+- Az ERP saját hét alaptáblája, FORCE RLS védelme, szűk függvénytulajdonosai és az első irodai tagság a jóváhagyott kap környezetbe kerültek. Az info@diszkertek.hu meglévő igazolt Auth-fiókjának jelszava nem változott. Nem küldtünk e-mailt vagy meghívót.
+- A felhős session-próba jogosultsági hibát talált: az új NOLOGIN szerepekhez adott auth-sémajog a szolgáltatott környezetben nem érvényesült. Kizárólag az ERP saját segédje és szabályai módosultak: a PostgREST által ellenőrzött JWT-ből történik azonosítás. Az auth séma és a közös Auth-beállítás változatlan.
+- Saját erp-gateway Edge Function: belépés, megújítás, helyi kijelentkezés, engedélyezett ERP RPC-k. A szerver nem használ service_role-t, a tényleges JWT-t továbbítja. A frontend nem tartalmaz API-kulcsot, nem ment tartósan hitelesítési adatot. Újratöltés után új belépés szükséges.
+- Reszponzív irodai felület: személy felvétele; meglévő ERP-munka kiválasztása; időszakos csoportvezető, kertépítési vezető vagy résztvevő hozzárendelése; naplózott visszavonás revízióval. A személy felvétele nem jelent Auth-fióklétrehozást. Több párhuzamos vezető és munka támogatott.
+- A munkatársmentés stabil kérésazonosítóval ismétlésvédett. A budapesti naptári napok inkluzív vége a következő nap kezdetét kizáró adatbázishatárra fordul. A felület véd a kijelentkezés után későn visszaérő kérésektől és a nem mentett adatok véletlen frissítésétől.
+- Ellenőrzés: 44 automatikus teszteredmény sikeres; TypeScript-build és külön szigorú gateway-típusellenőrzés; valós gateway 204/401/400/403 hibahatárok. A felhős irodai session és listajogosultság SQL-próbája sikeres. A valós jelszavas böngészős belépés még tulajdonosi ellenőrzésre vár.
+- 320/768 képpont körüli belépési nézet: nincs vízszintes túllógás; minimum 48 képpontos menügombok és mezők; üres űrlap natív ellenőrzése; konzolhiba nélkül.
+- A kap korábbi public tábláinak jogosultsági/RLS-lenyomata f8295b138e021c7e167107ad44acb9cf; public szabályai 426847824645a85b7ddae5ce32da3372; nem ERP public/quote_private függvényei 620c8527adef1490bf07f0921c70fa4c. A javítások előtt és után azonosak. A régi Edge Functionöket nem változtattuk meg.
+- A Supabase kilenc saját authenticated SECURITY DEFINER API-függvényre figyelmeztet; indoklás és a meglévő projektfigyelmeztetések a belépési dokumentumban. Nem állítjuk, hogy minden projektfigyelmeztetés megszűnt.
+- Adatállapot: egy szervezet, egy személy, egy fiók; nulla munka, nulla megbízás. Sem KAP/Árajánlat, sem Munkalap/Napi üzleti adatimport nem történt. A négy éles alkalmazás nem módosult. Nincs új függőség vagy csomagtelepítés; a korábban helyreállított szülő node_modules mappához nem nyúltunk.
+- README, adatbázisterv és önálló belépési leírás frissítve. A korábbi PDF-ek megőrzött pillanatképek. A helyi egyszeri szerkesztési segéd megmaradt, nincs verziókezelve; fájlt nem töröltünk.

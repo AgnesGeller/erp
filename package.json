@@ -1,12 +1,13 @@
 {
   "name": "diszkertek-erp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node node_modules/typescript/bin/tsc",
     "check": "node node_modules/typescript/bin/tsc --noEmit",
-    "test": "node --test tests/pwa.test.mjs"
+    "test": "node --test tests/pwa.test.mjs tests/database.test.mjs tests/gateway.test.mjs tests/erp-api.test.mjs",
+    "check:edge": "node node_modules/typescript/bin/tsc --noEmit --strict --target ES2022 --module ES2022 --lib ES2022,DOM supabase/functions/erp-gateway/handler.ts"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.13",

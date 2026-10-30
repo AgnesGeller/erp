@@ -12,12 +12,12 @@ function harness({offline=false,standalone=false,userAgent='test',platform='test
  const session=new Map(pendingRelease ? [['erp-update-completed', pendingRelease]] : []);
  const context={
   document:{querySelector(sel){if(sel==='#install-status.success') return nodes.get('install-status').className.includes('success')?nodes.get('install-status'):null;return nodes.get(sel.slice(1));},getElementById(id){return nodes.get(id);}},
-  window:{matchMedia:()=>({matches:standalone}),addEventListener(t,f){listeners[t]=f;}},
+  window:{dispatchEvent:()=>true,matchMedia:()=>({matches:standalone}),addEventListener(t,f){listeners[t]=f;}},
   navigator:{userAgent,platform,maxTouchPoints,...(serviceWorker?{serviceWorker}: {})},
   sessionStorage:{getItem:k=>session.get(k),setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)},
   location:{reload(){context.reloaded=true;}},
-  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:'0.1.3'})};},
-  AbortSignal,Date,setTimeout,clearTimeout
+  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:'0.1.4'})};},
+  AbortSignal,Date,Event,setTimeout,clearTimeout
  };
  vm.runInNewContext(source,context);
  return {nodes,listeners,context};
@@ -58,7 +58,7 @@ test('SW registration failure cannot claim successful update',async()=>{
 test('ERP worker never removes another app cache or handles API traffic',async()=>{
  const handlers={};const deleted=[];let claimed=false;
  const context={URL,self:{registration:{scope:'https://agnesgeller.github.io/erp/'},clients:{claim:async()=>{claimed=true;}},addEventListener:(t,f)=>handlers[t]=f},
- caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.1.3','munkalap-v2'],delete:async k=>deleted.push(k)}};
+ caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.1.4','munkalap-v2'],delete:async k=>deleted.push(k)}};
  vm.runInNewContext(await readFile(new URL('../sw.js',import.meta.url),'utf8'),context);
  let pending;handlers.activate({waitUntil:p=>pending=p});await pending;
  assert.deepEqual(deleted,['diszkertek-erp-0.0.1']);assert.equal(claimed,true);
@@ -94,12 +94,12 @@ test('ERP manifest identity resolves to its own path from the origin',async()=>{
  assert.ok(!scope.pathname.startsWith('/manager/'));
 });
 test('Reloading a stale release cannot display successful update',()=>{
- const h=harness({pendingRelease:'0.1.4'});
+ const h=harness({pendingRelease:'9.9.9'});
  assert.match(h.nodes.get('update-status').className,/error/);
  assert.doesNotMatch(h.nodes.get('update-status').textContent,/Sikeres/);
 });
 test('Confirmed target release after reload displays success',()=>{
- const h=harness({pendingRelease:'0.1.3'});
+ const h=harness({pendingRelease:'0.1.4'});
  assert.match(h.nodes.get('update-status').textContent,/✓ Sikeres frissítés/);
 });
 test('A native prompt takes priority over an enclosing standalone app window',async()=>{
@@ -116,7 +116,7 @@ test('Versioned ERP launch URL falls back to its own cached page offline',async(
   fetch:async()=>{throw Error('offline');}
  };
  vm.runInNewContext(await readFile(new URL('../sw.js',import.meta.url),'utf8'),context);
- handlers.fetch({request:{method:'GET',mode:'navigate',url:'https://agnesgeller.github.io/erp/?app-version=0.1.3'},respondWith:p=>answer=p});
+ handlers.fetch({request:{method:'GET',mode:'navigate',url:'https://agnesgeller.github.io/erp/?app-version=0.1.4'},respondWith:p=>answer=p});
  assert.equal(await answer,'offline-erp-page');assert.equal(cacheKey,'https://agnesgeller.github.io/erp/');
  handlers.fetch({request:{method:'GET',mode:'navigate',url:'https://agnesgeller.github.io/napi/'},respondWith(){assert.fail('Other app intercepted');}});
 });

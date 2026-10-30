@@ -1,0 +1,4 @@
+# Csak az új ERP-függvény helyi telepítési leírása.
+# A belépés még nem rendelkezik JWT-vel; a saját handler végzi az Auth-ellenőrzést.
+[functions.erp-gateway]
+verify_jwt = false

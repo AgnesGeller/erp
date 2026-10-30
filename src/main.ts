@@ -1,4 +1,4 @@
-const APP_VERSION = '0.1.3';
+const APP_VERSION = '0.1.4';
 interface InstallPrompt extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -106,6 +106,7 @@ async function waitForInstallation(worker: ServiceWorker): Promise<void> {
   });
 }
 update.addEventListener('click', async () => {
+  if(!window.dispatchEvent(new Event('erp:before-update',{cancelable:true})))return;
   update.disabled = true;
   status('update-status', 'Frissítések ellenőrzése…');
   try {

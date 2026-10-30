@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Megőrzött helyi, egyszer futtatott szerkesztési segéd; nem buildeszköz.
+/tools/apply-office-view.py

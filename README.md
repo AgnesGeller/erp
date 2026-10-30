@@ -6,11 +6,11 @@ Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációján
 
 ## Jelenlegi állapot – 2026. október 30.
 
-**A jelenlegi frontend-verzió 0.1.3:** Díszkertek-arculat, kezdőképernyős telepítés és frissítés, belépéstől függetlenül. A teljes ERP üzleti moduljai és a bejelentkezés még nem készültek el. A kap projektben az elkülönített ERP-adatbázis alapja és az irodai tagság létrejött; az ERP-belépés még nem működik, az ellenőrzése befejezésre vár. Az ERP saját sémái a meglévő kap projektbe kerülhetnek a jóváhagyott terv szerint.
+**A jelenlegi verzió 0.1.4:** elkészült az irodai belépési felület, az ERP saját kiszolgálója, a munkatársak felvétele és a munkánként, időszakra kiosztható megbízások első kezelőfelülete. Az elkülönített ERP-adatbázisalap és az első irodai tagság telepítve van. A tényleges jelszavas böngészős belépés felhasználói ellenőrzése még szükséges. A teljes ERP további üzleti moduljai fejlesztés alatt állnak; Munkalap- és Napi-adatimport még nem történt.
 
 [Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
 
-![A tényleges kezdőfelület és a sikeres frissítésellenőrzés](docs/kepek/kezdo-desktop.png)
+![Az alkalmazás tényleges belépési felülete](docs/kepek/kezdo-desktop.png)
 
 Az adatbázisterv nem végrehajtható migráció, és a leírt megoldás nem tekinthető már működő integrációnak. Az eredeti munkafüzeteket, ügyféladatokat és adatbázis-mentéseket nem töltjük a repositoryba.
 
@@ -28,6 +28,7 @@ Az ábra tervet mutat. A szaggatott vonalak még nem létező ERP-kapcsolatokat 
 
 - [Részletes adatbázisterv](docs/adatbazisterv.md): elhelyezés, táblák, jogosultságok, szinkron, pénzügyek, mentés, átállás, ellenőrzések.
 - [A csatolt árajánlat-kalkulátor felmérése](docs/kalkulator-felmeres.md): ellenőrzött képletek, 163 árlistasor, 22 kategória, sablonok és megfeleltetési problémák.
+- [Belépés és jogosultságkezelés](docs/belepes-es-jogosultsagok.md): használat, adatvédelem, telepített szerveroldal, ellenőrzések és korlátok.
 - [Fejlesztési napló és döntések](docs/fejlesztesi-naplo.md): mi készült el, mi jóváhagyott, mi vár döntésre, és hogyan ellenőriztük.
 
 ## Menthető PDF-változatok
@@ -49,7 +50,7 @@ A PDF-ek a dokumentáció menthető pillanatképei. A továbbfejlesztéshez az a
 - Az új arculat és dokumentumsablonok kizárólag a jóváhagyott Díszkertek-megjelenést használják. A forrásfájlok régi készítői feliratait nem emeljük át.
 - A repositoryt és a deploymentet a megrendelő kezeli. Ellenőrzött fejlesztésekhez automatikus commit és push engedélyezett.
 - Az ERP saját sémái a meglévő kap Supabase-projektbe kerülhetnek; a közös ügyféltörzs a Munkalapban marad.
-- Az első Iroda jogosultságú ERP-fiók jóváhagyott e-mail-címe: info@diszkertek.hu. A meglévő igazolt fiókhoz külön ERP-tagság kapcsolódik; a bejelentkezési felület és ellenőrzés még nincs kész.
+- Az első Iroda jogosultságú ERP-fiók jóváhagyott e-mail-címe: info@diszkertek.hu. A meglévő igazolt Auth-fiókhoz külön ERP-tagság kapcsolódik. Jelszavát nem változtattuk meg; az ERP a saját munkamenetét kezeli.
 - Új előfizetés nem indítható. Használati díjas külső szolgáltatás sem aktiválható előzetes egyeztetés nélkül.
 
 ## A meglévő működés védelme
@@ -81,12 +82,12 @@ A forrásokból átvett számítási szabály és a belső adat két külön dol
 Node.js 20.12 vagy újabb szükséges. Mindig az **erp repository saját könyvtárában** dolgozz; csomagtelepítés előtt ellenőrizd az npm prefix eredményét.
 
 1. `npm ci` – kizárólag helyi fejlesztői függőségek telepítése, nincs fizetős szolgáltatás.
-2. `npm run build` – src/main.ts fordítása assets/js/main.js fájlba. A fordított fájl is verziókezelt, a Pages nem igényel Node.js futtatást.
-3. `npm test` – a telepítés/frissítés siker- és hibaágai, valamint a más appokat védő gyorsítótár-izoláció ellenőrzése.
-4. `python -m http.server 5188 --bind 127.0.0.1` – helyi megnyitás: http://127.0.0.1:5188/. A teszt végén Ctrl+C-vel állítsd le.
+2. `npm run build` – a src mappa TypeScript-moduljainak fordítása az assets/js mappába. A fordított fájl is verziókezelt, a Pages nem igényel Node.js futtatást.
+3. `npm test` – telepítés/frissítés, adatbázis-jogosultságok, kiszolgáló, munkamenetek és dátumkezelés; `npm run check:edge` – az ERP-kiszolgáló szigorú TypeScript-ellenőrzése.
+4. `python tools/preview.py --port 5194` – helyi megnyitás: http://127.0.0.1:5194/erp/. Az előnézet kizárólag az ERP publikus fájljait szolgálja ki. A teszt végén Ctrl+C-vel állítsd le.
 5. Commit és push közvetlenül a main ágra, majd a Pages-telepítés ellenőrzése. A forrás a main ág gyökérmappája; az index.html az alkalmazás kezdőlapja, a .nojekyll kikapcsolja a dokumentációs Jekyll-feldolgozást.
 
-Új kiadáskor együtt módosítandó: package.json és package-lock.json verziója, version.json, src/main.ts két verziószövege és sw.js CACHE_NAME értéke; ezután újrafordítás és teszt.
+Új kiadáskor minden verziózott HTML-, CSS- és JS-hivatkozást, dinamikus modulimportot, manifest start_url értéket, SW-listát és tesztet is össze kell hangolni. A manifest id és scope értéke állandó /erp/ marad. Együtt módosítandó: package.json és package-lock.json verziója, version.json, src/main.ts két verziószövege és sw.js CACHE_NAME értéke; ezután újrafordítás és teszt.
 
 ## Letöltés és frissítés használata
 
@@ -131,3 +132,13 @@ A Munkalap és a többi működő app mintájára az indítóoldal, a CSS, a Jav
 [Részletes telepítési összehasonlítás](docs/telepitesi-osszehasonlitas.md). Helyi, a valódi /erp/ útvonalat követő előnézet: `python tools/preview.py`, majd http://127.0.0.1:5194/erp/. Az előnézet más appok mappáit nem szolgálja ki.
 
 Ellenőrzés: TypeScript-build, 14 célzott automatikus teszt, böngészős frissítésellenőrzés. A valódi Chrome/Edge telepítés befejezését külön eszközpróba igazolhatja; az eseményszimuláció ezt nem helyettesíti.
+
+
+### 0.1.4 – Irodai belépés és munkánkénti megbízások
+
+1. Az **Irodai belépés** részen add meg az info@diszkertek.hu címet és a kap projektben már meglévő fiók saját jelszavát. Jelszót ne küldj üzenetben. Új jelszó, automatikus meghívó vagy jelszó-visszaállító e-mail ebben a lépésben nem készült.
+2. Az irodai munkatérben felvehető munkatárs. Ez egy személy nyilvántartásba vétele; önmagában nem hoz létre bejelentkezési fiókot.
+3. Meglévő ERP-munkánál munkatárs, szerepkör és időszak választható. Több ember lehet vezető egyszerre, és egy ember több munkán is dolgozhat. A visszavonás előzménye megmarad. **Még nincs importált vagy létrehozott ERP-munka**, ezért a megbízásűrlap csak a munkák későbbi felvétele után jelenik meg.
+4. A jelszót és a belépési tokeneket nem mentjük a böngésző tartós tárhelyére. Oldal-újratöltés vagy alkalmazásfrissítés után ismét be kell lépni. A Kijelentkezés csak ezt az ERP-munkamenetet zárja le.
+
+A felső Telepítés és Frissítés gomb belépés előtt és után is elérhető. A fejlesztés során 44 automatikus teszteredmény sikeres, köztük az ERP-adatok szervezeti elkülönítése, az azonnali jogosultság-visszavonás és az ismételt munkatársmentés védelme. A valós jelszavas belépés, a munkák adatimportja és az ügyfélportál még külön ellenőrzési/fejlesztési lépés. Részletek: [belépés és jogosultságkezelés](docs/belepes-es-jogosultsagok.md).

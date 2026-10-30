@@ -1,8 +1,8 @@
 # Díszkertek ERP – részletes adatbázisterv
 
-Verzió: 0.2 · Dátum: 2026. október 30. · Állapot: az elhelyezési irány jóváhagyva; a műszaki megvalósítás előkészítés alatt.
+Verzió: 0.3 · Dátum: 2026. október 30. · Állapot: az elkülönített ERP-alap telepítve; a teljes üzleti modell további részei tervként szerepelnek.
 
-**Ez a dokumentum nem migráció és nem telepítési engedély. Supabase-írás és próbaimport még nem történt. Az első alkalmazáskezdőlap elkészült; az üzleti modulok még nem működnek.**
+**Ez a teljes rendszer terve, nem önmagában végrehajtható migráció. A jóváhagyott irány alapján az ERP saját hét alaptáblája, jogosultsági függvényei és kiszolgálója telepítve van a kap projektben. Üzleti adatimport még nem történt. A ténylegesen elkészült kör és az ellenőrzések a [belépési dokumentumban](belepes-es-jogosultsagok.md) szerepelnek.**
 
 ## 1. Mit kell megvalósítani?
 
@@ -26,7 +26,7 @@ A megrendelő pontosítása: az Árajánlat néhány napos tesztalkalmazás, nem
 
 A kap projekt pillanatnyi, közvetlen COUNT lekérdezése: 198 quote_clients rekord, 9 quote_projects rekord, 7 ajánlat, 9 ajánlatváltozat, 210 árlistasor. A régi clients táblában 107 rekord, quotes táblában 5 rekord és work_logs táblában 1 rekord van. Ezek állapotfelmérési darabszámok, nem üzleti készültségi minősítések.
 
-A kap adatbázis mérete a vizsgálatkor körülbelül 77 MiB. Nincs még erp séma és nincs Storage-bucket. Az üres Storage nem jelenti azt, hogy nincsenek képek: az Árajánlat tesztalkalmazás fájljai eszközönként, IndexedDB-ben lehetnek.
+A kap adatbázis mérete a vizsgálatkor körülbelül 77 MiB. A kezdeti felméréskor még nem volt erp séma és Storage-bucket. Azóta az ERP saját sémái létrejöttek; fájltárolás ebben a lépésben nem készült. Az üres Storage nem jelenti azt, hogy nincsenek képek: az Árajánlat tesztalkalmazás fájljai eszközönként, IndexedDB-ben lehetnek.
 
 A közös ügyféltörzsben külön ügyfél- és címazonosító van. A címtábla ügyfélazonosítója idegen kulccsal kapcsolódik az ügyfélhez. Egy ügyfélen belül normalizált címre egyediségi szabály van. Az ügyfél normalizált neve jelenleg egyedi: azonos nevű külön személyek esetén ezt a korlátot az ERP nem kerülheti meg és nem oldhatja fel néma összevonással.
 
@@ -58,7 +58,7 @@ A publikus RPC-k tulajdonosa elkülönített, nem táblatulajdonos, NOLOGIN és 
 
 Ezt az elrendezést helyi jogosultsági tesztnek kell igazolnia, beleértve a Supabase-ben létrehozható egyedi adatbázisszerepek pontos jogosultságait. Nem tekinthető kész védelemnek pusztán attól, hogy a séma neve eltérő.
 
-A normál ERP-műveletekhez nem használunk általános service_role kulcsot. Az RPC megőrzi a hitelesített felhasználó JWT-környezetét, az auth.uid() alapján azonosít, és ellenőrzi az ERP-fiókot, szervezetet, aktív szerepet és az érintett munkát. Az aktív szerep csak a valóban kiosztott szerepek közül választható. A kliens által küldött személyazonosító nem bizonyíték.
+A normál ERP-műveletekhez nem használunk általános service_role kulcsot. Az RPC megőrzi a hitelesített felhasználó JWT-környezetét, a PostgREST által ellenőrzött JWT sub mezőjéből azonosít (az ERP saját request_user_id segédfüggvényével, auth-sémamódosítás nélkül), és ellenőrzi az ERP-fiókot, szervezetet, aktív szerepet és az érintett munkát. Az aktív szerep csak a valóban kiosztott szerepek közül választható. A kliens által küldött személyazonosító nem bizonyíték.
 
 A kap Auth jelenlegi vizsgálatakor nem volt automatikus auth.users trigger. Az új ERP-fiókhoz nem hozunk létre public.profiles vagy quote_staff tagságot: ezek régi appok hozzáférési táblái. A teljes meglévő API- és RLS-felület izolációját a telepítés előtt külön teszteljük; az eddigi részleges vizsgálat nem teljes biztonsági tanúsítás.
 
@@ -297,3 +297,10 @@ A naptár alapértelmezett szerepkörkapcsolóit a PDF szerint értelmezzük: ir
 - Supabase: https://supabase.com/docs/guides/platform/billing-on-supabase
 
 A terv nem bizonyítja a majdani rendszer működését. A teljes alkalmazás, migráció és végpontok készültségét kizárólag végrehajtott, dokumentált tesztek igazolhatják.
+
+
+## Megvalósult alap a 0.1.4 kiadásban
+
+Az organizations, persons, user_accounts, person_roles, garden_projects, project_assignments és audit_events táblák létrejöttek. Mindegyiken FORCE RLS védi az adatokat. A szervezeti tagságot és a munkánkénti szerepeket az adatbázis ellenőrzi; a frontend elrejtett gombja nem biztonsági védelem. Az ERP-függvények szűk, NOLOGIN/NOBYPASSRLS szerep tulajdonában vannak. Az ERP-kiszolgáló a tényleges felhasználó JWT-jével dolgozik, általános service_role nélkül.
+
+A munkánként több, időben változó vezető már az alap része. Az ügyfélfiókhoz pipálható több munkavégzési cím követelmény; ennek felülete és adatszűrése a későbbi ügyfélmodulban készül el. Az ügyfélportál most még nem használható. A Munkalap és Napi feladatok az elfogadott adatforrások; a KAP/Árajánlat tesztüzleti adatait nem importáljuk. A forráshoz írás ebben a lépésben nincs.

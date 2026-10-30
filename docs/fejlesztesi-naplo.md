@@ -118,3 +118,5 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - A Supabase kilenc saját authenticated SECURITY DEFINER API-függvényre figyelmeztet; indoklás és a meglévő projektfigyelmeztetések a belépési dokumentumban. Nem állítjuk, hogy minden projektfigyelmeztetés megszűnt.
 - Adatállapot: egy szervezet, egy személy, egy fiók; nulla munka, nulla megbízás. Sem KAP/Árajánlat, sem Munkalap/Napi üzleti adatimport nem történt. A négy éles alkalmazás nem módosult. Nincs új függőség vagy csomagtelepítés; a korábban helyreállított szülő node_modules mappához nem nyúltunk.
 - README, adatbázisterv és önálló belépési leírás frissítve. A korábbi PDF-ek megőrzött pillanatképek. A helyi egyszeri szerkesztési segéd megmaradt, nincs verziókezelve; fájlt nem töröltünk.
+
+- Publikus ellenőrzés: cf34861 Pages-telepítése sikeres. A valódi webcímen 0.1.4 és az Irodai belépés látható; a felső Frissítés után az új verzió töltődött be, Sikeres frissítés jelzéssel, konzolhiba nélkül. A README képe a tényleges publikus, üres belépési űrlapot mutatja.

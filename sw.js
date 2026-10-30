@@ -1,7 +1,7 @@
 const CACHE_PREFIX = 'diszkertek-erp-';
-const CACHE_NAME = CACHE_PREFIX + '0.1.2';
-const FILES = ['./', './index.html', './assets/style.css', './assets/js/main.js',
-  './manifest.webmanifest', './assets/logo.png', './assets/icon-192.png', './assets/icon-512.png',
+const CACHE_NAME = CACHE_PREFIX + '0.1.3';
+const FILES = ['./', './index.html', './assets/style.css?v=0.1.3', './assets/js/main.js?v=0.1.3',
+  './manifest.webmanifest?v=0.1.3', './assets/logo.png', './assets/icon-192.png', './assets/icon-512.png',
   './assets/favicon.png', './assets/apple-touch-icon.png'];
 const allowed = new Set(FILES.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener('install', event => {
@@ -19,15 +19,20 @@ self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET' || !allowed.has(event.request.url)) return;
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  const home = new URL('./', self.registration.scope);
+  const navigation = event.request.mode === 'navigate' && url.origin === home.origin &&
+    (url.pathname === home.pathname || url.pathname === new URL('./index.html', home).pathname);
+  if (!navigation && !allowed.has(event.request.url)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
     try {
       const response = await fetch(event.request, { cache: 'no-cache' });
-      if (response.ok) await cache.put(event.request, response.clone());
+      if (response.ok) await cache.put(navigation ? home.href : event.request, response.clone());
       return response;
     } catch (error) {
-      const saved = await cache.match(event.request);
+      const saved = await cache.match(navigation ? home.href : event.request);
       if (saved) return saved;
       throw error;
     }

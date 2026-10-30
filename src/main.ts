@@ -1,3 +1,4 @@
+const APP_VERSION = '0.1.3';
 interface InstallPrompt extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -52,7 +53,7 @@ function installationGuide(ua: string, platform: string, touchPoints: number): {
 }
 document.getElementById('close-guide')!.addEventListener('click', () => guide.close());
 install.addEventListener('click', async () => {
-  if (installed()) { markInstalled(); return; }
+  if (!promptEvent && installed()) { markInstalled(); return; }
   if (!promptEvent) {
     const help = installationGuide(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
     document.getElementById('guide-title')!.textContent = help.title;
@@ -77,14 +78,17 @@ install.addEventListener('click', async () => {
   } finally { install.disabled = false; }
 });
 let applying = false;
+let targetVersion: string | undefined;
 navigator.serviceWorker?.addEventListener('controllerchange', () => {
   if (applying) {
-    sessionStorage.setItem('erp-update-completed', '1');
-    location.reload();
+    sessionStorage.setItem('erp-update-completed', targetVersion ?? APP_VERSION);
+    const next = new URL(location.href);
+    next.searchParams.set('app-version', targetVersion ?? APP_VERSION);
+    location.replace(next.href);
   }
 });
 const workerReady: Promise<ServiceWorkerRegistration | undefined> =
-  'serviceWorker' in navigator ? navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+  'serviceWorker' in navigator ? navigator.serviceWorker.register('./sw.js?v=' + APP_VERSION, { scope: './', updateViaCache: 'none' })
     .then((value) => { registration = value; return value; })
     .catch(() => undefined) : Promise.resolve(undefined);
 async function waitForInstallation(worker: ServiceWorker): Promise<void> {
@@ -110,6 +114,7 @@ update.addEventListener('click', async () => {
     const release: unknown = await response.json();
     if (!release || typeof release !== 'object' || !('version' in release) || typeof release.version !== 'string')
       throw new Error('invalid version');
+    targetVersion = release.version;
     registration = await workerReady;
     if ('serviceWorker' in navigator && !registration) throw new Error('worker unavailable');
     if (registration) {
@@ -125,9 +130,11 @@ update.addEventListener('click', async () => {
         return;
       }
     }
-    if (release.version !== '0.1.2') {
-      sessionStorage.setItem('erp-update-completed', '1');
-      location.reload();
+    if (release.version !== APP_VERSION) {
+      sessionStorage.setItem('erp-update-completed', release.version);
+      const next = new URL(location.href);
+      next.searchParams.set('app-version', release.version);
+      location.replace(next.href);
       return;
     }
     status('update-status', 'Sikeres ellenőrzés. Az alkalmazás naprakész.', 'success');
@@ -135,9 +142,11 @@ update.addEventListener('click', async () => {
     status('update-status', 'A frissítés nem ellenőrizhető. Ellenőrizd az internetkapcsolatot, majd próbáld újra.', 'error');
   } finally { if (!applying) update.disabled = false; }
 });
-if (sessionStorage.getItem('erp-update-completed')) {
+const expectedVersion = sessionStorage.getItem('erp-update-completed');
+if (expectedVersion) {
   sessionStorage.removeItem('erp-update-completed');
-  status('update-status', 'Sikeres frissítés.', 'success');
+  if (expectedVersion === APP_VERSION) status('update-status', 'Sikeres frissítés.', 'success');
+  else status('update-status', 'A kívánt verzió még nem töltődött be. Válaszd újra a Frissítés gombot.', 'error');
 }
-document.getElementById('version')!.textContent = 'DÍSZKERTEK · 0.1.2';
+document.getElementById('version')!.textContent = 'DÍSZKERTEK · ' + APP_VERSION;
 export {};

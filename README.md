@@ -6,7 +6,7 @@ Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációján
 
 ## Jelenlegi állapot – 2026. október 30.
 
-**Az első, 0.1.0-s alkalmazáskezdőlap elkészült:** Díszkertek-arculat, kezdőképernyős telepítés és frissítés, belépéstől függetlenül. A teljes ERP üzleti moduljai és a bejelentkezés még nem készültek el; adatbázis-telepítés nem történt. Az ERP saját sémái a meglévő kap projektbe kerülhetnek a jóváhagyott terv szerint.
+**A jelenlegi frontend-verzió 0.1.3:** Díszkertek-arculat, kezdőképernyős telepítés és frissítés, belépéstől függetlenül. A teljes ERP üzleti moduljai és a bejelentkezés még nem készültek el. A kap projektben az elkülönített ERP-adatbázis alapja és az irodai tagság létrejött; az ERP-belépés még nem működik, az ellenőrzése befejezésre vár. Az ERP saját sémái a meglévő kap projektbe kerülhetnek a jóváhagyott terv szerint.
 
 [Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
 
@@ -49,7 +49,7 @@ A PDF-ek a dokumentáció menthető pillanatképei. A továbbfejlesztéshez az a
 - Az új arculat és dokumentumsablonok kizárólag a jóváhagyott Díszkertek-megjelenést használják. A forrásfájlok régi készítői feliratait nem emeljük át.
 - A repositoryt és a deploymentet a megrendelő kezeli. Ellenőrzött fejlesztésekhez automatikus commit és push engedélyezett.
 - Az ERP saját sémái a meglévő kap Supabase-projektbe kerülhetnek; a közös ügyféltörzs a Munkalapban marad.
-- Az első Iroda jogosultságú ERP-fiók jóváhagyott e-mail-címe: info@diszkertek.hu. A fiók még nincs létrehozva.
+- Az első Iroda jogosultságú ERP-fiók jóváhagyott e-mail-címe: info@diszkertek.hu. A meglévő igazolt fiókhoz külön ERP-tagság kapcsolódik; a bejelentkezési felület és ellenőrzés még nincs kész.
 - Új előfizetés nem indítható. Használati díjas külső szolgáltatás sem aktiválható előzetes egyeztetés nélkül.
 
 ## A meglévő működés védelme
@@ -120,3 +120,14 @@ A megosztási kép világos hátterű, nagy, eredeti Díszkertek-logóval. A né
 ### 0.1.2 – Felső alkalmazásmenü
 
 A Telepítés és Frissítés gomb a felső menüben, bejelentkezés előtt is elérhető. Mobilon két legalább 48 képpont magas gomb jelenik meg. A telepítőablakot támogató böngészőben a saját telepítő nyílik meg; más környezetben iPhone/iPad, Android, Mac, asztali gép vagy beágyazott böngésző szerinti lépések láthatók. A sikeres telepítést csak visszaigazolás után jelezzük. A natív telepítés böngészőfüggő; a reszponzív webes működés ettől független.
+
+
+### 0.1.3 – Saját ERP-telepítési azonosító
+
+A működő Napi feladatok, Munkalap, Kassza és Munkabér forrását kizárólag olvasással hasonlítottuk össze. Az ERP a Napi feladatok mintájára kifejezett **/erp/** telepítési azonosítót kapott. A korábbi ./ azonosító a manifest szabványa szerint a domain gyökerére oldódott fel, ezért másik appal azonosnak minősülhetett. A scope is /erp/; ez a két beállítás eltérő szabályok szerint oldódik fel.
+
+A Munkalap és a többi működő app mintájára az indítóoldal, a CSS, a JavaScript, a manifest és a service worker verzióparamétert használ. A Frissítés csak a kért verzió tényleges betöltése után jelez sikeres frissítést. Az ERP kizárólag saját gyorsítótárát kezeli.
+
+[Részletes telepítési összehasonlítás](docs/telepitesi-osszehasonlitas.md). Helyi, a valódi /erp/ útvonalat követő előnézet: `python tools/preview.py`, majd http://127.0.0.1:5194/erp/. Az előnézet más appok mappáit nem szolgálja ki.
+
+Ellenőrzés: TypeScript-build, 14 célzott automatikus teszt, böngészős frissítésellenőrzés. A valódi Chrome/Edge telepítés befejezését külön eszközpróba igazolhatja; az eseményszimuláció ezt nem helyettesíti.

@@ -26,16 +26,18 @@
 <script type="module" src="./assets/js/main.js"></script>
 </head>
 <body>
-<header><a class="brand" href="./" aria-label="Díszkertek kezdőlap"><img src="./assets/logo.png" width="52" height="52" alt=""><span>DÍSZKERTEK</span></a><a class="website" href="https://www.diszkertek.hu/" target="_blank" rel="noopener">diszkertek.hu ↗</a></header>
+<header><a class="brand" href="./" aria-label="Díszkertek kezdőlap"><img src="./assets/logo.png" width="52" height="52" alt=""><span>DÍSZKERTEK</span></a>
+<nav class="app-menu" aria-label="Alkalmazás menü">
+<button id="install" type="button" title="Díszkertek telepítése erre az eszközre" aria-describedby="install-help">↓ <span>Telepítés</span></button>
+<button id="update" class="secondary" type="button" title="Az alkalmazás frissítéseinek ellenőrzése" aria-describedby="update-help">↻ <span>Frissítés</span></button>
+</nav></header>
+<div class="feedback"><p id="install-help" class="sr-only">A támogatott böngésző telepítőjét nyitja meg, vagy az eszközödnek megfelelő telepítési lépéseket mutatja.</p><p id="update-help" class="sr-only">Új alkalmazásverzió ellenőrzése és betöltése.</p><p id="install-status" class="status" role="status" aria-live="polite"></p><p id="update-status" class="status" role="status" aria-live="polite"></p></div>
 <main>
 <div class="identity"><img class="logo" src="./assets/logo.png" alt="Díszkertek logó" width="240" height="240">
 <div><p class="eyebrow">DÍSZKERTEK</p><h1>Integrált vállalatirányítási<br>és ügyfélkapcsolati alkalmazás</h1></div></div>
-<section class="actions" aria-label="Alkalmazás kezelése">
-<div><button id="install" type="button" title="Alkalmazás hozzáadása az eszközöd kezdőképernyőjéhez" aria-describedby="install-help">↓ <span>Alkalmazás letöltése</span></button><p id="install-help">Telepítsd a kezdőképernyőre a gyors eléréshez.</p><p id="install-status" class="status" role="status" aria-live="polite"></p></div>
-<div><button id="update" class="secondary" type="button" title="Az alkalmazás legfrissebb verziójának ellenőrzése" aria-describedby="update-help">↻ <span>Frissítés</span></button><p id="update-help">Ellenőrizd, elérhető-e új alkalmazásverzió.</p><p id="update-status" class="status" role="status" aria-live="polite"></p></div>
-</section>
+
 </main>
-<footer><a href="tel:+36706349630">+36 70 634 9630</a><a href="mailto:info@diszkertek.hu">info@diszkertek.hu</a><span id="version">DÍSZKERTEK</span></footer>
+<footer><a href="tel:+36706349630">+36 70 634 9630</a><a href="mailto:info@diszkertek.hu">info@diszkertek.hu</a><a class="website" href="https://www.diszkertek.hu/" target="_blank" rel="noopener">diszkertek.hu ↗</a><span id="version">DÍSZKERTEK</span></footer>
 <dialog id="install-guide" aria-labelledby="guide-title"><h2 id="guide-title">Alkalmazás telepítése</h2><p id="guide-content"></p><button id="close-guide" type="button">Rendben</button></dialog>
 <noscript>A letöltés és a frissítés használatához engedélyezd a JavaScriptet a böngészőben.</noscript>
 </body></html>

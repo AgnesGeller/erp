@@ -3,20 +3,20 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const source=(await readFile(new URL('../assets/js/main.js',import.meta.url),'utf8')).replace(/export \{\};?/, '');
-function harness({offline=false,standalone=false,serviceWorker}={}) {
+function harness({offline=false,standalone=false,userAgent='test',platform='test',maxTouchPoints=0,serviceWorker}={}) {
  const nodes=new Map();
  const listeners={};
- for(const id of ['install','update','install-guide','guide-content','close-guide','install-status','update-status','version']){
+ for(const id of ['install','update','install-guide','guide-title','guide-content','close-guide','install-status','update-status','version']){
   nodes.set(id,{textContent:'',className:'',disabled:false,handlers:{},addEventListener(t,f){this.handlers[t]=f;},querySelector(){return this;},showModal(){this.open=true;},close(){this.open=false;}});
  }
  const session=new Map();
  const context={
   document:{querySelector(sel){if(sel==='#install-status.success') return nodes.get('install-status').className.includes('success')?nodes.get('install-status'):null;return nodes.get(sel.slice(1));},getElementById(id){return nodes.get(id);}},
   window:{matchMedia:()=>({matches:standalone}),addEventListener(t,f){listeners[t]=f;}},
-  navigator:{userAgent:'test',platform:'test',maxTouchPoints:0,...(serviceWorker?{serviceWorker}: {})},
+  navigator:{userAgent,platform,maxTouchPoints,...(serviceWorker?{serviceWorker}: {})},
   sessionStorage:{getItem:k=>session.get(k),setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)},
   location:{reload(){context.reloaded=true;}},
-  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:'0.1.1'})};},
+  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:'0.1.2'})};},
   AbortSignal,Date,setTimeout,clearTimeout
  };
  vm.runInNewContext(source,context);
@@ -58,7 +58,7 @@ test('SW registration failure cannot claim successful update',async()=>{
 test('ERP worker never removes another app cache or handles API traffic',async()=>{
  const handlers={};const deleted=[];let claimed=false;
  const context={URL,self:{registration:{scope:'https://agnesgeller.github.io/erp/'},clients:{claim:async()=>{claimed=true;}},addEventListener:(t,f)=>handlers[t]=f},
- caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.1.1','munkalap-v2'],delete:async k=>deleted.push(k)}};
+ caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.1.2','munkalap-v2'],delete:async k=>deleted.push(k)}};
  vm.runInNewContext(await readFile(new URL('../sw.js',import.meta.url),'utf8'),context);
  let pending;handlers.activate({waitUntil:p=>pending=p});await pending;
  assert.deepEqual(deleted,['diszkertek-erp-0.0.1']);assert.equal(claimed,true);
@@ -67,3 +67,14 @@ test('ERP worker never removes another app cache or handles API traffic',async()
  }
 });
 
+
+test('iPad with desktop identity receives iPad installation steps',async()=>{
+ const h=harness({userAgent:'Macintosh Safari',platform:'MacIntel',maxTouchPoints:5});await h.nodes.get('install').handlers.click();
+ assert.match(h.nodes.get('guide-title').textContent,/iPad/);assert.match(h.nodes.get('guide-content').textContent,/Megosztás/);
+ assert.doesNotMatch(h.nodes.get('install-status').textContent,/Sikeres/);
+});
+test('Viber points to external browser instead of pretending to install',async()=>{
+ const h=harness({userAgent:'Android Viber'});await h.nodes.get('install').handlers.click();
+ assert.match(h.nodes.get('guide-content').textContent,/Megnyitás böngészőben/);
+ assert.doesNotMatch(h.nodes.get('install-status').textContent,/Sikeres/);
+});

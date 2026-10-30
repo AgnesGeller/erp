@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'diszkertek-erp-';
-const CACHE_NAME = CACHE_PREFIX + '0.1.1';
+const CACHE_NAME = CACHE_PREFIX + '0.1.2';
 const FILES = ['./', './index.html', './assets/style.css', './assets/js/main.js',
   './manifest.webmanifest', './assets/logo.png', './assets/icon-192.png', './assets/icon-512.png',
   './assets/favicon.png', './assets/apple-touch-icon.png'];

@@ -24,6 +24,33 @@ window.addEventListener('appinstalled', () => {
     promptEvent = undefined;
     markInstalled();
 });
+function installationGuide(ua, platform, touchPoints) {
+    const address = 'https://agnesgeller.github.io/erp/';
+    if (/Viber|FBAN|FBAV|Instagram|Line\//i.test(ua))
+        return {
+            title: 'Megnyitás telepítéshez',
+            message: '1. A link menüjében válaszd a Megnyitás böngészőben lehetőséget.\n2. Az ott megnyíló Díszkertek oldalon nyomd meg a Telepítés gombot.\n\nWebcím: ' + address
+        };
+    if (/iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && touchPoints > 1))
+        return {
+            title: 'Telepítés iPhone-ra vagy iPadre',
+            message: '1. Nyisd meg ezt az oldalt Safariban.\n2. Koppints a Megosztás gombra.\n3. Válaszd a Főképernyőhöz adás lehetőséget, majd a Hozzáadás gombot.\n\nEzután a Díszkertek ikonjával indíthatod az alkalmazást.\nWebcím: ' + address
+        };
+    if (/Android/.test(ua))
+        return {
+            title: 'Telepítés Androidra',
+            message: '1. Nyisd meg az oldalt a telefon böngészőjében.\n2. A böngésző menüjében válaszd az Alkalmazás telepítése vagy a Hozzáadás a kezdőképernyőhöz lehetőséget.\n3. Erősítsd meg a Telepítés vagy Hozzáadás gombbal.\n\nHa a menü nem kínál telepítést, nyisd meg a webcímet Chrome-ban vagy Edge-ben.\nWebcím: ' + address
+        };
+    if (/Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|Edg/.test(ua))
+        return {
+            title: 'Telepítés Macre',
+            message: '1. Safari menü: Fájl → Hozzáadás a Dockhoz.\n2. Ellenőrizd a Díszkertek nevet, majd válaszd a Hozzáadás gombot.\n\nHa a Safari verziódban ez nem érhető el, Chrome-ból vagy Edge-ből telepítheted.\nWebcím: ' + address
+        };
+    return {
+        title: 'Telepítés számítógépre',
+        message: '1. Chrome-ban vagy Edge-ben nyisd meg a Díszkertek webcímét.\n2. A címsor jobb oldalán válaszd a telepítés ikont, vagy a böngésző menüjében az alkalmazás telepítését.\n3. Erősítsd meg a Telepítés gombbal.\n\nAsztali Firefoxból és beágyazott böngészőből a közvetlen telepítés nem mindenhol támogatott.\nWebcím: ' + address
+    };
+}
 document.getElementById('close-guide').addEventListener('click', () => guide.close());
 install.addEventListener('click', async () => {
     if (installed()) {
@@ -31,11 +58,9 @@ install.addEventListener('click', async () => {
         return;
     }
     if (!promptEvent) {
-        const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        document.getElementById('guide-content').textContent = ios
-            ? 'Safariban nyisd meg a Megosztás menüt, majd válaszd a „Főképernyőhöz adás” lehetőséget.'
-            : 'A böngésző menüjében válaszd az „Alkalmazás telepítése” vagy „Hozzáadás a kezdőképernyőhöz” lehetőséget. Ha nem jelenik meg, nyisd meg az oldalt Chrome-ban vagy Edge-ben. A webes felület telepítés nélkül is elérhető.';
+        const help = installationGuide(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
+        document.getElementById('guide-title').textContent = help.title;
+        document.getElementById('guide-content').textContent = help.message;
         guide.showModal();
         status('install-status', 'Kövesd a megjelenő telepítési útmutatót.');
         return;
@@ -118,7 +143,7 @@ update.addEventListener('click', async () => {
                 return;
             }
         }
-        if (release.version !== '0.1.1') {
+        if (release.version !== '0.1.2') {
             sessionStorage.setItem('erp-update-completed', '1');
             location.reload();
             return;
@@ -137,5 +162,5 @@ if (sessionStorage.getItem('erp-update-completed')) {
     sessionStorage.removeItem('erp-update-completed');
     status('update-status', 'Sikeres frissítés.', 'success');
 }
-document.getElementById('version').textContent = 'DÍSZKERTEK · 0.1.1';
+document.getElementById('version').textContent = 'DÍSZKERTEK · 0.1.2';
 export {};

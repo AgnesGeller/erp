@@ -115,3 +115,8 @@ A fejlécben és a kezdőfelületen az eredeti átlátszó logó jelenik meg, z�
 ### Megosztási előnézet pontosítása
 
 A megosztási kép világos hátterű, nagy, eredeti Díszkertek-logóval. A név és a teljes alkalmazásleírás a link metaadataiban szerepel; a képen nincs ismételt apró felirat. Az új megosztas-v2.png képnév segíti a frissítést. A már elküldött Viber-üzenetek előnézetét a Viber saját gyorsítótára őrizheti; ezek utólagos frissülése nem garantálható.
+
+
+### 0.1.2 – Felső alkalmazásmenü
+
+A Telepítés és Frissítés gomb a felső menüben, bejelentkezés előtt is elérhető. Mobilon két legalább 48 képpont magas gomb jelenik meg. A telepítőablakot támogató böngészőben a saját telepítő nyílik meg; más környezetben iPhone/iPad, Android, Mac, asztali gép vagy beágyazott böngésző szerinti lépések láthatók. A sikeres telepítést csak visszaigazolás után jelezzük. A natív telepítés böngészőfüggő; a reszponzív webes működés ettől független.

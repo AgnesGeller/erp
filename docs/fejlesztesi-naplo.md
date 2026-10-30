@@ -101,3 +101,5 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - Ellenőrzés: sikeres TypeScript-build, 14 célzott PWA-teszt, helyi böngészőben 0.1.3 és sikeres frissítésellenőrzés, konzolhiba nélkül.
 - A natív Chrome/Edge telepítés végső próbája még nem igazolt. Az azonosítóhiba javítása és a böngésző tényleges telepítési eredménye külön ellenőrzési pont.
 - A jelen változtatás kizárólag az ERP fájljait érinti; másik app, node_modules vagy adatbázis nem változott. A korábban megkezdett adatbázis-fejlesztés szünetel.
+
+- Publikus ellenőrzés: a GitHub Pages a6c9eb4 kiadása sikeresen közzétéve. A valódi ERP-webcímen betöltődött a 0.1.3; a Frissítés gomb után újratöltés és zöld pipás Sikeres frissítés jelzés látszott. Konzolhiba nem jelentkezett. A README asztali képernyőképe erre az állapotra frissült.

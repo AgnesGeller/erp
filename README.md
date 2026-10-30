@@ -6,7 +6,11 @@ Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációján
 
 ## Jelenlegi állapot – 2026. október 30.
 
-**A részletes adatbázisterv elkészült felülvizsgálatra; jóváhagyásra vár. Alkalmazásfejlesztés és adatbázis-telepítés még nem történt.** Ez a repository jelenleg dokumentációt tartalmaz. Még nincs futtatható frontend, bejelentkezés vagy deploymentre kész alkalmazás.
+**Az első, 0.1.0-s alkalmazáskezdőlap elkészült:** Díszkertek-arculat, kezdőképernyős telepítés és frissítés, belépéstől függetlenül. A teljes ERP üzleti moduljai és a bejelentkezés még nem készültek el; adatbázis-telepítés nem történt. Az ERP saját sémái a meglévő kap projektbe kerülhetnek a jóváhagyott terv szerint.
+
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
+
+![A tényleges kezdőfelület és a sikeres frissítésellenőrzés](docs/kepek/kezdo-desktop.png)
 
 Az adatbázisterv nem végrehajtható migráció, és a leírt megoldás nem tekinthető már működő integrációnak. Az eredeti munkafüzeteket, ügyféladatokat és adatbázis-mentéseket nem töltjük a repositoryba.
 
@@ -26,6 +30,14 @@ Az ábra tervet mutat. A szaggatott vonalak még nem létező ERP-kapcsolatokat 
 - [A csatolt árajánlat-kalkulátor felmérése](docs/kalkulator-felmeres.md): ellenőrzött képletek, 163 árlistasor, 22 kategória, sablonok és megfeleltetési problémák.
 - [Fejlesztési napló és döntések](docs/fejlesztesi-naplo.md): mi készült el, mi jóváhagyott, mi vár döntésre, és hogyan ellenőriztük.
 
+## Menthető PDF-változatok
+
+- [Részletes adatbázisterv - PDF](output/pdf/01_Diszkertek_reszletes_adatbazisterv.pdf)
+- [Magyar README és adatkapcsolati ábra - PDF](output/pdf/02_Diszkertek_magyar_README.pdf)
+- [Kalkulátor-felmérés és fejlesztési napló - PDF](output/pdf/03_Diszkertek_kalkulator_es_fejlesztesi_naplo.pdf)
+
+A PDF-ek a dokumentáció menthető pillanatképei. A továbbfejlesztéshez az aktuális Markdown-forrásokat is meg kell őrizni.
+
 ## Jóváhagyott irányok
 
 - Magyar felület és folyamatosan magyar nyelvű README, használati és továbbfejlesztési leírással.
@@ -36,6 +48,8 @@ Az ábra tervet mutat. A szaggatott vonalak még nem létező ERP-kapcsolatokat 
 - Elérhetőségek: +36 70 634 9630; info@diszkertek.hu; www.diszkertek.hu.
 - Az új arculat és dokumentumsablonok kizárólag a jóváhagyott Díszkertek-megjelenést használják. A forrásfájlok régi készítői feliratait nem emeljük át.
 - A repositoryt és a deploymentet a megrendelő kezeli. Ellenőrzött fejlesztésekhez automatikus commit és push engedélyezett.
+- Az ERP saját sémái a meglévő kap Supabase-projektbe kerülhetnek; a közös ügyféltörzs a Munkalapban marad.
+- Az első Iroda jogosultságú ERP-fiók jóváhagyott e-mail-címe: info@diszkertek.hu. A fiók még nincs létrehozva.
 - Új előfizetés nem indítható. Használati díjas külső szolgáltatás sem aktiválható előzetes egyeztetés nélkül.
 
 ## A meglévő működés védelme
@@ -55,11 +69,39 @@ A forrásokból átvett számítási szabály és a belső adat két külön dol
 ## Hogyan folytatható a fejlesztés?
 
 1. A fejlesztési napló és a teljes adatbázisterv elolvasása.
-2. A függő döntések rendezése; az adatbázisterv jóváhagyásáig nincs Supabase-írás.
+2. A jóváhagyott elhelyezési irány műszaki megvalósítása és elkülönített jogosultsági tesztjei; ellenőrzés nélkül nincs éles telepítés.
 3. Elkülönített helyi fejlesztőkörnyezet létrehozása, a régi alkalmazásokhoz írási kapcsolat nélkül.
 4. A PDF szerinti funkciók megvalósítása TypeScriptben, ellenőrizhető mérföldkövekkel.
 5. Minden változtatásnál az érintett funkció, indok, teszt, korlát és adatbázishatás dokumentálása.
 6. Futtatható frontend elkészültekor pontos indítási, build- és GitHub-deployment leírás, valamint tényleges képernyőképek hozzáadása.
 7. Éles átállás csak mentés, tesztimport, teljes jogosultsági ellenőrzés és külön jóváhagyás után.
 
-A repository dokumentációs állapotában nincs telepítési vagy futtatási parancs: nem állítjuk, hogy az alkalmazás már elkészült.
+## Fejlesztés, ellenőrzés és GitHub Pages
+
+Node.js 20.12 vagy újabb szükséges. Mindig az **erp repository saját könyvtárában** dolgozz; csomagtelepítés előtt ellenőrizd az npm prefix eredményét.
+
+1. `npm ci` – kizárólag helyi fejlesztői függőségek telepítése, nincs fizetős szolgáltatás.
+2. `npm run build` – src/main.ts fordítása assets/js/main.js fájlba. A fordított fájl is verziókezelt, a Pages nem igényel Node.js futtatást.
+3. `npm test` – a telepítés/frissítés siker- és hibaágai, valamint a más appokat védő gyorsítótár-izoláció ellenőrzése.
+4. `python -m http.server 5188 --bind 127.0.0.1` – helyi megnyitás: http://127.0.0.1:5188/. A teszt végén Ctrl+C-vel állítsd le.
+5. Commit és push közvetlenül a main ágra, majd a Pages-telepítés ellenőrzése. A forrás a main ág gyökérmappája; az index.html az alkalmazás kezdőlapja, a .nojekyll kikapcsolja a dokumentációs Jekyll-feldolgozást.
+
+Új kiadáskor együtt módosítandó: package.json és package-lock.json verziója, version.json, src/main.ts két verziószövege és sw.js CACHE_NAME értéke; ezután újrafordítás és teszt.
+
+## Letöltés és frissítés használata
+
+- **Alkalmazás letöltése:** a böngésző saját telepítőjét nyitja meg, ha támogatott és elérhető. Sikeres telepítéskor zöld pipa jelenik meg. Az ablak elfogadása önmagában még nem jelenti a telepítés befejezését.
+- Ha nincs közvetlen telepítő, magyar útmutató segít. iPhone/iPad esetén Safari → Megosztás → Főképernyőhöz adás. Ez nem külön APK vagy alkalmazásbolti kiadás.
+- **Frissítés:** interneten ellenőrzi a kiadást és a service workert. Ha nincs új verzió, zöld pipás „Sikeres ellenőrzés. Az alkalmazás naprakész.” jelzés látszik. Elérhető frissítés betöltése után „Sikeres frissítés.” jelenik meg.
+- Hálózati vagy telepítési hibánál nincs téves sikerjelzés; a gomb újra használható.
+- Kizárólag a saját ERP statikus fájljai kerülnek gyorsítótárba. Ügyféladatot, API-választ és más alkalmazás gyorsítótárát ez a verzió nem tárolja és nem módosítja.
+
+A tényleges Chrome/Edge és iOS kezdőképernyős telepítést még külön eszköztesztnek kell igazolnia. Az alkalmazáson belüli böngészőben a telepítési útmutató és a frissítésellenőrzés működését ellenőriztük.
+
+## Ikonok és dokumentáció újraelőállítása
+
+Az ikonok a meglévő Díszkertek-logóból, zöld háttérrel készültek; a PNG-k a repositoryban vannak. Újragenerálás: `node tools/generate-icons.mjs <sharp-modul-abszolút-elérési-útja> <eredeti-logo.png>`. A sharp csak eseti képelőállító eszköz, a webalkalmazás nem tölti be.
+
+A három PDF újraelőállítása: `python tools/render-docs.py` (reportlab szükséges; magyar Arial betűkészlettel). Kimenet: output/pdf. A képernyőképek valódi böngészős felvételek.
+
+A kap projekt Árajánlat alkalmazása friss **tesztalkalmazás**. Az új ERP elkészülése és az átvétel ellenőrzése után eltávolítható, a már kiküldött PDF és a szükséges adatok megőrzésével. Ebben a fejlesztési lépésben nem töröltünk belőle semmit.

@@ -1,8 +1,8 @@
 # Díszkertek ERP – részletes adatbázisterv
 
-Verzió: 0.1 · Dátum: 2026. október 30. · Állapot: jóváhagyásra váró terv.
+Verzió: 0.2 · Dátum: 2026. október 30. · Állapot: az elhelyezési irány jóváhagyva; a műszaki megvalósítás előkészítés alatt.
 
-**Ez a dokumentum nem migráció és nem telepítési engedély. Supabase-írás, próbaimport és alkalmazásfejlesztés még nem történt.**
+**Ez a dokumentum nem migráció és nem telepítési engedély. Supabase-írás és próbaimport még nem történt. Az első alkalmazáskezdőlap elkészült; az üzleti modulok még nem működnek.**
 
 ## 1. Mit kell megvalósítani?
 
@@ -19,12 +19,14 @@ A teljes rendszer elkészítendő. A naptár és ügyfélfoglalás PDF-ben elő�
 | Kassza | public.entries, public.profiles és kapcsolódó objektumok | Pénzügyi adatait az ERP nem írja és nem költözteti át. A közös ügyféllistát használja és bővíti. |
 | Napi feladatok | Saját napi_* táblák, közös ügyféllista olvasása | A napi tervek és személyszínek importálhatók; régi apphoz nem írunk. |
 | Munkabér | Saját munkaber_* adatok és eszközszinkron | Nem része az ERP-migrációnak. |
-| Árajánlat | kap Supabase-projekt, quote_* táblák | Már van ügyfél- és munkalapszinkron a két projekt között. A meglévő rekordok nem törölhetők automatikusan. |
+| Árajánlat tesztalkalmazás | kap Supabase-projekt, quote_* táblák | Már van ügyfél- és munkalapszinkron a két projekt között. A meglévő rekordok nem törölhetők automatikusan. |
 | Régi KAP | Ugyanabban a kap projektben külön, nem quote_* táblák | Az alkalmazás használaton kívül lehet, de a teljes projekt és régi táblái nem tekinthetők üresnek. |
+
+A megrendelő pontosítása: az Árajánlat néhány napos tesztalkalmazás, nem élesben használt régi rendszer. Az új ERP elkészülte után eltávolítható, a szükséges adatok és a már kiküldött PDF megőrzésével. Jelenleg sem alkalmazást, sem adatot nem törlünk.
 
 A kap projekt pillanatnyi, közvetlen COUNT lekérdezése: 198 quote_clients rekord, 9 quote_projects rekord, 7 ajánlat, 9 ajánlatváltozat, 210 árlistasor. A régi clients táblában 107 rekord, quotes táblában 5 rekord és work_logs táblában 1 rekord van. Ezek állapotfelmérési darabszámok, nem üzleti készültségi minősítések.
 
-A kap adatbázis mérete a vizsgálatkor körülbelül 77 MiB. Nincs még erp séma és nincs Storage-bucket. Az üres Storage nem jelenti azt, hogy nincsenek képek: a korábbi Árajánlat fájljai eszközönként, IndexedDB-ben lehetnek.
+A kap adatbázis mérete a vizsgálatkor körülbelül 77 MiB. Nincs még erp séma és nincs Storage-bucket. Az üres Storage nem jelenti azt, hogy nincsenek képek: az Árajánlat tesztalkalmazás fájljai eszközönként, IndexedDB-ben lehetnek.
 
 A közös ügyféltörzsben külön ügyfél- és címazonosító van. A címtábla ügyfélazonosítója idegen kulccsal kapcsolódik az ügyfélhez. Egy ügyfélen belül normalizált címre egyediségi szabály van. Az ügyfél normalizált neve jelenleg egyedi: azonos nevű külön személyek esetén ezt a korlátot az ERP nem kerülheti meg és nem oldhatja fel néma összevonással.
 
@@ -35,13 +37,13 @@ A közös ügyfélnév frissítésének jelenlegi triggere a kapcsolt régi munk
 | Lehetőség | Előny | Hátrány | Terv |
 | --- | --- | --- | --- |
 | Új ERP-séma a Kassza projektben | A közös törzs helyben van | Ugyanaz az Auth és erőforráskörnyezet szolgálná a dolgozókat és új megrendelőket. A jelenlegi ügyfélolvasási RLS nem megfelelő általános ügyfélbelépéshez. | Nem javasolt. |
-| Új ERP-séma a meglévő kap projektben | Nincs szükség harmadik fizetős projektre; a Kassza Auth-környezetét nem bővíti ügyfélfiókokkal | A kap erőforrásai és Auth-szolgáltatása közös marad a régi Árajánlattal. Teljes izolációs teszt szükséges. | Jóváhagyásra javasolt. |
+| Új ERP-séma a meglévő kap projektben | Nincs szükség harmadik fizetős projektre; a Kassza Auth-környezetét nem bővíti ügyfélfiókokkal | A kap erőforrásai és Auth-szolgáltatása közös marad a friss Árajánlat tesztalkalmazással. Teljes izolációs teszt szükséges. | A megrendelő által jóváhagyott irány. |
 | Külön harmadik felhős projekt | Erősebb fizikai elkülönítés | A jelenlegi két Free projekt mellett új költség merülhet fel | Előfizetés nélkül most nem választjuk. |
 | Külön helyi Supabase | A fejlesztés nem terheli az éles adatbázist | Helyi futtatókörnyezet szükséges; nem telefonról elérhető éles szolgáltatás | Fejlesztési és migrációs próbakörnyezetnek javasolt. |
 
 **Javaslat:** helyi, elkülönített fejlesztés; jóváhagyás és tesztek után az ERP saját objektumai a meglévő kap projektben. A Kassza projekt közös ügyféltörzse megmarad. Ez két fizikai Supabase-projekt, egyetlen ERP-felület és egyetlen elsődleges közös ügyfélforrás.
 
-Nem nevezünk át és nem törlünk projektet, nem módosítunk meglévő táblát, triggert, régi RLS-szabályt vagy régi függvényt. A közös adatbázisban új ERP-objektumok létrehozása is jóváhagyást igényel. Az előfizetés nélküliség nem jelenti korlátlan tárhely vagy teljes szolgáltatási elkülönítés ígéretét.
+Nem nevezünk át és nem törlünk projektet, nem módosítunk meglévő táblát, triggert, régi RLS-szabályt vagy régi függvényt. A kap projekten belüli új, elkülönített ERP-objektumok irányát a megrendelő jóváhagyta. Telepítésük előtt a teszteknek igazolniuk kell az izolációt és a meglévő működés változatlanságát. Az előfizetés nélküliség nem jelenti korlátlan tárhely vagy teljes szolgáltatási elkülönítés ígéretét.
 
 ## 4. Fizikai és biztonsági határok
 
@@ -272,7 +274,7 @@ Kiegészítő kötelező tesztek:
 
 ## 17. Még nyitott, valóban szükséges döntések
 
-1. A megrendelő jóváhagyja-e a kap projekten belüli elkülönített ERP-sémát és a fent leírt, új objektumokra korlátozott telepítést?
+1. Lezárt döntés: a megrendelő jóváhagyta a kap projekten belüli elkülönített ERP-sémák irányát. Az első Iroda-fiók címe info@diszkertek.hu; létrehozás és meghívóküldés még nem történt.
 2. A kiegészítés nálunk a „Munkalapok alkalmazás” címnél megszakad. A hiányzó folytatás további követelményeket tartalmazhat.
 3. A Járda építés sablon öt általános megnevezését mely pontos Excel-árlistatípusokkal és milyen rétegrenddel kell összerendelni? A felmérés külön dokumentumban található.
 4. MI-, e-mail- és WordPress-hozzáférések és költségkeret: a PDF teljes funkcionalitásához tényleges végpont szükséges. Az „előfizetés nélkül” nem jelent automatikusan engedélyt alkalmankénti API-díjra. Jóváhagyás nélkül díjas kérést sem indítunk.

@@ -1,0 +1,19 @@
+{
+  "name": "diszkertek-erp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node node_modules/typescript/bin/tsc",
+    "check": "node node_modules/typescript/bin/tsc --noEmit",
+    "test": "node --test tests/pwa.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.13",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "diszkertek-erp": "file:"
+  }
+}
+

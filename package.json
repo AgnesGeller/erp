@@ -11,9 +11,5 @@
   "devDependencies": {
     "@electric-sql/pglite": "0.5.13",
     "typescript": "5.9.3"
-  },
-  "dependencies": {
-    "diszkertek-erp": "file:"
   }
 }
-

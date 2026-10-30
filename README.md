@@ -43,7 +43,7 @@ A PDF-ek a dokumentáció menthető pillanatképei. A továbbfejlesztéshez az a
 - Magyar felület és folyamatosan magyar nyelvű README, használati és továbbfejlesztési leírással.
 - HTML5, CSS3 és moduláris TypeScript már az első alkalmazásverziótól; Supabase PostgreSQL és TypeScript szerveroldali műveletek.
 - Teljes PDF-funkciókör: a mérföldkövek munkasorrendet jelentenek, nem csökkentett végterméket.
-- Díszkertek-logó zöld négyzetes háttéren; egységes favicon, appikon és linkelőnézet.
+- A weboldalon háttér nélküli Díszkertek-logó; a favicon és a telepített alkalmazás ikonja zöld négyzetes háttérrel.
 - Megjelenő név: DÍSZKERTEK. Felirat: „Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás”.
 - Elérhetőségek: +36 70 634 9630; info@diszkertek.hu; www.diszkertek.hu.
 - Az új arculat és dokumentumsablonok kizárólag a jóváhagyott Díszkertek-megjelenést használják. A forrásfájlok régi készítői feliratait nem emeljük át.
@@ -105,3 +105,8 @@ Az ikonok a meglévő Díszkertek-logóból, zöld háttérrel készültek; a PN
 A három PDF újraelőállítása: `python tools/render-docs.py` (reportlab szükséges; magyar Arial betűkészlettel). Kimenet: output/pdf. A képernyőképek valódi böngészős felvételek.
 
 A kap projekt Árajánlat alkalmazása friss **tesztalkalmazás**. Az új ERP elkészülése és az átvétel ellenőrzése után eltávolítható, a már kiküldött PDF és a szükséges adatok megőrzésével. Ebben a fejlesztési lépésben nem töröltünk belőle semmit.
+
+
+### 0.1.1 – Logómegjelenítés pontosítása
+
+A fejlécben és a kezdőfelületen az eredeti átlátszó logó jelenik meg, zöld négyzet nélkül. A favicon, a telepítési ikonok és a linkelőnézet változatlanok. A korábbi PDF-ek és képernyőképek az első változat pillanatképei.

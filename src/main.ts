@@ -104,7 +104,7 @@ update.addEventListener('click', async () => {
         return;
       }
     }
-    if (release.version !== '0.1.0') {
+    if (release.version !== '0.1.1') {
       sessionStorage.setItem('erp-update-completed', '1');
       location.reload();
       return;
@@ -118,5 +118,5 @@ if (sessionStorage.getItem('erp-update-completed')) {
   sessionStorage.removeItem('erp-update-completed');
   status('update-status', 'Sikeres frissítés.', 'success');
 }
-document.getElementById('version')!.textContent = 'DÍSZKERTEK · 0.1.0';
+document.getElementById('version')!.textContent = 'DÍSZKERTEK · 0.1.1';
 export {};

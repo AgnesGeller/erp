@@ -16,7 +16,7 @@ function harness({offline=false,standalone=false,serviceWorker}={}) {
   navigator:{userAgent:'test',platform:'test',maxTouchPoints:0,...(serviceWorker?{serviceWorker}: {})},
   sessionStorage:{getItem:k=>session.get(k),setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)},
   location:{reload(){context.reloaded=true;}},
-  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:'0.1.0'})};},
+  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:'0.1.1'})};},
   AbortSignal,Date,setTimeout,clearTimeout
  };
  vm.runInNewContext(source,context);
@@ -58,7 +58,7 @@ test('SW registration failure cannot claim successful update',async()=>{
 test('ERP worker never removes another app cache or handles API traffic',async()=>{
  const handlers={};const deleted=[];let claimed=false;
  const context={URL,self:{registration:{scope:'https://agnesgeller.github.io/erp/'},clients:{claim:async()=>{claimed=true;}},addEventListener:(t,f)=>handlers[t]=f},
- caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.1.0','munkalap-v2'],delete:async k=>deleted.push(k)}};
+ caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.1.1','munkalap-v2'],delete:async k=>deleted.push(k)}};
  vm.runInNewContext(await readFile(new URL('../sw.js',import.meta.url),'utf8'),context);
  let pending;handlers.activate({waitUntil:p=>pending=p});await pending;
  assert.deepEqual(deleted,['diszkertek-erp-0.0.1']);assert.equal(claimed,true);

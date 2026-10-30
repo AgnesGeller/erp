@@ -67,3 +67,11 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - Fejlesztőkörnyezeti incidens: egy npm-telepítés a bootcamp szülőmappát választotta, és annak korábbi, külön manifest nélküli node_modules állományait ritkította. Az új ERP-függőségeket és a hozzájuk tartozó új manifesteket az ERP-be helyeztük. A korábbi 127 eltávolított csomag pontos verziói nem állíthatók helyre a megmaradt manifestből; ez helyi fejlesztőkörnyezeti korlát, nem éles adatbázis-módosítás. A további parancsok explicit ERP-célmappával futnak.
 
 - Tiszta ERP-telepítés ellenőrizve: npm ci --ignore-scripts, TypeScript-build és mind a hét teszt sikeres. Az önmagára mutató téves csomaghivatkozás eltávolítva a manifestből és a lockfájlból. A GitHub Pages csomagépítése sikeres; az első közzététel a vizsgálat idején waiting állapotban volt, ezért a publikus frissülés még nem igazolt.
+
+
+## 2026. október 30. – 0.1.1: háttér nélküli webes logó
+
+- A megrendelő kérésére a fejléc és a kezdőfelület az eredeti átlátszó logófájlt használja.
+- A favicon és a telepített app ikonja továbbra is zöld hátterű; az ikonfájlok nem módosultak.
+- A service worker az átlátszó logót is tárolja az offline megjelenítéshez; a kiadásszám frissült.
+- Ellenőrzés: a PNG alfa-csatornája átlátszó, TypeScript-build és célzott PWA-tesztek. Új függőséget nem telepítettünk; adatbázist és más appot nem módosítottunk.

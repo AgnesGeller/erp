@@ -6,7 +6,7 @@ Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációján
 
 ## Jelenlegi állapot – 2026. október 30.
 
-**A jelenlegi verzió 0.1.4:** elkészült az irodai belépési felület, az ERP saját kiszolgálója, a munkatársak felvétele és a munkánként, időszakra kiosztható megbízások első kezelőfelülete. Az elkülönített ERP-adatbázisalap és az első irodai tagság telepítve van. A tényleges jelszavas böngészős belépés felhasználói ellenőrzése még szükséges. A teljes ERP további üzleti moduljai fejlesztés alatt állnak; Munkalap- és Napi-adatimport még nem történt.
+**A jelenlegi verzió 0.1.5:** Ági és Tamás külön, új ERP-fiókkal, névválasztással és saját PIN-kóddal léphet be. A két fiók valódi HTTPS-belépése és irodai adatolvasása sikeresen ellenőrizve. Az eszköz saját ERP-munkamenetet őriz meg; a PIN-t nem tároljuk olvashatóan. A teljes ERP üzleti moduljai még fejlesztés alatt állnak; ügyfél- és munkaadat-import nem történt.
 
 [Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
 
@@ -28,7 +28,8 @@ Az ábra tervet mutat. A szaggatott vonalak még nem létező ERP-kapcsolatokat 
 
 - [Részletes adatbázisterv](docs/adatbazisterv.md): elhelyezés, táblák, jogosultságok, szinkron, pénzügyek, mentés, átállás, ellenőrzések.
 - [A csatolt árajánlat-kalkulátor felmérése](docs/kalkulator-felmeres.md): ellenőrzött képletek, 163 árlistasor, 22 kategória, sablonok és megfeleltetési problémák.
-- [Belépés és jogosultságkezelés](docs/belepes-es-jogosultsagok.md): használat, adatvédelem, telepített szerveroldal, ellenőrzések és korlátok.
+- [Aktuális irodai belépés](docs/irodai-belepes.md): Ági és Tamás saját ERP-fiókja, megjegyzett munkamenet, ellenőrzés.
+- [A 0.1.4 belépési alap történeti leírása](docs/belepes-es-jogosultsagok.md): használat, adatvédelem, telepített szerveroldal, ellenőrzések és korlátok.
 - [Fejlesztési napló és döntések](docs/fejlesztesi-naplo.md): mi készült el, mi jóváhagyott, mi vár döntésre, és hogyan ellenőriztük.
 
 ## Menthető PDF-változatok
@@ -49,15 +50,15 @@ A PDF-ek a dokumentáció menthető pillanatképei. A továbbfejlesztéshez az a
 - Elérhetőségek: +36 70 634 9630; info@diszkertek.hu; www.diszkertek.hu.
 - Az új arculat és dokumentumsablonok kizárólag a jóváhagyott Díszkertek-megjelenést használják. A forrásfájlok régi készítői feliratait nem emeljük át.
 - A repositoryt és a deploymentet a megrendelő kezeli. Ellenőrzött fejlesztésekhez automatikus commit és push engedélyezett.
-- Az ERP saját sémái a meglévő kap Supabase-projektbe kerülhetnek; a közös ügyféltörzs a Munkalapban marad.
-- Az első Iroda jogosultságú ERP-fiók jóváhagyott e-mail-címe: info@diszkertek.hu. A meglévő igazolt Auth-fiókhoz külön ERP-tagság kapcsolódik. Jelszavát nem változtattuk meg; az ERP a saját munkamenetét kezeli.
+- Az ERP a kap Supabase-projektben, saját erp és erp_private sémákkal működik. A KAP és Árajánlat tesztalkalmazások adatait és meglévő fiókjait nem használjuk fel. Az ERP saját ügyfélnyilvántartást kap; később külön, ellenőrzött adatimport készül.
+- Irodai hozzáférés: Ági és Tamás külön ERP-fiókja. Az info@diszkertek.hu a cég elérhetősége; nem ebből következtetünk más alkalmazások fiókjaira vagy jelszavaira.
 - Új előfizetés nem indítható. Használati díjas külső szolgáltatás sem aktiválható előzetes egyeztetés nélkül.
 
 ## A meglévő működés védelme
 
-A Kassza, Munkabér, Munkalap és Napi feladatok forráskódja és meglévő adatbázis-objektumai ebben a munkában nem módosulnak. A Munkalapban kialakított közös ügyféltörzs az elsődleges forrás.
+A Kassza, Munkabér, Munkalap és Napi feladatok forráskódja és meglévő adatbázis-objektumai ebben a munkában nem módosulnak. A Munkalap és Napi feladatok adatai későbbi, külön ellenőrzött átvétel forrásai lehetnek. A jelenlegi lépés nem olvas vagy importál üzleti adatokat belőlük.
 
-A Kassza és a Munkabér pénzügyi funkcióit nem integráljuk az ERP-be. Az ERP saját elszámolásokat, befizetés-visszaigazolásokat és jutalékanalitikát kezel. A közös ügyféladatok kapcsolatát ettől külön megőrizzük.
+A Kassza és a Munkabér pénzügyi funkcióit nem integráljuk az ERP-be. Az ERP saját elszámolásokat, befizetés-visszaigazolásokat és jutalékanalitikát kezel. Az ügyféladatok későbbi átvételének módját külön, forrásazonosítókkal és ellenőrzésekkel dokumentáljuk.
 
 A munkatársak közötti pénzátadás és pénzátvétel nem számít új céges bevételnek vagy költségnek.
 
@@ -134,11 +135,24 @@ A Munkalap és a többi működő app mintájára az indítóoldal, a CSS, a Jav
 Ellenőrzés: TypeScript-build, 14 célzott automatikus teszt, böngészős frissítésellenőrzés. A valódi Chrome/Edge telepítés befejezését külön eszközpróba igazolhatja; az eseményszimuláció ezt nem helyettesíti.
 
 
-### 0.1.4 – Irodai belépés és munkánkénti megbízások
+### 0.1.4 – Irodai belépés és munkánkénti megbízások (korábbi állapot)
 
-1. Az **Irodai belépés** részen add meg az info@diszkertek.hu címet és a kap projektben már meglévő fiók saját jelszavát. Jelszót ne küldj üzenetben. Új jelszó, automatikus meghívó vagy jelszó-visszaállító e-mail ebben a lépésben nem készült.
+1. Ez a korábbi változat a meglévő info@ fiókhoz kapcsolta az ERP-tagságot. Ez az összerendelés megszűnt; az új belépéshez Ági vagy Tamás nevét kell választani, saját ERP PIN-kóddal. Jelszót ne küldj üzenetben. Új jelszó, automatikus meghívó vagy jelszó-visszaállító e-mail ebben a lépésben nem készült.
 2. Az irodai munkatérben felvehető munkatárs. Ez egy személy nyilvántartásba vétele; önmagában nem hoz létre bejelentkezési fiókot.
 3. Meglévő ERP-munkánál munkatárs, szerepkör és időszak választható. Több ember lehet vezető egyszerre, és egy ember több munkán is dolgozhat. A visszavonás előzménye megmarad. **Még nincs importált vagy létrehozott ERP-munka**, ezért a megbízásűrlap csak a munkák későbbi felvétele után jelenik meg.
 4. A jelszót és a belépési tokeneket nem mentjük a böngésző tartós tárhelyére. Oldal-újratöltés vagy alkalmazásfrissítés után ismét be kell lépni. A Kijelentkezés csak ezt az ERP-munkamenetet zárja le.
 
 A felső Telepítés és Frissítés gomb belépés előtt és után is elérhető. A fejlesztés során 44 automatikus teszteredmény sikeres, köztük az ERP-adatok szervezeti elkülönítése, az azonnali jogosultság-visszavonás és az ismételt munkatársmentés védelme. A valós jelszavas belépés, a munkák adatimportja és az ügyfélportál még külön ellenőrzési/fejlesztési lépés. Részletek: [belépés és jogosultságkezelés](docs/belepes-es-jogosultsagok.md).
+
+
+### 0.1.5 – Ági és Tamás saját irodai belépése
+
+1. Nyisd meg az alkalmazást, és szükség esetén használd a felső **Frissítés** gombot.
+2. A **Név** mezőben válaszd Ágit vagy Tamást.
+3. Add meg a személyhez beállított **saját ERP PIN-kódot**, majd válaszd a **Belépés** gombot. A PIN-ek nem szerepelnek a dokumentációban vagy a forrásban.
+4. Ugyanazon eszközön, ugyanabban a böngészőben a következő megnyitáskor a rendszer az ERP saját munkamenetét megújítja, ellenőrzi a jogosultságot, és automatikusan megnyitja a munkateret. Ehhez internetkapcsolat és engedélyezett böngészőtárhely szükséges.
+5. A **Kijelentkezés** elfelejti az ERP-belépést ezen a böngészőn. Másik böngészőben vagy új eszközön először ismét szükséges a saját PIN.
+
+A telefon/desktop jelszókezelője külön is felajánlhatja a kód mentését; ezt a böngésző beállításai szabályozzák. Az automatikus ERP-megnyitás a megjegyzett munkameneten alapul. Az ügyfél/dolgozói e-mailes regisztráció és jelszó-visszaállítás most nincs bekapcsolva.
+
+Ellenőrzés: 73 sikeres automatikus teszteredmény; mindkét valódi ERP-fiók HTTPS-belépése, irodai adatolvasása és saját kijelentkezése sikeres. A beépített ellenőrző böngésző a külső API-hoz kapcsolódási hibát jelzett; a saját Chrome/Edge eszközön történő első belépést és újranyitást ezért külön ellenőrizni kell.

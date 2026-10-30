@@ -1,8 +1,10 @@
 # Díszkertek ERP – részletes adatbázisterv
 
-Verzió: 0.3 · Dátum: 2026. október 30. · Állapot: az elkülönített ERP-alap telepítve; a teljes üzleti modell további részei tervként szerepelnek.
+Verzió: 0.4 · Dátum: 2026. október 30. · Állapot: az elkülönített ERP-alap telepítve; a teljes üzleti modell további részei tervként szerepelnek.
 
 **Ez a teljes rendszer terve, nem önmagában végrehajtható migráció. A jóváhagyott irány alapján az ERP saját hét alaptáblája, jogosultsági függvényei és kiszolgálója telepítve van a kap projektben. Üzleti adatimport még nem történt. A ténylegesen elkészült kör és az ellenőrzések a [belépési dokumentumban](belepes-es-jogosultsagok.md) szerepelnek.**
+
+**Aktuális pontosítás:** az ERP marad a kap projektben saját sémákkal, új ERP-fiókokkal és saját nyilvántartással. KAP/Árajánlat üzleti adatot és meglévő fiókot nem veszünk át. A korábbi info@ ERP-tagság helyett Ági és Tamás külön ERP-belépése aktív. A meglévő appok csak olvasott technikai minták; az ügyféladatok későbbi átvétele külön ellenőrzött import. Az alábbi korábbi folyamatos ügyfélszinkron-terv nem jelent jelenlegi kapcsolatot vagy automatikus forrásírási engedélyt. Részletek: [aktuális irodai belépés](irodai-belepes.md).**
 
 ## 1. Mit kell megvalósítani?
 

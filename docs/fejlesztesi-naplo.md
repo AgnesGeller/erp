@@ -120,3 +120,15 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - README, adatbázisterv és önálló belépési leírás frissítve. A korábbi PDF-ek megőrzött pillanatképek. A helyi egyszeri szerkesztési segéd megmaradt, nincs verziókezelve; fájlt nem töröltünk.
 
 - Publikus ellenőrzés: cf34861 Pages-telepítése sikeres. A valódi webcímen 0.1.4 és az Irodai belépés látható; a felső Frissítés után az új verzió töltődött be, Sikeres frissítés jelzéssel, konzolhiba nélkül. A README képe a tényleges publikus, üres belépési űrlapot mutatja.
+
+
+## 2026. október 30. – 0.1.5: Ági és Tamás saját ERP-fiókja
+
+- Jóváhagyott irány: az ERP marad a kap infrastruktúrájában, saját sémákban és saját nyilvántartással. A KAP/Árajánlat üzleti adatai és korábbi fiókjai nem felhasználhatók. Más appok csak olvasott technikai minták.
+- A Munkalap névválasztás + PIN + saját tárolóban megjegyzett munkamenet mintáját olvastuk. Kódját és adatbázisát nem módosítottuk.
+- A megrendelő külön jóváhagyta agi@erp.diszkertek.hu és tamas@erp.diszkertek.hu belső azonosítóit, az egyszeri beállítást, a megjegyzett ERP-munkamenetet, valamint kizárólag a korábbi info@ ERP-tagság inaktiválását.
+- A PIN-eket a megrendelő adta meg, Tamás kódját külön javította; csak a végleges kód lett beállítva. A PIN-ek nem kerültek fájlba, forrásba vagy dokumentációba. A közvetlen parancssori átadást az automatikus ellenőrzés elutasította; helyette maszkolt SecureString-bevitel és felhasználóhoz kötött Windows-titkosítás történt.
+- Új saját privát irodai nyilvántartás és öt, csak service_role által hívható adminisztratív ERP RPC. A normál üzleti API továbbra is a felhasználó JWT-jét használja. Az egyszeri beállítások már felhasználva, lezárva.
+- Sikeres TypeScript-build, szigorú gateway-típusellenőrzés, 73 automatikus teszteredmény. Mindkét valódi ERP-fiók HTTPS-belépése, irodai adatolvasása és helyi kijelentkezése sikeres; a CORS-előkérés helyes.
+- A beépített böngésző nem érte el a külső API-t. A tényleges saját eszközös automatikus újranyitás még ellenőrizendő; nem állítunk teljes böngészős belépési sikert ennek helyében.
+- A korábbi public jogosultságok, RLS-szabályok, nem ERP függvények és a régi Auth-fiókok állapotlenyomata változatlan. Ügyfél- vagy munkaimport, e-mailküldés, új előfizetés és csomagtelepítés nincs. Fájlt nem töröltünk.

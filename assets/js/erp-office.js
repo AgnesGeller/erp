@@ -1,5 +1,6 @@
-const apiUrl = new URL('./erp-api.js?v=0.1.4', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.1.4', import.meta.url);
+const setupOpening = new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
+const apiUrl = new URL('./erp-api.js?v=0.1.5', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.1.5', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
 const api = new ErpApi();
@@ -16,11 +17,12 @@ let generation = 0;
 let mutations = 0;
 let dirty = false;
 let loading = false;
+let restoring = false;
 let assignmentRequest = 0;
 let workerRequest;
 const roleNames = { crew_lead: 'Csoportvezető', construction_lead: 'Kertépítési vezető', worker: 'Résztvevő' };
 function message(text, ok = null) {
-    const target = get('office-status');
+    const target = get(get('login-area').hidden ? 'office-status' : 'login-feedback');
     target.textContent = (ok ? '✓ ' : '') + text;
     target.className = 'office-status ' + (ok === true ? 'success' : ok === false ? 'error' : '');
 }
@@ -198,11 +200,23 @@ async function loadWorkspace() {
         projectSelect.disabled = !projects.some(p => p.active);
     }
 }
+loginForm.addEventListener('invalid', () => {
+    message(!get('login-name').value ? 'Válaszd ki a nevedet.' : 'A saját ERP PIN-kódod 6–12 számjegy legyen.', false);
+}, true);
+get('login-name').addEventListener('change', () => {
+    get('login-username').value = get('login-name').value;
+    get('login-password').value = '';
+    get('login-feedback').textContent = '';
+});
 loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (mutations || loading)
+    if (mutations || loading || restoring)
         return;
-    const email = get('login-email').value.trim();
+    const name = get('login-name').value;
+    if (name !== 'agi' && name !== 'tamas') {
+        message('Válaszd ki a nevedet.', false);
+        return;
+    }
     const password = get('login-password').value;
     get('login-password').value = '';
     generation++;
@@ -210,11 +224,11 @@ loginForm.addEventListener('submit', async (event) => {
     formBusy(loginForm, true);
     message('Belépés…');
     try {
-        await api.login(email, password);
+        await api.login(name, password);
         if (epoch !== generation)
             return;
         await loadWorkspace();
-        message('Sikeres belépés.', true);
+        message(api.remembered ? 'Sikeres belépés. Az eszköz megjegyezte a belépésedet.' : 'Sikeres belépés. Az eszköz nem engedte megjegyezni a belépést; újranyitáskor ismét add meg a PIN-kódot.', true);
     }
     catch (error) {
         if (epoch === generation)
@@ -313,7 +327,7 @@ get('organization-select').addEventListener('change', () => { if (!mutations)
 for (const form of [workerForm, roleForm])
     form.addEventListener('input', () => { dirty = true; });
 window.addEventListener('erp:before-update', event => {
-    if (mutations || loading) {
+    if (mutations || loading || restoring) {
         event.preventDefault();
         message('Várd meg a folyamatban lévő művelet végét.');
     }
@@ -323,4 +337,31 @@ window.addEventListener('erp:before-update', event => {
 window.addEventListener('focus', () => { if (api.signedIn && !mutations && !dirty)
     loadWorkspace().catch(showError); });
 get('assignment-from').value = todayBudapest();
+async function restoreOffice() {
+    if (setupOpening || restoring || api.signedIn)
+        return;
+    restoring = true;
+    const epoch = generation;
+    formBusy(loginForm, true);
+    try {
+        if (!api.remembered)
+            return;
+        message('Korábbi belépés ellenőrzése…');
+        const restored = await api.restore();
+        restoring = false;
+        if (epoch !== generation || !restored)
+            return;
+        await loadWorkspace();
+        message('Sikeres automatikus belépés.', true);
+    }
+    catch (error) {
+        if (epoch === generation)
+            showError(error);
+    }
+    finally {
+        restoring = false;
+        formBusy(loginForm, false);
+    }
+}
+void restoreOffice();
 export {};

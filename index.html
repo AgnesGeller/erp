@@ -14,6 +14,7 @@
 <meta property="og:image:alt" content="Díszkertek logó világos háttéren">
 <meta property="og:url" content="https://agnesgeller.github.io/erp/">
 <meta property="og:type" content="website"><meta property="og:locale" content="hu_HU">
+<meta name="referrer" content="no-referrer">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="DÍSZKERTEK">
 <meta name="twitter:description" content="Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás.">
@@ -22,9 +23,11 @@
 <link rel="canonical" href="https://agnesgeller.github.io/erp/">
 <link rel="icon" type="image/png" href="./assets/favicon.png">
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
-<link rel="manifest" href="./manifest.webmanifest?v=0.1.4"><link rel="stylesheet" href="./assets/style.css?v=0.1.4">
-<script type="module" src="./assets/js/main.js?v=0.1.4"></script>
-<script type="module" src="./assets/js/erp-office.js?v=0.1.4"></script>
+<link rel="manifest" href="./manifest.webmanifest?v=0.1.5"><link rel="stylesheet" href="./assets/style.css?v=0.1.5">
+<script type="module" src="./assets/js/main.js?v=0.1.5"></script>
+<script type="module" src="./assets/js/erp-office.js?v=0.1.5"></script>
+
+<script type="module" src="./assets/js/erp-office-setup.js?v=0.1.5"></script>
 </head>
 <body>
 <header><a class="brand" href="./" aria-label="Díszkertek kezdőlap"><img src="./assets/logo.png" width="52" height="52" alt=""><span>DÍSZKERTEK</span></a>
@@ -42,9 +45,33 @@
 <section id="login-area" class="login-area" aria-labelledby="login-title">
 <div><h2 id="login-title">Irodai belépés</h2><p>Munkatársak, munkák és megbízások kezelése.</p></div>
 <form id="login-form" method="post"><fieldset><legend class="sr-only">Bejelentkezési adatok</legend>
-<label for="login-email">E-mail-cím</label><input id="login-email" name="email" type="email" autocomplete="username" inputmode="email" maxlength="254" required>
-<label for="login-password">Jelszó</label><input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="1024" required>
+<label for="login-name">Név</label><select id="login-name" name="account" required><option value="">Válaszd ki a nevedet</option><option value="agi">Ági</option><option value="tamas">Tamás</option></select>
+<input id="login-username" name="username" class="sr-only" type="text" autocomplete="username" tabindex="-1" aria-hidden="true">
+<label for="login-password">Saját ERP PIN-kód</label><input id="login-password" name="password" type="password" autocomplete="current-password" inputmode="numeric" pattern="[0-9]{6,12}" minlength="6" maxlength="12" required><p class="field-help">Az első sikeres belépés után ez az eszköz automatikusan megnyitja az irodai munkateredet. A Kijelentkezés megszünteti a megjegyzett belépést.</p>
 <button type="submit">Belépés</button>
+<p id="login-feedback" class="office-status" role="status" aria-live="polite"></p>
+<div class="auth-links" hidden><button id="forgot-password" class="text-button" type="button">Elfelejtett jelszó</button><button id="register" class="text-button" type="button">Regisztráció</button></div>
+</fieldset></form></section>
+<section id="auth-email-area" class="login-area" hidden aria-labelledby="auth-email-title">
+<div><h2 id="auth-email-title">Elfelejtett jelszó</h2><p id="auth-email-description">Add meg a fiókod e-mail-címét. E-mailben kapsz hivatkozást az új jelszó beállításához.</p></div>
+<form id="auth-email-form" method="post"><fieldset><legend class="sr-only">E-mailes jelszóbeállítás</legend>
+<label for="auth-email">E-mail-cím</label><input id="auth-email" type="email" autocomplete="email" maxlength="254" required>
+<button type="submit">Beállító e-mail kérése</button><button id="auth-back" class="text-button" type="button">Vissza a belépéshez</button>
+</fieldset></form></section>
+<section id="new-password-area" class="login-area" hidden aria-labelledby="new-password-title">
+<div><h2 id="new-password-title">Jelszó beállítása</h2><p>Adj meg egy legalább 12 karakteres saját jelszót. A jelszót ne küldd el senkinek.</p></div>
+<form id="new-password-form" method="post"><fieldset><legend class="sr-only">Új jelszó</legend>
+<label for="new-password">Új jelszó</label><input id="new-password" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required>
+<label for="repeat-password">Új jelszó még egyszer</label><input id="repeat-password" type="password" autocomplete="new-password" minlength="12" maxlength="1024" required>
+<button type="submit">Jelszó mentése</button><button id="password-back" class="text-button" type="button">Vissza a belépéshez</button>
+</fieldset></form></section>
+<p id="auth-status" class="office-status" role="status" aria-live="polite"></p>
+<section id="office-setup" class="login-area" hidden aria-labelledby="office-setup-title">
+<div><h2 id="office-setup-title">Első irodai belépés</h2><p>Állíts be saját ERP PIN-kódot: 6–12 számjegyet.</p></div>
+<form id="office-setup-form" method="post"><fieldset><legend class="sr-only">Saját ERP PIN-kód beállítása</legend>
+<label for="setup-pin">Új ERP PIN-kód</label><input id="setup-pin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6,12}" minlength="6" maxlength="12" required>
+<label for="setup-pin-repeat">ERP PIN-kód még egyszer</label><input id="setup-pin-repeat" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6,12}" minlength="6" maxlength="12" required>
+<button type="submit">PIN-kód beállítása</button><p id="office-setup-status" class="office-status" role="status" aria-live="polite"></p>
 </fieldset></form></section>
 <section id="office-app" class="workspace" hidden aria-labelledby="workspace-title">
 <div class="workspace-heading"><div><p class="eyebrow" id="workspace-role">Irodai munkatér</p><h1 id="workspace-title">DÍSZKERTEK</h1></div><button type="button" id="reload-workspace" class="secondary">Lista frissítése</button></div>

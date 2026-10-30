@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # Megőrzött helyi, egyszer futtatott szerkesztési segéd; nem buildeszköz.
 /tools/apply-office-view.py
+
+# Egyszeri ERP-belépési hivatkozások: kizárólag helyi átadásra.
+/.local/

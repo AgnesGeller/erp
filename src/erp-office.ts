@@ -1,6 +1,7 @@
 import type { OrganizationSession } from './erp-api.js';
-const apiUrl=new URL('./erp-api.js?v=0.1.4',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.1.4',import.meta.url);
+const setupOpening=new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
+const apiUrl=new URL('./erp-api.js?v=0.1.5',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.1.5',import.meta.url);
 const {ErpApi,ApiError}=await import(apiUrl.href) as typeof import('./erp-api.js');
 const {projectPeriod,todayBudapest,periodLabel}=await import(datesUrl.href) as typeof import('./erp-dates.js');
 const api=new ErpApi();
@@ -17,6 +18,7 @@ let generation=0;
 let mutations=0;
 let dirty=false;
 let loading=false;
+let restoring=false;
 let assignmentRequest=0;
 let workerRequest: {name:string;id:string}|undefined;
 interface Person {id:string;display_name:string;active:boolean;revision:number;}
@@ -24,7 +26,7 @@ interface Project {id:string;name:string;active:boolean;}
 interface Assignment {id:string;person_id:string;role:string;valid_from:string;valid_until:string|null;revoked_at:string|null;revision:number;}
 const roleNames:Record<string,string>={crew_lead:'Csoportvezető',construction_lead:'Kertépítési vezető',worker:'Résztvevő'};
 function message(text:string,ok:boolean|null=null):void {
- const target=get('office-status');target.textContent=(ok?'✓ ':'')+text;target.className='office-status '+(ok===true?'success':ok===false?'error':'');
+ const target=get(get('login-area').hidden?'office-status':'login-feedback');target.textContent=(ok?'✓ ':'')+text;target.className='office-status '+(ok===true?'success':ok===false?'error':'');
 }
 function formBusy(form:HTMLFormElement,busy:boolean):void {
  const fieldset=form.querySelector('fieldset');if(fieldset)fieldset.disabled=busy;
@@ -113,15 +115,21 @@ async function loadWorkspace():Promise<void> {
   await loadAssignments();
  }finally{loading=false;get<HTMLSelectElement>('organization-select').disabled=false;projectSelect.disabled=!projects.some(p=>p.active);}
 }
+loginForm.addEventListener('invalid',()=>{
+ message(!get<HTMLSelectElement>('login-name').value?'Válaszd ki a nevedet.':'A saját ERP PIN-kódod 6–12 számjegy legyen.',false);
+},true);
+get('login-name').addEventListener('change',()=>{
+ get<HTMLInputElement>('login-username').value=get<HTMLSelectElement>('login-name').value;
+ get<HTMLInputElement>('login-password').value='';get('login-feedback').textContent='';
+});
 loginForm.addEventListener('submit',async event=>{
- event.preventDefault();if(mutations||loading)return;
- const email=get<HTMLInputElement>('login-email').value.trim();
- const password=get<HTMLInputElement>('login-password').value;
- get<HTMLInputElement>('login-password').value='';
+ event.preventDefault();if(mutations||loading||restoring)return;
+ const name=get<HTMLSelectElement>('login-name').value;
+ if(name!=='agi'&&name!=='tamas'){message('Válaszd ki a nevedet.',false);return;}
+ const password=get<HTMLInputElement>('login-password').value;get<HTMLInputElement>('login-password').value='';
  generation++;const epoch=generation;formBusy(loginForm,true);message('Belépés…');
- try{await api.login(email,password);if(epoch!==generation)return;await loadWorkspace();message('Sikeres belépés.',true);}
- catch(error){if(epoch===generation)showError(error);}
- finally{formBusy(loginForm,false);}
+ try{await api.login(name,password);if(epoch!==generation)return;await loadWorkspace();message(api.remembered?'Sikeres belépés. Az eszköz megjegyezte a belépésedet.':'Sikeres belépés. Az eszköz nem engedte megjegyezni a belépést; újranyitáskor ismét add meg a PIN-kódot.',true);}
+ catch(error){if(epoch===generation)showError(error);}finally{formBusy(loginForm,false);}
 });
 workerForm.addEventListener('submit',async event=>{
  event.preventDefault();if(!current?.is_office||mutations||loading)return;
@@ -157,9 +165,16 @@ projectSelect.addEventListener('change',()=>{loadAssignments().catch(showError);
 get('organization-select').addEventListener('change',()=>{if(!mutations)loadWorkspace().catch(showError);});
 for(const form of [workerForm,roleForm])form.addEventListener('input',()=>{dirty=true;});
 window.addEventListener('erp:before-update',event=>{
- if(mutations||loading){event.preventDefault();message('Várd meg a folyamatban lévő művelet végét.');}
+ if(mutations||loading||restoring){event.preventDefault();message('Várd meg a folyamatban lévő művelet végét.');}
  else if(dirty&&!confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))event.preventDefault();
 });
 window.addEventListener('focus',()=>{if(api.signedIn&&!mutations&&!dirty)loadWorkspace().catch(showError);});
 get<HTMLInputElement>('assignment-from').value=todayBudapest();
+async function restoreOffice():Promise<void> {
+ if(setupOpening||restoring||api.signedIn)return;restoring=true;const epoch=generation;formBusy(loginForm,true);
+ try{if(!api.remembered)return;message('Korábbi belépés ellenőrzése…');const restored=await api.restore();restoring=false;
+ if(epoch!==generation||!restored)return;await loadWorkspace();message('Sikeres automatikus belépés.',true);}
+ catch(error){if(epoch===generation)showError(error);}finally{restoring=false;formBusy(loginForm,false);}
+}
+void restoreOffice();
 export {};

@@ -1,3 +1,4 @@
+const SESSION_KEY='diszkertek-erp-office-session-v1';
 const ENDPOINT='https://cszsxjsiwaaibrocibyd.supabase.co/functions/v1/erp-gateway';
 export interface OrganizationSession { organization_id:string; organization_name:string; person_id:string; is_office:boolean; }
 interface Tokens { access_token:string; refresh_token:string; expires_in:number; session:OrganizationSession[]; }
@@ -7,7 +8,21 @@ export class ErpApi {
   private expiresAt=0;
   private refreshPending:Promise<void>|undefined;
   private epoch=0;
-  constructor(private requestFetch:typeof fetch=fetch) {}
+  constructor(private requestFetch:typeof fetch=fetch,private storage:Pick<Storage,'getItem'|'setItem'|'removeItem'>|undefined=browserStorage()) {}
+  get remembered():boolean {try{return Boolean(this.storage?.getItem(SESSION_KEY));}catch{return false;}}
+  private remember(refreshToken:string):void {try{this.storage?.setItem(SESSION_KEY,JSON.stringify({version:1,refresh_token:refreshToken}));}catch{/* Korlátozott tárhely esetén csak az aktuális belépés marad meg. */}}
+  async restore():Promise<boolean> {
+    if(this.signedIn)return true;
+    let saved:unknown;
+    try{const raw=this.storage?.getItem(SESSION_KEY);if(!raw)return false;saved=JSON.parse(raw);}catch{this.clear();return false;}
+    if(!saved||typeof saved!=='object'||!('version' in saved)||saved.version!==1||!('refresh_token' in saved)||typeof saved.refresh_token!=='string'||!saved.refresh_token||saved.refresh_token.length>4096){this.clear();return false;}
+    const epoch=this.epoch;
+    try{const value=await this.request<Tokens>({action:'refresh',refresh_token:saved.refresh_token});if(epoch!==this.epoch)return false;this.accept(value);return true;}
+    catch(error){if(epoch===this.epoch&&error instanceof ApiError&&(error.status===401||error.status===403))this.clear();throw error;}
+  }
+  async setupOffice(loginName:'agi'|'tamas',setupToken:string,password:string):Promise<void> {
+    await this.request({action:'office_setup',login_name:loginName,setup_token:setupToken,password});
+  }
   get organizations():OrganizationSession[] {return this.tokens?.session??[];}
   get signedIn():boolean {return Boolean(this.tokens);}
   private async request<T>(body:unknown,token?:string):Promise<T> {
@@ -23,16 +38,23 @@ export class ErpApi {
     }
     return data as T;
   }
+  async emailOptions():Promise<{email_enabled:boolean}> {return this.request({action:'auth_options'});}
+  async requestEmail(email:string,kind:'register'|'recover'):Promise<{success:boolean;message:string}> {
+    return this.request({action:kind==='register'?'register_email':'recover_email',email});
+  }
+  async setPassword(password:string,accessToken:string):Promise<void> {
+    await this.request({action:'set_password',password},accessToken);
+  }
   private accept(value:Tokens):void {
     if (!value || typeof value.access_token!=='string' || typeof value.refresh_token!=='string' ||
       !Number.isFinite(value.expires_in) || value.expires_in<=0 || !Array.isArray(value.session) || value.session.length===0 ||
       value.session.some(s=>typeof s.organization_id!=='string'||typeof s.organization_name!=='string'||typeof s.person_id!=='string'||typeof s.is_office!=='boolean'))
       throw new ApiError('A belépés visszaigazolása hiányos.',502);
-    this.tokens=value;this.expiresAt=Date.now()+value.expires_in*1000;
+    this.tokens=value;this.expiresAt=Date.now()+value.expires_in*1000;this.remember(value.refresh_token);
   }
-  async login(email:string,password:string):Promise<void> {
+  async login(loginName:'agi'|'tamas',password:string):Promise<void> {
     this.clear();const epoch=this.epoch;
-    const result=await this.request<Tokens>({action:'login',email,password});
+    const result=await this.request<Tokens>({action:'login',login_name:loginName,password});
     if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott. Jelentkezz be újra.',401);
     this.accept(result);
   }
@@ -43,7 +65,7 @@ export class ErpApi {
         const epoch=this.epoch;
         this.refreshPending=this.request<Tokens>({action:'refresh',refresh_token:this.tokens.refresh_token})
           .then(value=>{if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);this.accept(value);})
-          .catch(error=>{if(epoch===this.epoch)this.clear();throw error;})
+          .catch(error=>{if(epoch===this.epoch&&error instanceof ApiError&&(error.status===401||error.status===403))this.clear();throw error;})
           .finally(()=>{if(epoch===this.epoch)this.refreshPending=undefined;});
       }
       await this.refreshPending;
@@ -64,5 +86,7 @@ export class ErpApi {
     const token=this.tokens?.access_token;this.clear();
     if(token)await this.request({action:'logout'},token);
   }
-  clear():void {this.epoch++;this.tokens=undefined;this.expiresAt=0;this.refreshPending=undefined;}
+  clear():void {this.epoch++;this.tokens=undefined;this.expiresAt=0;this.refreshPending=undefined;try{this.storage?.removeItem(SESSION_KEY);}catch{/* Más alkalmazás tárolóját nem érintjük. */}}
 }
+
+function browserStorage():Storage|undefined {try{return typeof localStorage==='undefined'?undefined:localStorage;}catch{return undefined;}}

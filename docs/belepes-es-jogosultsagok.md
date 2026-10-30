@@ -1,6 +1,8 @@
-# Irodai belépés és jogosultságkezelés
+# Irodai belépés és jogosultságkezelés – 0.1.4 történeti állapot
 
 Állapot: 0.1.4 · 2026. október 30.
+
+**Az alábbi korábbi leírást a 0.1.5 módosította. A meglévő info@ fiók ERP-tagsága inaktív, az új irodai belépések önállóak; a munkamenet megjegyezhető. Aktuális használat és műszaki leírás: [Irodai belépés](irodai-belepes.md).**
 
 ## Mire használható most?
 

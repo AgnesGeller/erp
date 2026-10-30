@@ -75,3 +75,10 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - A favicon és a telepített app ikonja továbbra is zöld hátterű; az ikonfájlok nem módosultak.
 - A service worker az átlátszó logót is tárolja az offline megjelenítéshez; a kiadásszám frissült.
 - Ellenőrzés: a PNG alfa-csatornája átlátszó, TypeScript-build és célzott PWA-tesztek. Új függőséget nem telepítettünk; adatbázist és más appot nem módosítottunk.
+
+
+## 2026. október 30. – Letisztult megosztási előnézet
+
+- A sötét hátterű, apró feliratokat tartalmazó megosztási kép helyett világos háttérre nagy, eredeti logó került. A teljes felirat a metaadatokban megmaradt.
+- Új képfájlnév, Open Graph méret-, típus- és képleírás, Twitter/X képleírás és kanonikus webcím.
+- Ellenőrzés: 1200×630-as PNG, vizuális ellenőrzés és a metaadatok célzott vizsgálata. Új függőség, adatbázis- vagy más alkalmazásmódosítás nincs. A már elküldött üzenetek gyorsítótárát a megosztó platform kezeli.

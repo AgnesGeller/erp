@@ -66,28 +66,36 @@ export class ErpApi {
     get organizations() { return this.tokens?.session ?? []; }
     get signedIn() { return Boolean(this.tokens); }
     async request(body, token) {
-        let response;
+        // Az AbortController szélesebb körben támogatott, mint az AbortSignal.timeout.
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 20000);
         try {
-            response = await this.requestFetch(ENDPOINT, {
-                method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': 'Bearer ' + token } : {}) },
-                body: JSON.stringify(body), cache: 'no-store', signal: AbortSignal.timeout(20000)
-            });
+            let response;
+            try {
+                response = await this.requestFetch.call(globalThis, ENDPOINT, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': 'Bearer ' + token } : {}) },
+                    body: JSON.stringify(body), cache: 'no-store', signal: controller.signal
+                });
+            }
+            catch {
+                throw new ApiError(controller.signal.aborted ? 'A kapcsolódás túl sokáig tartott. Próbáld újra.' : 'Nem sikerült elérni a szolgáltatást. Ellenőrizd az internetkapcsolatot.', 0);
+            }
+            let data;
+            try {
+                data = await response.json();
+            }
+            catch {
+                throw new ApiError(controller.signal.aborted ? 'A válasz túl sokáig tartott. Próbáld újra.' : 'A szolgáltatás hibás választ küldött. Próbáld újra később.', 502);
+            }
+            if (!response.ok) {
+                const message = data && typeof data === 'object' && 'error' in data && typeof data.error === 'string' ? data.error : 'A művelet nem sikerült.';
+                throw new ApiError(message, response.status);
+            }
+            return data;
         }
-        catch {
-            throw new ApiError('Nem sikerült elérni a szolgáltatást. Ellenőrizd az internetkapcsolatot.', 0);
+        finally {
+            clearTimeout(timer);
         }
-        let data;
-        try {
-            data = await response.json();
-        }
-        catch {
-            throw new ApiError('A szolgáltatás hibás választ küldött. Próbáld újra később.', 502);
-        }
-        if (!response.ok) {
-            const message = data && typeof data === 'object' && 'error' in data && typeof data.error === 'string' ? data.error : 'A művelet nem sikerült.';
-            throw new ApiError(message, response.status);
-        }
-        return data;
     }
     async emailOptions() { return this.request({ action: 'auth_options' }); }
     async requestEmail(email, kind) {

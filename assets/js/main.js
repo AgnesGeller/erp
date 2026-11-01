@@ -1,4 +1,4 @@
-const APP_VERSION = '0.1.5';
+const APP_VERSION = '0.1.6';
 const install = document.querySelector('#install');
 const update = document.querySelector('#update');
 const guide = document.querySelector('#install-guide');

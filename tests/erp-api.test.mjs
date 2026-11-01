@@ -121,3 +121,17 @@ test('Unavailable storage does not prevent a valid first login',async()=>{
  const storage={getItem(){throw Error('denied');},setItem(){throw Error('denied');},removeItem(){throw Error('denied');}};
  const api=new ErpApi(async()=>response(token()),storage);await api.login('agi','112233');assert.equal(api.signedIn,true);assert.equal(api.remembered,false);
 });
+
+
+test('Office login works without AbortSignal.timeout browser support',async()=>{
+ const original=Object.getOwnPropertyDescriptor(AbortSignal,'timeout');let calls=0;
+ Object.defineProperty(AbortSignal,'timeout',{configurable:true,value:undefined});
+ try{const api=new ErpApi(async()=>{calls++;return response(token());});await api.login('agi','local-test-value');assert.equal(calls,1);assert.equal(api.signedIn,true);}
+ finally{Object.defineProperty(AbortSignal,'timeout',original);}
+});
+
+
+test('Browser fetch is invoked with its global receiver',async()=>{
+ const api=new ErpApi(async function(){assert.equal(this,globalThis,'A böngésző fetch függvénye a Window környezetét igényli.');return response(token());});
+ await api.login('agi','local-test-value');assert.equal(api.signedIn,true);
+});

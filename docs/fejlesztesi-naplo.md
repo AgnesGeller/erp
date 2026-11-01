@@ -132,3 +132,14 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - Sikeres TypeScript-build, szigorú gateway-típusellenőrzés, 73 automatikus teszteredmény. Mindkét valódi ERP-fiók HTTPS-belépése, irodai adatolvasása és helyi kijelentkezése sikeres; a CORS-előkérés helyes.
 - A beépített böngésző nem érte el a külső API-t. A tényleges saját eszközös automatikus újranyitás még ellenőrizendő; nem állítunk teljes böngészős belépési sikert ennek helyében.
 - A korábbi public jogosultságok, RLS-szabályok, nem ERP függvények és a régi Auth-fiókok állapotlenyomata változatlan. Ügyfél- vagy munkaimport, e-mailküldés, új előfizetés és csomagtelepítés nincs. Fájlt nem töröltünk.
+
+
+## 2026. november 1. – 0.1.6: tényleges böngészős belépési hiba javítása
+
+- A 0.1.5 kiadás már közzé volt téve; a két új irodai fiók aktív és zárolás nélküli. Új fiók vagy PIN-változtatás nem kellett. A Munkalap belépését és a Supabase kliens fetch-kezelését csak olvasással hasonlítottuk össze.
+- Pontos hiba: az API-osztály eltárolta a natív fetch függvényt, majd saját metódusaként hívta. A valódi böngésző az eltérő this-környezet miatt Illegal invocation hibát adott, még a kérés elküldése előtt. A korábbi mock-függvényes tesztek ezt nem modellezték.
+- Javítás: requestFetch.call(globalThis, ...) megőrzi a natív böngésző által megkövetelt globális környezetet. Külön regressziós teszt ellenőrzi ezt. Az AbortSignal.timeout helyett AbortController és lezárt időzítő kezeli a határidőt, a JSON-válasz beolvasására is kiterjedően. A hiányzó AbortSignal.timeout miatt korábban elbukó teszt most sikeres.
+- Ideiglenes helyi, titokmentes konzoldiagnosztika mutatta meg a tényleges hibát; ez nem maradt a kiadásban. A kijelentkezés törli az előző munkatér visszajelzését is.
+- Helyi valódi böngészőpróba: Ági belépése sikeres, újratöltés után automatikusan megnyílt a munkatér; kijelentkezés után Tamás belépése és automatikus újranyitása szintén sikeres. A kijelentkezés visszaadta a név/PIN űrlapot. Üzleti adatot nem rögzítettünk.
+- Az előző natív Chrome-vezérlési próbát az eszköz URL-azonosítási védelme leállította. A javítást ezután a forrásból és a működő alkalmazás technikai mintájából végeztük el, majd a beépített böngészőben ténylegesen ellenőriztük.
+- Adatbázis, RLS, más appok, meglévő Auth-fiókok és PIN-ek nem módosultak. Nincs csomagtelepítés, új szolgáltatás, törlés vagy előfizetés. A magyar README és a belépési leírás frissült.

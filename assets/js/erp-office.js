@@ -1,6 +1,6 @@
 const setupOpening = new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.1.5', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.1.5', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.1.6', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.1.6', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
 const api = new ErpApi();
@@ -32,6 +32,8 @@ function formBusy(form, busy) {
         fieldset.disabled = busy;
 }
 function resetView() {
+    get('office-status').textContent = '';
+    get('login-feedback').textContent = '';
     generation++;
     current = undefined;
     people = [];

@@ -1,8 +1,8 @@
 const CACHE_PREFIX = 'diszkertek-erp-';
-const CACHE_NAME = CACHE_PREFIX + '0.1.5';
-const FILES = ['./', './index.html', './assets/style.css?v=0.1.5', './assets/js/main.js?v=0.1.5', './assets/js/erp-office.js?v=0.1.5', './assets/js/erp-office-setup.js?v=0.1.5',
-  './assets/js/erp-api.js?v=0.1.5', './assets/js/erp-dates.js?v=0.1.5',
-  './manifest.webmanifest?v=0.1.5', './assets/logo.png', './assets/icon-192.png', './assets/icon-512.png',
+const CACHE_NAME = CACHE_PREFIX + '0.1.6';
+const FILES = ['./', './index.html', './assets/style.css?v=0.1.6', './assets/js/main.js?v=0.1.6', './assets/js/erp-office.js?v=0.1.6', './assets/js/erp-office-setup.js?v=0.1.6',
+  './assets/js/erp-api.js?v=0.1.6', './assets/js/erp-dates.js?v=0.1.6',
+  './manifest.webmanifest?v=0.1.6', './assets/logo.png', './assets/icon-192.png', './assets/icon-512.png',
   './assets/favicon.png', './assets/apple-touch-icon.png'];
 const allowed = new Set(FILES.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener('install', event => {

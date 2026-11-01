@@ -1,7 +1,7 @@
 import type { OrganizationSession } from './erp-api.js';
 const setupOpening=new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
-const apiUrl=new URL('./erp-api.js?v=0.1.5',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.1.5',import.meta.url);
+const apiUrl=new URL('./erp-api.js?v=0.1.6',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.1.6',import.meta.url);
 const {ErpApi,ApiError}=await import(apiUrl.href) as typeof import('./erp-api.js');
 const {projectPeriod,todayBudapest,periodLabel}=await import(datesUrl.href) as typeof import('./erp-dates.js');
 const api=new ErpApi();
@@ -32,6 +32,7 @@ function formBusy(form:HTMLFormElement,busy:boolean):void {
  const fieldset=form.querySelector('fieldset');if(fieldset)fieldset.disabled=busy;
 }
 function resetView():void {
+ get('office-status').textContent='';get('login-feedback').textContent='';
  generation++;current=undefined;people=[];projects=[];dirty=false;workerRequest=undefined;
  get('office-app').hidden=true;get('login-area').hidden=false;get('public-identity').hidden=false;get('logout').hidden=true;
  for(const id of ['people-list','assignment-list','project-select','assignment-person','organization-select'])get(id).replaceChildren();

@@ -1,6 +1,6 @@
 # Ági és Tamás saját ERP-belépése
 
-Verzió: 0.1.5 · 2026. október 30.
+Verzió: 0.1.6 · 2026. november 1.
 
 ## Használat
 
@@ -41,4 +41,4 @@ A meglévő nem ERP public táblák jogosultsági/RLS-lenyomata, public szabály
 
 A saját privát adminisztratív tábla policy nélküli FORCE RLS-védelme tudatos; csak a fenti szűk szerveroldali függvények kezelik. A korábbi projektfigyelmeztetések megmaradnak. [Supabase RLS-ellenőrző leírása](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
 
-A beépített ellenőrző böngésző a külső API-hoz kapcsolódási hibát jelzett. Ezért az automatikus újranyitás tényleges Chrome/Edge/telefonos eszközpróbája még szükséges; a működő HTTPS és a helyi automatikus teszt nem helyettesíti ezt. Az ügyfél/dolgozói e-mailes belépés most nincs bekapcsolva. Üzleti adatimport nem történt.
+A 0.1.5 böngészős kapcsolódási hibáját a 0.1.6 javítja: a fetch hívása most a böngésző globális környezetében történik. Az elvárt hívási környezetet és az AbortSignal.timeout nélküli működést két új teszt ellenőrzi. A valódi böngészős belépés, az újratöltés utáni automatikus belépés és a kijelentkezés Ági és Tamás fiókjával is sikeres a javított helyi felületen. Az ügyfél/dolgozói e-mailes belépés most nincs bekapcsolva. Üzleti adatimport nem történt.

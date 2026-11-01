@@ -6,7 +6,7 @@ Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációján
 
 ## Jelenlegi állapot – 2026. október 30.
 
-**A jelenlegi verzió 0.1.5:** Ági és Tamás külön, új ERP-fiókkal, névválasztással és saját PIN-kóddal léphet be. A két fiók valódi HTTPS-belépése és irodai adatolvasása sikeresen ellenőrizve. Az eszköz saját ERP-munkamenetet őriz meg; a PIN-t nem tároljuk olvashatóan. A teljes ERP üzleti moduljai még fejlesztés alatt állnak; ügyfél- és munkaadat-import nem történt.
+**A jelenlegi verzió 0.1.6:** Ági és Tamás külön, új ERP-fiókkal, névválasztással és saját PIN-kóddal léphet be. A két fiók valódi HTTPS-belépése és irodai adatolvasása sikeresen ellenőrizve. Az eszköz saját ERP-munkamenetet őriz meg; a PIN-t nem tároljuk olvashatóan. A teljes ERP üzleti moduljai még fejlesztés alatt állnak; ügyfél- és munkaadat-import nem történt.
 
 [Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
 
@@ -156,3 +156,10 @@ A felső Telepítés és Frissítés gomb belépés előtt és után is elérhet
 A telefon/desktop jelszókezelője külön is felajánlhatja a kód mentését; ezt a böngésző beállításai szabályozzák. Az automatikus ERP-megnyitás a megjegyzett munkameneten alapul. Az ügyfél/dolgozói e-mailes regisztráció és jelszó-visszaállítás most nincs bekapcsolva.
 
 Ellenőrzés: 73 sikeres automatikus teszteredmény; mindkét valódi ERP-fiók HTTPS-belépése, irodai adatolvasása és saját kijelentkezése sikeres. A beépített ellenőrző böngésző a külső API-hoz kapcsolódási hibát jelzett; a saját Chrome/Edge eszközön történő első belépést és újranyitást ezért külön ellenőrizni kell.
+
+
+### 0.1.6 – A böngészős belépés javítása (2026. november 1.)
+
+A hálózati kérés hibás hívási környezetben indult: a fetch függvényt az ERP API-objektum saját metódusaként hívtuk. A böngésző ezt Illegal invocation hibával elutasította, a felület pedig tévesen egyszerű kapcsolódási hibát jelzett. A javítás a megfelelő böngészőkörnyezethez köti a fetch hívását. Az időkorlát AbortControllerrel működik, AbortSignal.timeout támogatás nélkül is.
+
+A célzott teszt már a natív böngésző által elvárt hívási környezetet is ellenőrzi. Ági és Tamás valódi böngészős belépése, az újratöltés utáni automatikus belépés és a kijelentkezés sikeresen ellenőrizve a helyi javított felületen. A PIN-ek, fiókok, adatbázis-szabályok és más alkalmazások nem változtak.

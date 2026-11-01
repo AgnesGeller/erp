@@ -6,7 +6,7 @@ Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációján
 
 ## Jelenlegi állapot – 2026. november 1.
 
-**A jelenlegi verzió 0.1.8:** a Személyek menüben elérhető a Munkalap közös ügyfélnyilvántartása, két karaktertől ékezetfüggetlen lenyíló kereséssel, ABC-sorrendű találatokkal és összecsukható adatlapokkal. Az iroda új ügyfelet és címet vehet fel a közös listába, a külön engedélyezett új adatok mentésével. Meglévő forrásadatot nem írunk át. Ági és Tamás saját ERP-belépése és a D betűs ikon megmarad. A teljes ERP többi üzleti modulja még fejlesztés alatt áll.
+**A jelenlegi verzió 0.1.9:** a Személyek menüben elérhető a Munkalap közös ügyfélnyilvántartása, két karaktertől ékezetfüggetlen lenyíló kereséssel, ABC-sorrendű találatokkal és összecsukható adatlapokkal. Az iroda új ügyfelet és címet vehet fel a közös listába, a külön engedélyezett új adatok mentésével. Meglévő forrásadatot nem írunk át. Ági és Tamás saját ERP-belépése és a D betűs ikon megmarad. A teljes ERP többi üzleti modulja még fejlesztés alatt áll.
 
 [Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
 
@@ -30,6 +30,7 @@ Az ábra tervet mutat. A szaggatott vonalak még nem létező ERP-kapcsolatokat 
 - [A csatolt árajánlat-kalkulátor felmérése](docs/kalkulator-felmeres.md): ellenőrzött képletek, 163 árlistasor, 22 kategória, sablonok és megfeleltetési problémák.
 - [Ügyféllisták összevetése](docs/ugyfellista-egyeztetes.md): Munkalap, Kassza, Napi feladatok és ERP darabszámai, szűrései és eszközfrissítése.
 - [Ügyfélnyilvántartás és közös lista](docs/ugyfelnyilvantartas.md): használat, szinkron, engedélyezett új ügyfélmentés és hibakezelés.
+- [Munkánkénti szerepkörök](docs/szerepkorok.md): Építésvezető, Karbantartásvezető, Kertépítő, Kertész; szerveroldali korlátok és ellenőrzések.
 - [Aktuális irodai belépés](docs/irodai-belepes.md): Ági és Tamás saját ERP-fiókja, megjegyzett munkamenet, ellenőrzés.
 - [A 0.1.4 belépési alap történeti leírása](docs/belepes-es-jogosultsagok.md): használat, adatvédelem, telepített szerveroldal, ellenőrzések és korlátok.
 - [Fejlesztési napló és döntések](docs/fejlesztesi-naplo.md): mi készült el, mi jóváhagyott, mi vár döntésre, és hogyan ellenőriztük.
@@ -198,3 +199,9 @@ Az ERP aktív ügyfélnézetben 30 másodpercenként frissít, ha nincs nem ment
 
 A megszakadt újügyfél-mentés tartósan megmarad, és ugyanazokkal az azonosítókkal folytatható. A részletes használat, a biztonsági határok és az ellenőrzés: [Ügyfélnyilvántartás](docs/ugyfelnyilvantartas.md).
 A külön ellenőrzés szerint a Kassza 152 aktív, nem archivált ügyfelet, a Napi feladatok 149 jóváhagyott ügyfelet kér le ugyanebből a közös törzsből. A három ügyfél eltérése jóváhagyási szűrésből ered; nem módosítottuk a rekordokat. Részletek: [ügyféllisták összevetése](docs/ugyfellista-egyeztetes.md).
+
+### 0.1.9 – A PDF szerinti munkaszerepkörök
+
+A Munkák és megbízások lenyílóban **Építésvezető, Karbantartásvezető, Kertépítő és Kertész** választható. A két vezető a megfelelő munkaterületén kap vezetői jogosultságot; a két dolgozói szerep jogosultsága azonos és mindkét területen használható. Szerepet csak az iroda oszthat. Külön Projektvezető nincs.
+
+A választó és az adatbázis is ellenőrzi a munka típusát. Több vezető és több szerep lehetséges. Munka kiválasztása nélkül a szerepek megtekinthetők, de mentés nem indítható. A teljes ellenőrzés 106 sikeres teszteredményt adott. Részletek és a jelenlegi funkcióhatárok: [munkánkénti szerepkörök](docs/szerepkorok.md).

@@ -23,11 +23,11 @@
 <link rel="canonical" href="https://agnesgeller.github.io/erp/">
 <link rel="icon" type="image/png" href="./assets/favicon-d-v1.png">
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon-d-v1.png">
-<link rel="manifest" href="./manifest.webmanifest?v=0.1.8"><link rel="stylesheet" href="./assets/style.css?v=0.1.8">
-<script type="module" src="./assets/js/main.js?v=0.1.8"></script>
-<script type="module" src="./assets/js/erp-office.js?v=0.1.8"></script>
+<link rel="manifest" href="./manifest.webmanifest?v=0.1.9"><link rel="stylesheet" href="./assets/style.css?v=0.1.9">
+<script type="module" src="./assets/js/main.js?v=0.1.9"></script>
+<script type="module" src="./assets/js/erp-office.js?v=0.1.9"></script>
 
-<script type="module" src="./assets/js/erp-office-setup.js?v=0.1.8"></script>
+<script type="module" src="./assets/js/erp-office-setup.js?v=0.1.9"></script>
 </head>
 <body>
 <header><a class="brand" href="./" aria-label="Díszkertek kezdőlap"><img src="./assets/logo.png" width="52" height="52" alt=""><span>DÍSZKERTEK</span></a>
@@ -107,12 +107,12 @@
 <section aria-labelledby="projects-title"><details class="erp-disclosure"><summary id="projects-title">Munkák és megbízások</summary>
 <label for="project-select">Munka</label><select id="project-select" disabled><option value="">Válassz munkát</option></select>
 <p id="assignment-empty"></p><ul id="assignment-list" class="record-list"></ul>
-<form id="role-form" hidden><fieldset><legend>Új megbízás</legend>
+<details class="erp-disclosure"><summary>Új megbízás</summary><form id="role-form" hidden><fieldset><legend>Új megbízás</legend>
 <label for="assignment-person">Munkatárs</label><select id="assignment-person" required></select>
-<label for="assignment-role">Szerepkör</label><select id="assignment-role" required><option value="crew_lead">Csoportvezető</option><option value="construction_lead">Kertépítési vezető</option><option value="worker">Résztvevő</option></select>
+<label for="assignment-role">Szerepkör</label><select id="assignment-role" required><option value="construction_lead">Építésvezető</option><option value="maintenance_lead">Karbantartásvezető</option><option value="construction_worker">Kertépítő</option><option value="gardener">Kertész</option></select>
 <label for="assignment-from">Kezdőnap</label><input id="assignment-from" type="date" required>
 <label for="assignment-until">Utolsó nap (nem kötelező)</label><input id="assignment-until" type="date">
-<p class="field-help">A dátumok magyarországi idő szerint értendők.</p><button type="submit">Megbízás mentése</button>
+<p id="assignment-work-type" class="field-help"></p><p class="field-help">A dátumok magyarországi idő szerint értendők.</p><button id="assignment-save" type="submit" disabled>Megbízás mentése</button>
 </fieldset></form></details></section>
 </div></section>
 </main>

@@ -1,11 +1,12 @@
 import type { OrganizationSession } from './erp-api.js';
 const setupOpening=new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
-const apiUrl=new URL('./erp-api.js?v=0.1.8',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.1.8',import.meta.url);
+const apiUrl=new URL('./erp-api.js?v=0.1.9',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.1.9',import.meta.url);
 const {ErpApi,ApiError}=await import(apiUrl.href) as typeof import('./erp-api.js');
 const {projectPeriod,todayBudapest,periodLabel}=await import(datesUrl.href) as typeof import('./erp-dates.js');
+const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.1.9',import.meta.url).href) as typeof import('./erp-project-roles.js');
 const api=new ErpApi();
-const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.1.8',import.meta.url).href) as typeof import('./erp-customers.js');
+const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.1.9',import.meta.url).href) as typeof import('./erp-customers.js');
 const customers=new CustomerDirectory(api,error=>{if(!api.signedIn)showError(error);});
 const get=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const loginForm=get<HTMLFormElement>('login-form');
@@ -24,9 +25,9 @@ let restoring=false;
 let assignmentRequest=0;
 let workerRequest: {name:string;id:string}|undefined;
 interface Person {id:string;display_name:string;active:boolean;revision:number;}
-interface Project {id:string;name:string;active:boolean;}
+interface Project {id:string;name:string;active:boolean;work_type:'construction'|'maintenance';}
 interface Assignment {id:string;person_id:string;role:string;valid_from:string;valid_until:string|null;revoked_at:string|null;revision:number;}
-const roleNames:Record<string,string>={crew_lead:'Csoportvezető',construction_lead:'Kertépítési vezető',worker:'Résztvevő'};
+
 function message(text:string,ok:boolean|null=null):void {
  const target=get(get('login-area').hidden?'office-status':'login-feedback');target.textContent=(ok?'✓ ':'')+text;target.className='office-status '+(ok===true?'success':ok===false?'error':'');
 }
@@ -58,7 +59,12 @@ function renderPeople():void {
  if(people.some(p=>p.id===previousPerson&&p.active))personSelect.value=previousPerson;
 }
 async function loadAssignments():Promise<void> {
- const list=get('assignment-list');list.replaceChildren();get('role-form').hidden=!current?.is_office||!projectSelect.value;
+ const list=get('assignment-list');list.replaceChildren();get('role-form').hidden=!current?.is_office;
+ const roleSelect=get<HTMLSelectElement>('assignment-role');const oldRole=roleSelect.value;const workType=projects.find(p=>p.id===projectSelect.value)?.work_type;
+ const choices=selectableProjectRoles(workType);roleSelect.replaceChildren(...choices.map(choice=>{const option=new Option(choice.label,choice.value);option.disabled=choice.disabled;return option;}));
+ roleSelect.value=choices.find(c=>c.value===oldRole&&!c.disabled)?.value??choices.find(c=>!c.disabled)!.value;
+ get<HTMLButtonElement>('assignment-save').disabled=!projectSelect.value;
+ get('assignment-work-type').textContent=workType==='construction'?'Kertépítés – az Építésvezető vezetői jogosultságával.':workType==='maintenance'?'Kertkarbantartás – a Karbantartásvezető vezetői jogosultságával.':'Megbízás mentéséhez előbb válassz munkát. A Kertépítő és a Kertész mindkét munkaterületen dolgozhat.';
  if(!current||!projectSelect.value){get('assignment-empty').textContent='Még nincs megjeleníthető munka.';return;}
  get('assignment-empty').textContent='Betöltés…';const epoch=generation;const request=++assignmentRequest;const selectedProject=projectSelect.value;
  const rows=await api.rpc<Assignment[]>('erp_list_assignments',{p_org:current.organization_id,p_project:selectedProject});

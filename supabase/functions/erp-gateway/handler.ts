@@ -1,6 +1,6 @@
 type GatewayOptions = { url: string; anonKey: string; serviceKey?: string; emailFlowsEnabled?: boolean; fetchImpl?: typeof fetch; customers?: (input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}> };
 const allowedOrigins = new Set(['https://agnesgeller.github.io','http://127.0.0.1:5194','http://localhost:5194']);
-const allowedRpc = new Set(['erp_session','erp_list_people','erp_create_worker_request','erp_list_projects','erp_list_assignments','erp_assign_project_role','erp_revoke_assignment','erp_customer_profile_save']);
+const allowedRpc = new Set(['erp_session','erp_list_people','erp_create_worker_request','erp_list_projects','erp_list_assignments','erp_assign_project_role','erp_revoke_assignment','erp_customer_profile_save','erp_project_role_access']);
 type TokenResult = { access_token: string; refresh_token: string; expires_in: number };
 class GatewayError extends Error {
   constructor(public status: number, message: string, public code = '') { super(message); }

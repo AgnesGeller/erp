@@ -1,10 +1,11 @@
 const setupOpening = new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.1.8', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.1.8', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.1.9', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.1.9', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
+const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.1.9', import.meta.url).href);
 const api = new ErpApi();
-const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.1.8', import.meta.url).href);
+const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.1.9', import.meta.url).href);
 const customers = new CustomerDirectory(api, error => { if (!api.signedIn)
     showError(error); });
 const get = (id) => document.getElementById(id);
@@ -23,7 +24,6 @@ let loading = false;
 let restoring = false;
 let assignmentRequest = 0;
 let workerRequest;
-const roleNames = { crew_lead: 'Csoportvezető', construction_lead: 'Kertépítési vezető', worker: 'Résztvevő' };
 function message(text, ok = null) {
     const target = get(get('login-area').hidden ? 'office-status' : 'login-feedback');
     target.textContent = (ok ? '✓ ' : '') + text;
@@ -82,7 +82,15 @@ function renderPeople() {
 async function loadAssignments() {
     const list = get('assignment-list');
     list.replaceChildren();
-    get('role-form').hidden = !current?.is_office || !projectSelect.value;
+    get('role-form').hidden = !current?.is_office;
+    const roleSelect = get('assignment-role');
+    const oldRole = roleSelect.value;
+    const workType = projects.find(p => p.id === projectSelect.value)?.work_type;
+    const choices = selectableProjectRoles(workType);
+    roleSelect.replaceChildren(...choices.map(choice => { const option = new Option(choice.label, choice.value); option.disabled = choice.disabled; return option; }));
+    roleSelect.value = choices.find(c => c.value === oldRole && !c.disabled)?.value ?? choices.find(c => !c.disabled).value;
+    get('assignment-save').disabled = !projectSelect.value;
+    get('assignment-work-type').textContent = workType === 'construction' ? 'Kertépítés – az Építésvezető vezetői jogosultságával.' : workType === 'maintenance' ? 'Kertkarbantartás – a Karbantartásvezető vezetői jogosultságával.' : 'Megbízás mentéséhez előbb válassz munkát. A Kertépítő és a Kertész mindkét munkaterületen dolgozhat.';
     if (!current || !projectSelect.value) {
         get('assignment-empty').textContent = 'Még nincs megjeleníthető munka.';
         return;

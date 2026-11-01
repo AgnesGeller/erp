@@ -7,7 +7,7 @@ await db.exec(`create role anon nologin;create role authenticated nologin;create
 create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 grant usage on schema auth,public to anon,authenticated,service_role;
 create schema munkalap;create table munkalap.customers(id uuid primary key,full_name text);insert into munkalap.customers values('${id(900)}','Érintetlen forrás');`);
-for(const name of ['erp-foundation','erp-identity','erp-worker-request','erp-customers','erp-staff-directory'])await db.exec(await readFile(new URL('../database/proposals/'+name+'.sql',import.meta.url),'utf8'));
+for(const name of ['erp-foundation','erp-identity','erp-worker-request','erp-customers','erp-staff-directory','erp-work-roles'])await db.exec(await readFile(new URL('../database/proposals/'+name+'.sql',import.meta.url),'utf8'));
 await db.exec(`insert into auth.users values('${id(101)}'),('${id(102)}'),('${id(103)}');insert into erp.organizations values('${id(1)}','Teszt A'),('${id(2)}','Teszt B');
 insert into erp.persons(id,organization_id,display_name) values('${id(11)}','${id(1)}','Iroda'),('${id(12)}','${id(1)}','Dolgozó');
 insert into erp.user_accounts(organization_id,auth_user_id,person_id) values('${id(1)}','${id(101)}','${id(11)}'),('${id(1)}','${id(102)}','${id(12)}');

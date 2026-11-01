@@ -88,6 +88,12 @@ export class ErpApi {
     }
     catch(error) {if(error instanceof ApiError&&(error.status===401||(name==='erp_session'&&error.status===403))&&epoch===this.epoch)this.clear();throw error;}
   }
+  async customers<T>(action:'customers_list'|'customer_create'|'customer_resume',args:Record<string,unknown>):Promise<T> {
+    const epoch=this.epoch;const token=await this.accessToken();
+    if(epoch!==this.epoch||!this.tokens)throw new ApiError('A munkamenet megváltozott.',401);
+    try{const result=await this.request<{data:T}>({action,...args},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}
+    catch(error){if(epoch===this.epoch&&error instanceof ApiError&&error.status===401)this.clear();throw error;}
+  }
   async logout():Promise<void> {
     const token=this.tokens?.access_token;this.clear();
     if(token)await this.request({action:'logout'},token);

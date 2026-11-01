@@ -1,9 +1,12 @@
 const setupOpening = new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.1.7', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.1.7', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.1.8', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.1.8', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
 const api = new ErpApi();
+const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.1.8', import.meta.url).href);
+const customers = new CustomerDirectory(api, error => { if (!api.signedIn)
+    showError(error); });
 const get = (id) => document.getElementById(id);
 const loginForm = get('login-form');
 const workerForm = get('worker-form');
@@ -35,6 +38,7 @@ function resetView() {
     get('office-status').textContent = '';
     get('login-feedback').textContent = '';
     generation++;
+    customers.reset();
     current = undefined;
     people = [];
     projects = [];
@@ -62,27 +66,16 @@ function selectedOrganization() {
 function renderPeople() {
     const previousPerson = personSelect.value;
     const list = get('people-list');
-    list.replaceChildren();
-    for (const person of people) {
-        const row = document.createElement('li');
-        const name = document.createElement('span');
-        name.textContent = person.display_name;
-        row.append(name);
-        if (!person.active) {
-            const state = document.createElement('small');
-            state.textContent = 'Inaktív';
-            row.append(state);
-        }
-        list.append(row);
-    }
-    if (!people.length) {
-        const row = document.createElement('li');
-        row.textContent = 'Nincs megjeleníthető munkatárs.';
-        list.append(row);
-    }
+    const selected = list.value;
+    people.sort((a, b) => a.display_name.localeCompare(b.display_name, 'hu', { sensitivity: 'base' }));
+    list.replaceChildren(new Option('Válassz munkatársat', ''));
+    for (const person of people)
+        list.add(new Option(person.display_name + (person.active ? '' : ' · Inaktív'), person.id));
+    if (people.some(p => p.id === selected))
+        list.value = selected;
     personSelect.replaceChildren(new Option('Válassz munkatársat', ''));
-    for (const p of people.filter(p => p.active))
-        personSelect.add(new Option(p.display_name, p.id));
+    for (const person of people.filter(p => p.active))
+        personSelect.add(new Option(person.display_name, person.id));
     if (people.some(p => p.id === previousPerson && p.active))
         personSelect.value = previousPerson;
 }
@@ -195,6 +188,7 @@ async function loadWorkspace() {
         get('public-identity').hidden = true;
         get('logout').hidden = false;
         await loadAssignments();
+        await customers.setOrganization(current.is_office ? current.organization_id : undefined);
     }
     finally {
         loading = false;
@@ -304,11 +298,11 @@ roleForm.addEventListener('submit', async (event) => {
     }
 });
 get('logout').addEventListener('click', async () => {
-    if (mutations || loading) {
+    if (mutations || loading || customers.busy) {
         message('Várd meg a folyamatban lévő művelet végét.');
         return;
     }
-    if (dirty && !confirm('Kijelentkezel? A még nem mentett mezők tartalma elvész.'))
+    if ((dirty || customers.dirty) && !confirm('Kijelentkezel? A még nem mentett mezők tartalma elvész.'))
         return;
     generation++;
     try {
@@ -329,14 +323,14 @@ get('organization-select').addEventListener('change', () => { if (!mutations)
 for (const form of [workerForm, roleForm])
     form.addEventListener('input', () => { dirty = true; });
 window.addEventListener('erp:before-update', event => {
-    if (mutations || loading || restoring) {
+    if (mutations || loading || restoring || customers.busy) {
         event.preventDefault();
         message('Várd meg a folyamatban lévő művelet végét.');
     }
-    else if (dirty && !confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))
+    else if ((dirty || customers.dirty) && !confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))
         event.preventDefault();
 });
-window.addEventListener('focus', () => { if (api.signedIn && !mutations && !dirty)
+window.addEventListener('focus', () => { if (api.signedIn && !mutations && !dirty && !customers.dirty && !customers.busy)
     loadWorkspace().catch(showError); });
 get('assignment-from').value = todayBudapest();
 async function restoreOffice() {

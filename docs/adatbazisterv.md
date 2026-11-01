@@ -1,11 +1,13 @@
 # Díszkertek ERP – részletes adatbázisterv
 
-Verzió: 0.4 · Dátum: 2026. október 30. · Állapot: az elkülönített ERP-alap telepítve; a teljes üzleti modell további részei tervként szerepelnek.
+Verzió: 0.5 · Dátum: 2026. november 1. · Állapot: az elkülönített ERP-alap telepítve; a teljes üzleti modell további részei tervként szerepelnek.
 
 **Ez a teljes rendszer terve, nem önmagában végrehajtható migráció. A jóváhagyott irány alapján az ERP saját hét alaptáblája, jogosultsági függvényei és kiszolgálója telepítve van a kap projektben. Üzleti adatimport még nem történt. A ténylegesen elkészült kör és az ellenőrzések a [belépési dokumentumban](belepes-es-jogosultsagok.md) szerepelnek.**
 
 **Aktuális pontosítás:** az ERP marad a kap projektben saját sémákkal, új ERP-fiókokkal és saját nyilvántartással. KAP/Árajánlat üzleti adatot és meglévő fiókot nem veszünk át. A korábbi info@ ERP-tagság helyett Ági és Tamás külön ERP-belépése aktív. A meglévő appok csak olvasott technikai minták; az ügyféladatok későbbi átvétele külön ellenőrzött import. Az alábbi korábbi folyamatos ügyfélszinkron-terv nem jelent jelenlegi kapcsolatot vagy automatikus forrásírási engedélyt. Részletek: [aktuális irodai belépés](irodai-belepes.md).**
 
+
+**2026. november 1-jei, elsődleges pontosítás:** a Munkalap marad az elsődleges közös ügyféltörzs. A megrendelő külön engedélyezte, hogy az ERP-ben felvett új ügyfél és címe a közös listába menthető legyen; meglévő forrásadat nem módosítható. Az ERP ügyfélkapcsolati táblái és a 0.1.8-as saját kiszolgálórész elkészült. Az ügyfél- és címazonosítók változatlanok; saját ERP-személy-megfeleltetés készül. A részletes közös adatok olvasása élő, a külön számlázási kiegészítés és belső megjegyzés saját ERP-adat. Ez a korábbi, önálló induló ügyféllistáról szóló pontosítást felülírja. A további tervfejezetekben szereplő meglévő forrásmező-frissítés, időzített szinkron vagy szélesebb integráció továbbra sem engedélyezett. Aktuális működés: [ügyfélnyilvántartás](ugyfelnyilvantartas.md).
 ## 1. Mit kell megvalósítani?
 
 Az elsődleges forrás a „Díszkertek – Teljes fejlesztői specifikáció” 15 oldalas PDF. A kiegészítés és az elfogadott egyeztetések az érintett követelményeket pontosítják. A dokumentumban szereplő fejlesztésre felszólító szöveg nem írja felül a megrendelő aktuális „előbb adatbázisterv” kérését.

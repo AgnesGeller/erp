@@ -160,3 +160,14 @@ test('Setup failure releases its own claim without deleting any account',async()
  assert.equal((await h.gateway(request({action:'office_setup',login_name:'agi',setup_token:'a'.repeat(64),password:'112233'}))).status,422);
  assert.ok(h.calls.some(c=>c.url.endsWith('/erp_office_setup_release')));assert.ok(h.calls.every(c=>c.options.method!=='DELETE'));
 });
+
+test('Customer action uses only the verified ERP actor and JWT membership',async()=>{
+ let received;
+ const h=setup(url=>url.endsWith('/auth/v1/user')?json({id:'verified-user'}):url.endsWith('/rpc/erp_session')?json(session):assert.fail(url),{customers:async(input,token,actor,memberships)=>{received={token,actor,memberships};return {data:{rows:[],total:0}};}});
+ const r=await h.gateway(request({action:'customers_list',organization_id:'test-org',actor:'spoofed'},'test-user-jwt'));
+ assert.equal(r.status,200);assert.equal(received.actor,'verified-user');assert.equal(received.token,'test-user-jwt');assert.equal(received.memberships[0].organization_id,'test-org');
+});
+test('Invalid JWT cannot invoke any source customer operation',async()=>{
+ const h=setup(url=>url.endsWith('/auth/v1/user')?json({error:'invalid'},401):assert.fail(url),{customers:()=>assert.fail('Source access denied')});
+ assert.equal((await h.gateway(request({action:'customer_create',organization_id:'test-org'},'invalid'))).status,401);
+});

@@ -23,11 +23,11 @@
 <link rel="canonical" href="https://agnesgeller.github.io/erp/">
 <link rel="icon" type="image/png" href="./assets/favicon-d-v1.png">
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon-d-v1.png">
-<link rel="manifest" href="./manifest.webmanifest?v=0.1.7"><link rel="stylesheet" href="./assets/style.css?v=0.1.7">
-<script type="module" src="./assets/js/main.js?v=0.1.7"></script>
-<script type="module" src="./assets/js/erp-office.js?v=0.1.7"></script>
+<link rel="manifest" href="./manifest.webmanifest?v=0.1.8"><link rel="stylesheet" href="./assets/style.css?v=0.1.8">
+<script type="module" src="./assets/js/main.js?v=0.1.8"></script>
+<script type="module" src="./assets/js/erp-office.js?v=0.1.8"></script>
 
-<script type="module" src="./assets/js/erp-office-setup.js?v=0.1.7"></script>
+<script type="module" src="./assets/js/erp-office-setup.js?v=0.1.8"></script>
 </head>
 <body>
 <header><a class="brand" href="./" aria-label="Díszkertek kezdőlap"><img src="./assets/logo.png" width="52" height="52" alt=""><span>DÍSZKERTEK</span></a>
@@ -76,10 +76,35 @@
 <section id="office-app" class="workspace" hidden aria-labelledby="workspace-title">
 <div class="workspace-heading"><div><p class="eyebrow" id="workspace-role">Irodai munkatér</p><h1 id="workspace-title">DÍSZKERTEK</h1></div><button type="button" id="reload-workspace" class="secondary">Lista frissítése</button></div>
 <label id="organization-label" hidden>Szervezet<select id="organization-select"></select></label>
-<div class="workspace-columns">
-<section id="people-section" aria-labelledby="people-title"><h2 id="people-title">Munkatársak</h2><ul id="people-list" class="record-list"></ul>
-<form id="worker-form"><fieldset><legend>Új munkatárs</legend><label for="worker-name">Név</label><input id="worker-name" name="name" maxlength="150" autocomplete="off" required><button type="submit">Munkatárs mentése</button></fieldset></form></section>
-<section aria-labelledby="projects-title"><h2 id="projects-title">Munkák és megbízások</h2>
+<nav id="people-navigation" class="workspace-tabs" aria-label="Személyek" hidden><span>Személyek</span><button type="button" id="show-customers" aria-pressed="true">Ügyfelek</button><button type="button" id="show-team" aria-pressed="false">Munkatársak és megbízások</button></nav>
+<section id="customer-view" hidden aria-labelledby="customers-title">
+<div class="customer-toolbar"><h2 id="customers-title">Ügyfelek</h2><div><button type="button" id="customer-new">+ Új ügyfél</button><button type="button" id="customer-refresh" class="secondary">Adatok frissítése</button></div></div>
+<p id="customer-directory-total" class="field-help"></p><p id="customer-status" class="office-status" role="status" aria-live="polite"></p><div id="customer-pending"></div>
+<details class="erp-disclosure" id="customer-search-panel" open><summary>Ügyfél keresése <small id="customer-sync-time"></small></summary>
+<label for="customer-search">Ügyfél neve – legalább 2 karakter</label><input id="customer-search" type="search" maxlength="150" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="customer-list" aria-expanded="false" aria-describedby="customer-search-help"><p id="customer-search-help" class="field-help">Az ékezeteket nem szükséges megadni. A találatok magyar ABC-sorrendben jelennek meg.</p>
+<details class="erp-disclosure"><summary>Keresési beállítások</summary><label for="customer-search-field">Keresés alapja</label><select id="customer-search-field"><option value="name">Ügyfél neve</option><option value="address">Munkavégzési cím</option><option value="phone">Telefonszám</option><option value="email">E-mail-cím</option></select><label class="customer-archive-filter"><input id="customer-include-archived" type="checkbox"> Archivált ügyfelek megjelenítése</label></details>
+<ul id="customer-list" class="customer-list" role="listbox" aria-label="Ügyféltalálatok" hidden></ul><div class="customer-pagination"><button id="customer-previous" type="button" class="quiet" disabled>Előző</button><span id="customer-count"></span><button id="customer-next" type="button" class="quiet" disabled>Következő</button></div></details>
+<details class="erp-disclosure" id="customer-detail-panel" hidden><summary id="customer-detail-title">Ügyféladatlap</summary><div id="customer-details"></div></details>
+<details class="erp-disclosure" id="customer-profile-panel" hidden><summary>Számlázási kiegészítés és belső megjegyzés</summary><p class="field-help">Ezek az adatok az ERP-ben menthetők. A közös ügyféladatokat a Munkalap ügyféllistája kezeli.</p><form id="customer-profile-form"><fieldset><legend class="sr-only">Számlázási adatok és belső megjegyzés</legend><label for="customer-billing-name">Számlázási név</label><input id="customer-billing-name" maxlength="200" autocomplete="organization"><label for="customer-billing-address">Számlázási cím</label><textarea id="customer-billing-address" maxlength="500" rows="2" autocomplete="street-address"></textarea><label for="customer-internal-notes">Belső megjegyzés – csak az irodának</label><textarea id="customer-internal-notes" maxlength="4000" rows="4"></textarea><button type="submit">Kiegészítés mentése</button></fieldset></form></details>
+<details class="erp-disclosure" id="customer-new-panel" hidden><summary>Új ügyfél</summary><form id="customer-new-form"><fieldset><legend class="sr-only">Új ügyfél adatai</legend>
+<label for="customer-name">Név / cégnév / társasház neve</label><input id="customer-name" name="full_name" required minlength="2" maxlength="150" autocomplete="name">
+<label for="customer-type">Ügyfél típusa</label><select id="customer-type" name="customer_type" required><option value="person">Magánszemély</option><option value="company">Cég</option><option value="condominium">Társasház</option></select>
+<label for="customer-address">Munkavégzési cím</label><input id="customer-address" name="address" required minlength="3" maxlength="500" autocomplete="street-address">
+<details class="erp-disclosure"><summary>Elérhetőségek és adószám</summary><label for="customer-contact">Kapcsolattartó</label><input id="customer-contact" name="contact_name" maxlength="150">
+<label for="customer-email">E-mail</label><input id="customer-email" name="email" type="email" maxlength="254" autocomplete="email">
+<label for="customer-phone">Telefon</label><input id="customer-phone" name="phone" type="tel" maxlength="40" autocomplete="tel">
+<label for="customer-tax-number">Adószám</label><input id="customer-tax-number" name="tax_number" maxlength="40">
+</details><details class="erp-disclosure"><summary>Számlázási adatok</summary><label for="customer-new-billing-name">Számlázási név</label><input id="customer-new-billing-name" name="billing_name" maxlength="200">
+<label for="customer-new-billing-address">Számlázási cím</label><textarea id="customer-new-billing-address" name="billing_address" maxlength="500" rows="2"></textarea>
+</details><details class="erp-disclosure"><summary>Belső megjegyzés</summary><label for="customer-new-notes">Belső megjegyzés – csak az irodának</label><textarea id="customer-new-notes" name="internal_notes" maxlength="4000" rows="3"></textarea>
+</details><button type="submit">Ügyfél mentése</button><button type="button" id="customer-new-cancel" class="secondary">Bezárás</button>
+<p class="field-help">Az ügyfél felvétele nem hoz létre belépési fiókot. Az e-mail és a telefon később is pótolható a közös nyilvántartásban.</p>
+</fieldset></form></details>
+</section>
+<div class="workspace-columns" id="team-view" hidden>
+<section id="people-section" aria-labelledby="people-title"><details class="erp-disclosure" open><summary id="people-title">Munkatársak</summary><label class="sr-only" for="people-list">Munkatárs kiválasztása</label><select id="people-list" aria-label="Munkatárs kiválasztása"></select></details><details class="erp-disclosure"><summary>Új munkatárs</summary>
+<form id="worker-form"><fieldset><legend>Új munkatárs</legend><label for="worker-name">Név</label><input id="worker-name" name="name" maxlength="150" autocomplete="off" required><button type="submit">Munkatárs mentése</button></fieldset></form></details></section>
+<section aria-labelledby="projects-title"><details class="erp-disclosure"><summary id="projects-title">Munkák és megbízások</summary>
 <label for="project-select">Munka</label><select id="project-select" disabled><option value="">Válassz munkát</option></select>
 <p id="assignment-empty"></p><ul id="assignment-list" class="record-list"></ul>
 <form id="role-form" hidden><fieldset><legend>Új megbízás</legend>
@@ -88,7 +113,7 @@
 <label for="assignment-from">Kezdőnap</label><input id="assignment-from" type="date" required>
 <label for="assignment-until">Utolsó nap (nem kötelező)</label><input id="assignment-until" type="date">
 <p class="field-help">A dátumok magyarországi idő szerint értendők.</p><button type="submit">Megbízás mentése</button>
-</fieldset></form></section>
+</fieldset></form></details></section>
 </div></section>
 </main>
 <footer><a href="tel:+36706349630">+36 70 634 9630</a><a href="mailto:info@diszkertek.hu">info@diszkertek.hu</a><a class="website" href="https://www.diszkertek.hu/" target="_blank" rel="noopener">diszkertek.hu ↗</a><span id="version">DÍSZKERTEK</span></footer>

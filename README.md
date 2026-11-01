@@ -6,13 +6,13 @@ Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációján
 
 ## Jelenlegi állapot – 2026. november 1.
 
-**A jelenlegi verzió 0.1.7:** Ági és Tamás külön, új ERP-fiókkal, névválasztással és saját PIN-kóddal léphet be. A két fiók valódi HTTPS-belépése és irodai adatolvasása sikeresen ellenőrizve. Az eszköz saját ERP-munkamenetet őriz meg; a PIN-t nem tároljuk olvashatóan. A teljes ERP üzleti moduljai még fejlesztés alatt állnak; ügyfél- és munkaadat-import nem történt.
+**A jelenlegi verzió 0.1.8:** a Személyek menüben elérhető a Munkalap közös ügyfélnyilvántartása, két karaktertől ékezetfüggetlen lenyíló kereséssel, ABC-sorrendű találatokkal és összecsukható adatlapokkal. Az iroda új ügyfelet és címet vehet fel a közös listába, a külön engedélyezett új adatok mentésével. Meglévő forrásadatot nem írunk át. Ági és Tamás saját ERP-belépése és a D betűs ikon megmarad. A teljes ERP többi üzleti modulja még fejlesztés alatt áll.
 
 [Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
 
 ![Az alkalmazás tényleges belépési felülete](docs/kepek/kezdo-desktop.png)
 
-Az adatbázisterv nem végrehajtható migráció, és a leírt megoldás nem tekinthető már működő integrációnak. Az eredeti munkafüzeteket, ügyféladatokat és adatbázis-mentéseket nem töltjük a repositoryba.
+A teljes adatbázisterv további, még nem telepített modulokat is tartalmaz. A ténylegesen elkészült ügyfélkapcsolatot az ügyfélnyilvántartási leírás, a belépést a saját dokumentációja rögzíti. Az eredeti munkafüzeteket, ügyféladatokat és adatbázis-mentéseket nem töltjük a repositoryba.
 
 ## Röviden, nem fejlesztőknek
 
@@ -28,6 +28,7 @@ Az ábra tervet mutat. A szaggatott vonalak még nem létező ERP-kapcsolatokat 
 
 - [Részletes adatbázisterv](docs/adatbazisterv.md): elhelyezés, táblák, jogosultságok, szinkron, pénzügyek, mentés, átállás, ellenőrzések.
 - [A csatolt árajánlat-kalkulátor felmérése](docs/kalkulator-felmeres.md): ellenőrzött képletek, 163 árlistasor, 22 kategória, sablonok és megfeleltetési problémák.
+- [Ügyfélnyilvántartás és közös lista](docs/ugyfelnyilvantartas.md): használat, szinkron, engedélyezett új ügyfélmentés és hibakezelés.
 - [Aktuális irodai belépés](docs/irodai-belepes.md): Ági és Tamás saját ERP-fiókja, megjegyzett munkamenet, ellenőrzés.
 - [A 0.1.4 belépési alap történeti leírása](docs/belepes-es-jogosultsagok.md): használat, adatvédelem, telepített szerveroldal, ellenőrzések és korlátok.
 - [Fejlesztési napló és döntések](docs/fejlesztesi-naplo.md): mi készült el, mi jóváhagyott, mi vár döntésre, és hogyan ellenőriztük.
@@ -178,3 +179,20 @@ Az alkalmazás felső **Frissítés** gombjával tölthető be a 0.1.7. A már t
 A felhasználó visszajelzése szerint a korábban telepített KM eltávolítása után az ERP telepítése sikerült. Ezt ő végezte; a fejlesztés más alkalmazást vagy böngészős telepítést nem módosított. A jelenlegi ERP azonosítója és hatóköre továbbra is /erp/. Újratelepítés és közös böngészőadatok törlése nem része az ikonfrissítésnek.
 
 Ellenőrzés: sikeres TypeScript-build, 14 sikeres célzott PWA-teszt és az új ikon vizuális ellenőrzése. A felhasználó Windows-tálcáján megjelenő új ikon még külön visszaigazolást igényel.
+### 0.1.8 – Közös ügyfélnyilvántartás
+
+A **Személyek → Ügyfelek** két karaktertől automatikusan felkínálja a megfelelő ügyfeleket. Az ékezetek és a kisbetű/nagybetű nem számítanak; a találatok magyar ABC-sorrendűek. Az adatlap, a címek, a kapcsolattartók, a számlázási kiegészítés és az új ügyfél mezőcsoportjai összecsukhatók. A munkatársak is ABC-sorrendű lenyíló listában választhatók.
+
+A jelenleg ellenőrzött Munkalap-forrás 155 ügyfelet tartalmaz: 152 nem archivált és 3 archivált, 157 címmel. Az archivált ügyfelek külön kapcsolóval megjeleníthetők. Eredeti ügyfél- és címazonosítójuk megmarad. A megrendelő külön engedélye alapján az ERP új ügyfelet és első címét is elmentheti ebbe a közös listába. Meglévő forrásügyfelet, címet vagy munkalapot nem ír át.
+
+```mermaid
+flowchart LR
+    M["Munkalap közös ügyféllistája"] -->|"Olvasás, eredeti azonosítókkal"| E["ERP – Személyek"]
+    E -->|"Csak új ügyfél és első cím"| M
+    E <--> S["ERP saját számlázási kiegészítése"]
+    E --> D["Telefon, tablet, számítógép"]
+```
+
+Az ERP aktív ügyfélnézetben 30 másodpercenként frissít, ha nincs nem mentett szerkesztés. A régi appok saját következő adatbetöltésükkor látják az új ügyfelet; már nyitott régi felületen szükség lehet annak saját frissítésére. A jelenlegi lépés nem változtatja meg a régi appok működését.
+
+A megszakadt újügyfél-mentés tartósan megmarad, és ugyanazokkal az azonosítókkal folytatható. A részletes használat, a biztonsági határok és az ellenőrzés: [Ügyfélnyilvántartás](docs/ugyfelnyilvantartas.md).

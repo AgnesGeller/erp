@@ -28,6 +28,7 @@ Az ábra tervet mutat. A szaggatott vonalak még nem létező ERP-kapcsolatokat 
 
 - [Részletes adatbázisterv](docs/adatbazisterv.md): elhelyezés, táblák, jogosultságok, szinkron, pénzügyek, mentés, átállás, ellenőrzések.
 - [A csatolt árajánlat-kalkulátor felmérése](docs/kalkulator-felmeres.md): ellenőrzött képletek, 163 árlistasor, 22 kategória, sablonok és megfeleltetési problémák.
+- [Ügyféllisták összevetése](docs/ugyfellista-egyeztetes.md): Munkalap, Kassza, Napi feladatok és ERP darabszámai, szűrései és eszközfrissítése.
 - [Ügyfélnyilvántartás és közös lista](docs/ugyfelnyilvantartas.md): használat, szinkron, engedélyezett új ügyfélmentés és hibakezelés.
 - [Aktuális irodai belépés](docs/irodai-belepes.md): Ági és Tamás saját ERP-fiókja, megjegyzett munkamenet, ellenőrzés.
 - [A 0.1.4 belépési alap történeti leírása](docs/belepes-es-jogosultsagok.md): használat, adatvédelem, telepített szerveroldal, ellenőrzések és korlátok.
@@ -196,3 +197,4 @@ flowchart LR
 Az ERP aktív ügyfélnézetben 30 másodpercenként frissít, ha nincs nem mentett szerkesztés. A régi appok saját következő adatbetöltésükkor látják az új ügyfelet; már nyitott régi felületen szükség lehet annak saját frissítésére. A jelenlegi lépés nem változtatja meg a régi appok működését.
 
 A megszakadt újügyfél-mentés tartósan megmarad, és ugyanazokkal az azonosítókkal folytatható. A részletes használat, a biztonsági határok és az ellenőrzés: [Ügyfélnyilvántartás](docs/ugyfelnyilvantartas.md).
+A külön ellenőrzés szerint a Kassza 152 aktív, nem archivált ügyfelet, a Napi feladatok 149 jóváhagyott ügyfelet kér le ugyanebből a közös törzsből. A három ügyfél eltérése jóváhagyási szűrésből ered; nem módosítottuk a rekordokat. Részletek: [ügyféllisták összevetése](docs/ugyfellista-egyeztetes.md).

@@ -16,7 +16,7 @@ function harness({offline=false,standalone=false,userAgent='test',platform='test
   navigator:{userAgent,platform,maxTouchPoints,...(serviceWorker?{serviceWorker}: {})},
   sessionStorage:{getItem:k=>session.get(k),setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)},
   location:{reload(){context.reloaded=true;}},
-  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:'0.1.6'})};},
+  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:'0.1.7'})};},
   AbortSignal,Date,Event,setTimeout,clearTimeout
  };
  vm.runInNewContext(source,context);
@@ -58,7 +58,7 @@ test('SW registration failure cannot claim successful update',async()=>{
 test('ERP worker never removes another app cache or handles API traffic',async()=>{
  const handlers={};const deleted=[];let claimed=false;
  const context={URL,self:{registration:{scope:'https://agnesgeller.github.io/erp/'},clients:{claim:async()=>{claimed=true;}},addEventListener:(t,f)=>handlers[t]=f},
- caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.1.6','munkalap-v2'],delete:async k=>deleted.push(k)}};
+ caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.1.7','munkalap-v2'],delete:async k=>deleted.push(k)}};
  vm.runInNewContext(await readFile(new URL('../sw.js',import.meta.url),'utf8'),context);
  let pending;handlers.activate({waitUntil:p=>pending=p});await pending;
  assert.deepEqual(deleted,['diszkertek-erp-0.0.1']);assert.equal(claimed,true);
@@ -99,7 +99,7 @@ test('Reloading a stale release cannot display successful update',()=>{
  assert.doesNotMatch(h.nodes.get('update-status').textContent,/Sikeres/);
 });
 test('Confirmed target release after reload displays success',()=>{
- const h=harness({pendingRelease:'0.1.6'});
+ const h=harness({pendingRelease:'0.1.7'});
  assert.match(h.nodes.get('update-status').textContent,/✓ Sikeres frissítés/);
 });
 test('A native prompt takes priority over an enclosing standalone app window',async()=>{
@@ -116,7 +116,7 @@ test('Versioned ERP launch URL falls back to its own cached page offline',async(
   fetch:async()=>{throw Error('offline');}
  };
  vm.runInNewContext(await readFile(new URL('../sw.js',import.meta.url),'utf8'),context);
- handlers.fetch({request:{method:'GET',mode:'navigate',url:'https://agnesgeller.github.io/erp/?app-version=0.1.6'},respondWith:p=>answer=p});
+ handlers.fetch({request:{method:'GET',mode:'navigate',url:'https://agnesgeller.github.io/erp/?app-version=0.1.7'},respondWith:p=>answer=p});
  assert.equal(await answer,'offline-erp-page');assert.equal(cacheKey,'https://agnesgeller.github.io/erp/');
  handlers.fetch({request:{method:'GET',mode:'navigate',url:'https://agnesgeller.github.io/napi/'},respondWith(){assert.fail('Other app intercepted');}});
 });

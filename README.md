@@ -4,9 +4,9 @@
 
 Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációjának önálló helye. A követelmény az eredeti, 15 oldalas fejlesztői PDF teljes funkcióköre, a kiegészítésben és a megrendelővel egyeztetett módosításokkal.
 
-## Jelenlegi állapot – 2026. október 30.
+## Jelenlegi állapot – 2026. november 1.
 
-**A jelenlegi verzió 0.1.6:** Ági és Tamás külön, új ERP-fiókkal, névválasztással és saját PIN-kóddal léphet be. A két fiók valódi HTTPS-belépése és irodai adatolvasása sikeresen ellenőrizve. Az eszköz saját ERP-munkamenetet őriz meg; a PIN-t nem tároljuk olvashatóan. A teljes ERP üzleti moduljai még fejlesztés alatt állnak; ügyfél- és munkaadat-import nem történt.
+**A jelenlegi verzió 0.1.7:** Ági és Tamás külön, új ERP-fiókkal, névválasztással és saját PIN-kóddal léphet be. A két fiók valódi HTTPS-belépése és irodai adatolvasása sikeresen ellenőrizve. Az eszköz saját ERP-munkamenetet őriz meg; a PIN-t nem tároljuk olvashatóan. A teljes ERP üzleti moduljai még fejlesztés alatt állnak; ügyfél- és munkaadat-import nem történt.
 
 [Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
 
@@ -45,7 +45,7 @@ A PDF-ek a dokumentáció menthető pillanatképei. A továbbfejlesztéshez az a
 - Magyar felület és folyamatosan magyar nyelvű README, használati és továbbfejlesztési leírással.
 - HTML5, CSS3 és moduláris TypeScript már az első alkalmazásverziótól; Supabase PostgreSQL és TypeScript szerveroldali műveletek.
 - Teljes PDF-funkciókör: a mérföldkövek munkasorrendet jelentenek, nem csökkentett végterméket.
-- A weboldalon háttér nélküli Díszkertek-logó; a favicon és a telepített alkalmazás ikonja zöld négyzetes háttérrel.
+- A weboldalon háttér nélküli Díszkertek-logó; a favicon és a telepített alkalmazás ikonja zöld négyzetben nagy, középre helyezett fehér D betű (a 2026. november 1-jei kérés szerint).
 - Megjelenő név: DÍSZKERTEK. Felirat: „Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás”.
 - Elérhetőségek: +36 70 634 9630; info@diszkertek.hu; www.diszkertek.hu.
 - Az új arculat és dokumentumsablonok kizárólag a jóváhagyott Díszkertek-megjelenést használják. A forrásfájlok régi készítői feliratait nem emeljük át.
@@ -102,7 +102,7 @@ A tényleges Chrome/Edge és iOS kezdőképernyős telepítést még külön esz
 
 ## Ikonok és dokumentáció újraelőállítása
 
-Az ikonok a meglévő Díszkertek-logóból, zöld háttérrel készültek; a PNG-k a repositoryban vannak. Újragenerálás: `node tools/generate-icons.mjs <sharp-modul-abszolút-elérési-útja> <eredeti-logo.png>`. A sharp csak eseti képelőállító eszköz, a webalkalmazás nem tölti be.
+Az aktuális alkalmazásikon és favicon zöld alapon nagy fehér D betű. Újragenerálás az ERP mappájából: `python tools/generate-app-icons.py` (Pillow és Windows Arial Bold szükséges; a webalkalmazás ezeket nem tölti be). A PNG-k új, verziózott fájlneveket kaptak, a korábbi képek megmaradtak. A weboldal logója és a megosztási előnézet továbbra is a Díszkertek-logót mutatja; ezek korábbi előállítója a tools/generate-icons.mjs.
 
 A három PDF újraelőállítása: `python tools/render-docs.py` (reportlab szükséges; magyar Arial betűkészlettel). Kimenet: output/pdf. A képernyőképek valódi böngészős felvételek.
 
@@ -166,3 +166,15 @@ A célzott teszt már a natív böngésző által elvárt hívási környezetet 
 
 
 Az éles 0.1.6 kiadásban mindkét irodai fiók belépése és újratöltés utáni automatikus belépése sikeres. A felső Frissítés után a 0.1.6 töltődött be, sikeres frissítés és automatikus belépés jelzéssel. Összesen 75 automatikus teszteredmény sikeres. A README képe a nyilvánosan látható belépési oldalt mutatja; belépett munkatér képe nem kerül a nyilvános repositoryba.
+
+### 0.1.7 – Jól olvasható D betűs ikon (2026. november 1.)
+
+A kis méretben nehezen felismerhető logó helyett a telepített ERP ikonja és a favicon most egyszerű zöld négyzet, közepén nagy fehér D betűvel. A 32, 180, 192 és 512 képpontos képek új fájlnevet kaptak, hogy az új képet kérje a böngésző. A weboldal teljes logója és a megosztási kép nem változott.
+
+![Az ERP D betűs alkalmazásikonja](assets/icon-d-192-v1.png)
+
+Az alkalmazás felső **Frissítés** gombjával tölthető be a 0.1.7. A már telepített Windows-ikon frissítését a Chrome külön kezeli; az oldal sikeres frissítése nem igazolja az operációs rendszer ikonjának cseréjét. A Chrome név- vagy ikonváltoztatáskor megerősítést is kérhet ([Google útmutató](https://support.google.com/chrome/answer/9658361?hl=hu&co=GENIE.Platform%3DDesktop)).
+
+A felhasználó visszajelzése szerint a korábban telepített KM eltávolítása után az ERP telepítése sikerült. Ezt ő végezte; a fejlesztés más alkalmazást vagy böngészős telepítést nem módosított. A jelenlegi ERP azonosítója és hatóköre továbbra is /erp/. Újratelepítés és közös böngészőadatok törlése nem része az ikonfrissítésnek.
+
+Ellenőrzés: sikeres TypeScript-build, 14 sikeres célzott PWA-teszt és az új ikon vizuális ellenőrzése. A felhasználó Windows-tálcáján megjelenő új ikon még külön visszaigazolást igényel.

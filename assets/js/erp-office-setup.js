@@ -5,7 +5,7 @@ if (setupToken !== null) {
     document.documentElement.dataset.erpSetup = 'true';
     history.replaceState(null, '', location.pathname + location.search);
 }
-const setupApiUrl = new URL('./erp-api.js?v=0.1.6', import.meta.url);
+const setupApiUrl = new URL('./erp-api.js?v=0.1.7', import.meta.url);
 const { ErpApi } = await import(setupApiUrl.href);
 const setupApi = new ErpApi();
 const setupGet = (id) => document.getElementById(id);

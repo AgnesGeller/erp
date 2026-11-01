@@ -1,6 +1,6 @@
 const setupOpening = new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.1.6', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.1.6', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.1.7', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.1.7', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
 const api = new ErpApi();

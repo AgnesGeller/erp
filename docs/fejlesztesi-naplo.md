@@ -145,3 +145,12 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - Adatbázis, RLS, más appok, meglévő Auth-fiókok és PIN-ek nem módosultak. Nincs csomagtelepítés, új szolgáltatás, törlés vagy előfizetés. A magyar README és a belépési leírás frissült.
 
 - Közzététel: 7942c55 commit/push a main ágra, sikeres Pages-telepítés, publikus verzió 0.1.6. Az éles webcímen mindkét irodai fiók belépése, automatikus újranyitása és kijelentkezése sikeres; a felső Frissítés újratöltött 0.1.6-ra, sikeres frissítés és automatikus belépés jelzéssel. Konzolhiba nincs. A teljes készlet 75 eredménye sikeres. A README nyilvános belépési képe frissült. A belépett munkatér képének publikálását az automatikus ellenőrzés elutasította; az a nyilvános repositoryba nem került. A tesztböngészőből kijelentkeztünk.
+
+## 2026. november 1. – 0.1.7: nagy D betűs ERP-ikon
+
+- A felhasználó jelezte: a régi KM telepítését ő eltávolította, ezután az ERP telepítése sikerült. A fejlesztés nem törölt és nem módosított más alkalmazást.
+- A Munkalap Díszkertek M betűs ikonját és telepítési kódját csak olvastuk. Az ERP új ikonja a kért egyszerű zöld négyzet, nagy középre helyezett fehér D betűvel, díszítés nélkül.
+- Új, verziózott PNG-fájlok: 32 px favicon, 180 px Apple-ikon, 192 és 512 px PWA-ikon. A korábbi képfájlok megmaradtak. A manifest, HTML és saját service worker hivatkozásai frissültek; id és scope továbbra is /erp/.
+- A reprodukálható, kizárólag saját ERP-ikonokat előállító tools/generate-app-icons.py meglévő Pillow-t és Windows Arial Bold betűkészletet használ. Nincs csomagtelepítés, adatbázis-változtatás vagy új szolgáltatás.
+- A 0.1.7 kiadás verzióhivatkozásai összhangban vannak. Sikeres TypeScript-build, 14 sikeres célzott PWA-teszt és vizuálisan ellenőrzött ikon. A már telepített Chrome/Windows-ikon frissítése még nem igazolt; ezt a böngésző külön kezeli.
+- A magyar README az új ikont, az előállítást, a frissítés módját és a tényleges ellenőrzési korlátot is tartalmazza.

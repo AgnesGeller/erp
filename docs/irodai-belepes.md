@@ -35,10 +35,13 @@ A GitHub Pages azonos domainjén lévő alkalmazások böngészőtárhelye techn
 
 Új migráció: erp_dedicated_office_accounts; forrása database/proposals/erp-office-login.sql. A korábbi három ERP-alapmigráció után alkalmazandó, meglévő DÍSZKERTEK szervezettel. Új környezetben az alap szervezeti rekord létrehozása külön, ellenőrzött lépés. Már telepített környezetben a migráció nem futtatható újra vakon.
 
-73 automatikus teszteredmény sikeres: jogosultságok, névhez kötött új fiókok, tiltott régi fiókátvétel, egyszeri beállítás, párhuzamos foglalás, próbálkozási korlát, megjegyzett munkamenet, hálózati hiba, kijelentkezés és PWA-frissítés. A két tényleges új fiók HTTPS-belépése, irodai adatolvasása és helyi kijelentkezése sikeres. A localhost eredetre adott CORS-előkérés 204 és a helyes Access-Control-Allow-Origin érték.
+75 automatikus teszteredmény sikeres: jogosultságok, névhez kötött új fiókok, tiltott régi fiókátvétel, egyszeri beállítás, párhuzamos foglalás, próbálkozási korlát, megjegyzett munkamenet, hálózati hiba, kijelentkezés és PWA-frissítés. A két tényleges új fiók HTTPS-belépése, irodai adatolvasása és helyi kijelentkezése sikeres. A localhost eredetre adott CORS-előkérés 204 és a helyes Access-Control-Allow-Origin érték.
 
 A meglévő nem ERP public táblák jogosultsági/RLS-lenyomata, public szabályai és nem ERP public/quote_private függvényei változatlanok. A korábbi Auth-fiókok id/updated_at ellenőrzőlenyomata a két új ERP-fiókot kizárva változatlan: 92657c94a023a0daa5e2eaa455b4fa27. Ezek szerkezeti/állapot-ellenőrzések, nem a többi alkalmazás teljes újratesztelése.
 
 A saját privát adminisztratív tábla policy nélküli FORCE RLS-védelme tudatos; csak a fenti szűk szerveroldali függvények kezelik. A korábbi projektfigyelmeztetések megmaradnak. [Supabase RLS-ellenőrző leírása](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
 
 A 0.1.5 böngészős kapcsolódási hibáját a 0.1.6 javítja: a fetch hívása most a böngésző globális környezetében történik. Az elvárt hívási környezetet és az AbortSignal.timeout nélküli működést két új teszt ellenőrzi. A valódi böngészős belépés, az újratöltés utáni automatikus belépés és a kijelentkezés Ági és Tamás fiókjával is sikeres a javított helyi felületen. Az ügyfél/dolgozói e-mailes belépés most nincs bekapcsolva. Üzleti adatimport nem történt.
+
+
+Publikus ellenőrzés: a 7942c55 GitHub Pages-telepítése sikeres. A https://agnesgeller.github.io/erp/ címen mindkét fiókkal működött a belépés, az újratöltés utáni automatikus belépés és a kijelentkezés. A felső Frissítés a /erp/?app-version=0.1.6 címre töltött újra, Sikeres frissítés és Sikeres automatikus belépés visszajelzéssel. Új konzolhiba nem volt. A teszt után kijelentkeztünk a tesztböngészőből. A nyilvános dokumentáció képe a belépési oldalt mutatja.

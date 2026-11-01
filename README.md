@@ -163,3 +163,6 @@ Ellenőrzés: 73 sikeres automatikus teszteredmény; mindkét valódi ERP-fiók 
 A hálózati kérés hibás hívási környezetben indult: a fetch függvényt az ERP API-objektum saját metódusaként hívtuk. A böngésző ezt Illegal invocation hibával elutasította, a felület pedig tévesen egyszerű kapcsolódási hibát jelzett. A javítás a megfelelő böngészőkörnyezethez köti a fetch hívását. Az időkorlát AbortControllerrel működik, AbortSignal.timeout támogatás nélkül is.
 
 A célzott teszt már a natív böngésző által elvárt hívási környezetet is ellenőrzi. Ági és Tamás valódi böngészős belépése, az újratöltés utáni automatikus belépés és a kijelentkezés sikeresen ellenőrizve a helyi javított felületen. A PIN-ek, fiókok, adatbázis-szabályok és más alkalmazások nem változtak.
+
+
+Az éles 0.1.6 kiadásban mindkét irodai fiók belépése és újratöltés utáni automatikus belépése sikeres. A felső Frissítés után a 0.1.6 töltődött be, sikeres frissítés és automatikus belépés jelzéssel. Összesen 75 automatikus teszteredmény sikeres. A README képe a nyilvánosan látható belépési oldalt mutatja; belépett munkatér képe nem kerül a nyilvános repositoryba.

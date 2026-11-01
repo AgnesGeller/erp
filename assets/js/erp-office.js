@@ -1,16 +1,24 @@
 const setupOpening = new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.2.0', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.2.0', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.3.0', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.3.0', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
-const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.2.0', import.meta.url).href);
+const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.3.0', import.meta.url).href);
 const api = new ErpApi();
-const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.2.0', import.meta.url).href);
-const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.2.0', import.meta.url).href);
+const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.3.0', import.meta.url).href);
+const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.3.0', import.meta.url).href);
+const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.3.0', import.meta.url).href);
 const customers = new CustomerDirectory(api, error => { if (!api.signedIn)
-    showError(error); }, (id, name) => { void works.selectCustomer(id, name); });
+    showError(error); }, (id, name) => { void works.selectCustomer(id, name); }, (id, name) => { void quotes.selectCustomer(id, name); });
 const works = new SiteWorks(api, error => { if (!api.signedIn)
     showError(error); }, loadWorkspace, () => { customers.open(); get('customer-search').focus(); });
+const quotes = new QuoteDesk(api, error => { if (!api.signedIn)
+    showError(error); }, () => { customers.open(); get('customer-search').focus(); }, loadWorkspace);
+for (const id of ['show-customers', 'show-team', 'show-works', 'show-quotes', 'show-prices'])
+    document.getElementById(id).addEventListener('click', event => { if (!quotes.leave() || ((id === 'show-quotes' || id === 'show-prices') && (!customers.leave() || !works.leave()))) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    } }, { capture: true });
 for (const id of ['show-customers', 'show-team'])
     document.getElementById(id).addEventListener('click', event => { if (!works.leave()) {
         event.preventDefault();
@@ -52,6 +60,7 @@ function resetView() {
     generation++;
     customers.reset();
     works.reset();
+    quotes.reset();
     current = undefined;
     people = [];
     projects = [];
@@ -209,6 +218,7 @@ async function loadWorkspace() {
         get('public-identity').hidden = true;
         get('logout').hidden = false;
         await loadAssignments();
+        quotes.setOrganization(current.is_office ? current.organization_id : undefined);
         works.setOrganization(current.is_office ? current.organization_id : undefined);
         await customers.setOrganization(current.is_office ? current.organization_id : undefined);
     }
@@ -320,11 +330,11 @@ roleForm.addEventListener('submit', async (event) => {
     }
 });
 get('logout').addEventListener('click', async () => {
-    if (mutations || loading || customers.busy || works.busy) {
+    if (mutations || loading || customers.busy || works.busy || quotes.busy) {
         message('Várd meg a folyamatban lévő művelet végét.');
         return;
     }
-    if ((dirty || customers.dirty || works.dirty) && !confirm('Kijelentkezel? A még nem mentett mezők tartalma elvész.'))
+    if ((dirty || customers.dirty || works.dirty || quotes.dirty) && !confirm('Kijelentkezel? A még nem mentett mezők tartalma elvész.'))
         return;
     generation++;
     try {
@@ -345,14 +355,14 @@ get('organization-select').addEventListener('change', () => { if (!mutations)
 for (const form of [workerForm, roleForm])
     form.addEventListener('input', () => { dirty = true; });
 window.addEventListener('erp:before-update', event => {
-    if (mutations || loading || restoring || customers.busy || works.busy) {
+    if (mutations || loading || restoring || customers.busy || works.busy || quotes.busy) {
         event.preventDefault();
         message('Várd meg a folyamatban lévő művelet végét.');
     }
-    else if ((dirty || customers.dirty || works.dirty) && !confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))
+    else if ((dirty || customers.dirty || works.dirty || quotes.dirty) && !confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))
         event.preventDefault();
 });
-window.addEventListener('focus', () => { if (api.signedIn && !mutations && !dirty && !customers.dirty && !works.dirty && !customers.busy && !works.busy)
+window.addEventListener('focus', () => { if (api.signedIn && !mutations && !dirty && !customers.dirty && !works.dirty && !quotes.dirty && !customers.busy && !works.busy && !quotes.busy)
     loadWorkspace().catch(showError); });
 get('assignment-from').value = todayBudapest();
 async function restoreOffice() {

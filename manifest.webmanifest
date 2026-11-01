@@ -4,7 +4,7 @@
   "short_name": "DÍSZKERTEK",
   "description": "Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás",
   "lang": "hu",
-  "start_url": "/erp/?app-version=0.2.0",
+  "start_url": "/erp/?app-version=0.3.0",
   "scope": "/erp/",
   "display": "standalone",
   "background_color": "#f5f4ef",

@@ -1,5 +1,5 @@
 const el = (id) => document.getElementById(id);
-const labels = { preparation: 'Kertépítési előkészítés', requested: 'Jóváhagyásra váró karbantartási igény', confirmed: 'Jóváhagyott karbantartás', cancelled: 'Visszavont igény' };
+const labels = { preparation: 'Kertépítési előkészítés', requested: 'Jóváhagyásra váró karbantartási igény', confirmed: 'Jóváhagyott karbantartás', waiting_start: 'Indításra váró kertépítés', running: 'Futó kertépítés', cancelled: 'Visszavont igény' };
 function item(tag, value) { const n = document.createElement(tag); n.textContent = value; return n; }
 export class SiteWorks {
     api;
@@ -58,7 +58,7 @@ export class SiteWorks {
         return false; if (this.dirty && !confirm('A még nem mentett munka adatai elvesznek. Folytatod?'))
         return false; this.clear(); return true; }
     open(refresh = true) { if (!this.org)
-        return; el('work-view').hidden = false; el('customer-view').hidden = true; el('team-view').hidden = true; for (const name of ['works', 'customers', 'team'])
+        return; el('work-view').hidden = false; el('customer-view').hidden = true; el('team-view').hidden = true; el('quote-view').hidden = true; el('prices-view').hidden = true; for (const name of ['works', 'customers', 'team', 'quotes', 'prices'])
         el('show-' + name).setAttribute('aria-pressed', String(name === 'works')); if (refresh && !this.busy)
         void this.load(); }
     async selectCustomer(id, name) {

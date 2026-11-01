@@ -5,6 +5,7 @@ export class CustomerDirectory {
     api;
     authError;
     startWork;
+    startQuote;
     suggestionsOpen = false;
     org;
     epoch = 0;
@@ -22,10 +23,11 @@ export class CustomerDirectory {
     timer;
     newForm = node('customer-new-form');
     profileForm = node('customer-profile-form');
-    constructor(api, authError, startWork) {
+    constructor(api, authError, startWork, startQuote) {
         this.api = api;
         this.authError = authError;
         this.startWork = startWork;
+        this.startQuote = startQuote;
         node('show-customers').addEventListener('click', () => this.open());
         node('show-team').addEventListener('click', () => this.team());
         node('customer-new').addEventListener('click', () => this.startNew());
@@ -83,15 +85,15 @@ export class CustomerDirectory {
     } node('people-navigation').hidden = !org; if (!org) {
         node('team-view').hidden = false;
         return;
-    } if (!node('team-view').hidden || !node('work-view').hidden)
+    } if (!node('team-view').hidden || !node('work-view').hidden || !node('quote-view').hidden || !node('prices-view').hidden)
         return; node('customer-view').hidden = false; if (!this.dirty && !this.busy)
         await this.load(); }
     confirmLeave() { return !this.dirty || confirm('A még nem mentett ügyféladatok elvesznek. Folytatod?'); }
     open() { if (this.busy)
-        return; node('work-view').hidden = true; node('show-works').setAttribute('aria-pressed', 'false'); node('team-view').hidden = true; node('customer-view').hidden = false; node('show-customers').setAttribute('aria-pressed', 'true'); node('show-team').setAttribute('aria-pressed', 'false'); if (this.org)
+        return; node('quote-view').hidden = true; node('prices-view').hidden = true; node('show-quotes').setAttribute('aria-pressed', 'false'); node('show-prices').setAttribute('aria-pressed', 'false'); node('work-view').hidden = true; node('show-works').setAttribute('aria-pressed', 'false'); node('team-view').hidden = true; node('customer-view').hidden = false; node('show-customers').setAttribute('aria-pressed', 'true'); node('show-team').setAttribute('aria-pressed', 'false'); if (this.org)
         void this.load(); }
     team() { if (this.busy || !this.confirmLeave())
-        return; node('work-view').hidden = true; node('show-works').setAttribute('aria-pressed', 'false'); this.closeForm(true); node('customer-view').hidden = true; node('team-view').hidden = false; node('show-customers').setAttribute('aria-pressed', 'false'); node('show-team').setAttribute('aria-pressed', 'true'); }
+        return; node('quote-view').hidden = true; node('prices-view').hidden = true; node('show-quotes').setAttribute('aria-pressed', 'false'); node('show-prices').setAttribute('aria-pressed', 'false'); node('work-view').hidden = true; node('show-works').setAttribute('aria-pressed', 'false'); this.closeForm(true); node('customer-view').hidden = true; node('team-view').hidden = false; node('show-customers').setAttribute('aria-pressed', 'false'); node('show-team').setAttribute('aria-pressed', 'true'); }
     leave() { if (this.busy || !this.confirmLeave())
         return false; this.closeForm(true); return true; }
     closeForm(force = false) { if (this.saving || (!force && !this.confirmLeave()))
@@ -214,6 +216,15 @@ export class CustomerDirectory {
         }
         const panel = node('customer-details');
         panel.replaceChildren();
+        if (this.startQuote && customer.active && customer.review_status === 'approved' && !customer.archived_at) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'quiet';
+            button.textContent = 'Új árajánlat ehhez az ügyfélhez';
+            button.addEventListener('click', () => { if (this.leave())
+                this.startQuote(customer.id, customer.full_name); });
+            panel.append(button);
+        }
         if (this.startWork && customer.active && customer.review_status === 'approved' && !customer.archived_at) {
             const button = document.createElement('button');
             button.type = 'button';

@@ -1,14 +1,8 @@
-import { createGateway } from './handler.ts';
-import { createCustomerDirectory } from './customers.ts';
-Deno.serve(createGateway({
-  url: Deno.env.get('SUPABASE_URL') ?? '',
-  anonKey: Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-  serviceKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-  // Csak az ERP-átirányítás és az SMTP ellenőrzése után kapcsolható be.
-  emailFlowsEnabled: false,
-  customers: createCustomerDirectory({
-    url: Deno.env.get('SUPABASE_URL') ?? '',
-    key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    sourceKey: Deno.env.get('KASSZA_SERVICE_ROLE_KEY') ?? ''
-  })
-}));
+import {createGateway} from './handler.ts';
+import {createCustomerDirectory} from './customers.ts';
+import {createQuotes} from './quotes.ts';
+import {makeQuotePdf} from './quote-pdf.ts';
+const url=Deno.env.get('SUPABASE_URL')??'',key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')??'';
+const customers=createCustomerDirectory({url,key,sourceKey:Deno.env.get('KASSZA_SERVICE_ROLE_KEY')??''});
+const quotes=createQuotes({url,key,context:(organization_id,customer_id,token,actor,memberships)=>customers({action:'quote_context',organization_id,customer_id},token,actor,memberships),pdf:makeQuotePdf});
+Deno.serve(createGateway({url,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',serviceKey:key,emailFlowsEnabled:false,customers,quotes}));

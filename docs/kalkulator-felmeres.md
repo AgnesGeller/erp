@@ -64,3 +64,9 @@ Ezek általános munkanevek: az anyag, vastagság és kivitelezési mód nem vá
 A 163 sor importja után ellenőrizni kell a megnevezést, kategóriát, mindkét mértékegységet, anyagárat, munkadíjat, megjegyzést és összetevőket. A megfelelő import nem csak a rekorddarabszám egyezését jelenti.
 
 A három sablon minden sora visszavezethető legyen az árlistára vagy egy iroda által jóváhagyott egyedi sorra. A hiányzó járda-megfeleltetéseket a véglegesített sablonok előtt rendezni kell.
+
+## 0.3.0 megvalósítási frissítés – 2026. november 1.
+
+Az eredeti munkafüzet ismételt, csak olvasó ellenőrzése azonos forráslenyomatot és 163 / 22 / 3 darabszámot adott. Az új motor mind a 163 árlistasornál egyező alapár-szorzást adott. A második mértékegység nélküli és két mennyiséges eset külön tesztelt; a PDF első mennyisége nem keveredik a szorzott árazási tényezővel.
+
+Az öt járdasablonsor pontos típusát a megrendelő kifejezett válasza szerint az ERP-ben választja ki. Az Excelből nem vettünk át KAP/Árajánlat-adatot vagy készítői feliratot. A részletes új működés: [Árajánlatmodul](arajanlatmodul.md). A felhős adatbázis-telepítés külön jóváhagyásra vár.

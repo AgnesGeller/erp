@@ -4,6 +4,15 @@
 
 Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációjának önálló helye. A követelmény az eredeti, 15 oldalas fejlesztői PDF teljes funkcióköre, a kiegészítésben és a megrendelővel egyeztetett módosításokkal.
 
+## Árajánlatmodul – 0.3.0
+
+Az árajánlat-szerkesztő, az Excel-alapú árlista/sablonkezelő és az ügyfél-PDF elkészült. **A konkrét élesítést a megrendelő jóváhagyta; az ERP saját adatbázisa és a kiszolgáló települt. A 0.3.0 frontend közzététele a jelenlegi commit része.** A feltöltött kalkulátor 163 árazott típust, 22 kategóriát és három munkasablont ad. Az üzleti árak nem kerülnek a nyilvános repositoryba.
+
+Az új folyamat: ügyfél → pontos munkavégzési cím → főtételek és tételsorok → ellenőrzött PDF → kézi levélküldés → irodai kiküldési visszaigazolás → elfogadás → indításra váró kertépítés → külön indítás. A kézi levélküldés a megrendelő legutóbbi döntése; SMTP és automatikus e-mail-küldés nem része ennek az élesítésnek.
+
+- [Az árajánlatmodul használata és ellenőrzése](docs/arajanlatmodul.md)
+- [A jóváhagyásra előkészített adatbázis-telepítés](docs/arajanlat-adatbazis-elesites.md)
+
 ## Jelenlegi állapot – 2026. november 1.
 
 **A jelenlegi verzió 0.2.0:** az ügyfél kiválasztása után konkrét munkavégzési címhez rögzíthető kertépítési előkészítés és karbantartási igény. A karbantartást az iroda jóváhagyott munkanappal véglegesíti; utána adhatók hozzá megbízások. A kertépítés indítását az elfogadott árajánlat feltétele védi. Emellett az Ügyfelek menüben elérhető a Munkalap közös ügyfélnyilvántartása, két karaktertől ékezetfüggetlen lenyíló kereséssel, ABC-sorrendű találatokkal és összecsukható adatlapokkal. Az iroda új ügyfelet és címet vehet fel a közös listába, a külön engedélyezett új adatok mentésével. Meglévő forrásadatot nem írunk át. Ági és Tamás saját ERP-belépése és a D betűs ikon megmarad. A teljes ERP többi üzleti modulja még fejlesztés alatt áll.
@@ -30,6 +39,7 @@ Az ábra tervet mutat. A szaggatott vonalak még nem létező ERP-kapcsolatokat 
 - [A csatolt árajánlat-kalkulátor felmérése](docs/kalkulator-felmeres.md): ellenőrzött képletek, 163 árlistasor, 22 kategória, sablonok és megfeleltetési problémák.
 - [Ügyféllisták összevetése](docs/ugyfellista-egyeztetes.md): Munkalap, Kassza, Napi feladatok és ERP darabszámai, szűrései és eszközfrissítése.
 - [Ügyfélnyilvántartás és közös lista](docs/ugyfelnyilvantartas.md): használat, szinkron, engedélyezett új ügyfélmentés és hibakezelés.
+- [Árajánlatok, árlisták és sablonok](docs/arajanlatmodul.md): kalkulálás, PDF, kézi kiküldés, változatok és kertépítés-indítás.
 - [Címhez kapcsolódó munkák](docs/cimhez-kapcsolodo-munkak.md): rögzítés, karbantartás jóváhagyása, állapotok, adatvédelem és a kertépítés ajánlati feltétele.
 - [Munkánkénti szerepkörök](docs/szerepkorok.md): Építésvezető, Karbantartásvezető, Kertépítő, Kertész; szerveroldali korlátok és ellenőrzések.
 - [Aktuális irodai belépés](docs/irodai-belepes.md): Ági és Tamás saját ERP-fiókja, megjegyzett munkamenet, ellenőrzés.

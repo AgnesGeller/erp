@@ -91,6 +91,7 @@ export function createCustomerDirectory(options:Options){
    const org=input.organization_id;
    if(!uuid(org)||!Array.isArray(memberships)||!memberships.some(m=>m.organization_id===org&&m.is_office===true))throw new DirectoryError(403,'Irodai jogosultság szükséges.');
    if(!options.sourceKey||!options.key)throw new DirectoryError(503,'A közös ügyféllista adatkapcsolata még nem érhető el.');
+   if(input.action==='quote_context'){const data=await workSites(org,actor,input.customer_id);const details=(await sourceRows('customer_details',{customer_id:'eq.'+input.customer_id}))[0]??{};const profiles=await rpc('erp_customer_sync',{p_org:org,p_actor:actor,p_items:[{id:input.customer_id,full_name:data.customer_name}]},'',true) as Row[];const profile=profiles[0]??{};return {data:{...data,email:details.email??'',phone:details.phone??'',tax_number:details.tax_number??'',billing_name:profile.billing_name??'',billing_address:profile.billing_address??''}};}
    if(input.action==='work_sites')return {data:await workSites(org,actor,input.customer_id)};
    if(input.action==='work_create'){
     if(!uuid(input.request_id)||!input.payload||typeof input.payload!=='object'||Array.isArray(input.payload))throw new DirectoryError(422,'Érvénytelen munkaadatok.');

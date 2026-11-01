@@ -1,4 +1,5 @@
-type GatewayOptions = { url: string; anonKey: string; serviceKey?: string; emailFlowsEnabled?: boolean; fetchImpl?: typeof fetch; customers?: (input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}> };
+type FeatureHandler=(input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}>;
+type GatewayOptions = { quotes?:FeatureHandler; url: string; anonKey: string; serviceKey?: string; emailFlowsEnabled?: boolean; fetchImpl?: typeof fetch; customers?: (input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}> };
 const allowedOrigins = new Set(['https://agnesgeller.github.io','http://127.0.0.1:5194','http://localhost:5194']);
 const allowedRpc = new Set(['erp_session','erp_list_people','erp_create_worker_request','erp_list_projects','erp_list_assignments','erp_assign_project_role','erp_revoke_assignment','erp_customer_profile_save','erp_project_role_access','erp_list_site_works','erp_site_work_action']);
 type TokenResult = { access_token: string; refresh_token: string; expires_in: number };
@@ -159,6 +160,13 @@ export function createGateway(options: GatewayOptions): (req: Request) => Promis
         const {response}=await call('/auth/v1/logout?scope=local',{},token);
         if (!response.ok && response.status!==401) throw new GatewayError(503,'A kijelentkezés visszaigazolása nem érkezett meg.');
         return reply({success:true});
+      }
+      if(typeof input.action==='string'&&input.action.startsWith('quote_')){
+        if(!options.quotes)return reply({error:'Az ajánlati szolgáltatás nem érhető el.'},503);
+        const {response:verified,data:actor}=await call('/auth/v1/user',undefined,token);
+        if(!verified.ok||!actor||typeof actor!=='object'||!('id'in actor))return reply({error:'A munkamenet lejárt. Jelentkezz be újra.'},401);
+        const memberships=await rpc('erp_session',{},token);const result=await options.quotes(input,token,String(actor.id),memberships);
+        return reply(result.error?{error:result.error}:{data:result.data},result.status??200);
       }
       if (['customers_list','customer_create','customer_resume','work_sites','work_create','work_confirm'].includes(String(input.action))) {
         if(!options.customers)return reply({error:'Az ügyfélnyilvántartás most nem érhető el.'},503);

@@ -1,15 +1,18 @@
 import type { OrganizationSession } from './erp-api.js';
 const setupOpening=new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
-const apiUrl=new URL('./erp-api.js?v=0.2.0',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.2.0',import.meta.url);
+const apiUrl=new URL('./erp-api.js?v=0.3.0',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.3.0',import.meta.url);
 const {ErpApi,ApiError}=await import(apiUrl.href) as typeof import('./erp-api.js');
 const {projectPeriod,todayBudapest,periodLabel}=await import(datesUrl.href) as typeof import('./erp-dates.js');
-const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.2.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
+const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.3.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
 const api=new ErpApi();
-const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.2.0',import.meta.url).href) as typeof import('./erp-customers.js');
-const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.2.0',import.meta.url).href) as typeof import('./erp-site-works.js');
-const customers=new CustomerDirectory(api,error=>{if(!api.signedIn)showError(error);},(id,name)=>{void works.selectCustomer(id,name);});
+const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.3.0',import.meta.url).href) as typeof import('./erp-customers.js');
+const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.3.0',import.meta.url).href) as typeof import('./erp-site-works.js');
+const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.3.0',import.meta.url).href) as typeof import('./erp-quotes.js');
+const customers=new CustomerDirectory(api,error=>{if(!api.signedIn)showError(error);},(id,name)=>{void works.selectCustomer(id,name);},(id,name)=>{void quotes.selectCustomer(id,name);});
 const works=new SiteWorks(api,error=>{if(!api.signedIn)showError(error);},loadWorkspace,()=>{customers.open();get<HTMLInputElement>('customer-search').focus();});
+const quotes=new QuoteDesk(api,error=>{if(!api.signedIn)showError(error);},()=>{customers.open();get<HTMLInputElement>('customer-search').focus();},loadWorkspace);
+for(const id of ['show-customers','show-team','show-works','show-quotes','show-prices'])document.getElementById(id)!.addEventListener('click',event=>{if(!quotes.leave()||((id==='show-quotes'||id==='show-prices')&&(!customers.leave()||!works.leave()))){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
 for(const id of ['show-customers','show-team'])document.getElementById(id)!.addEventListener('click',event=>{if(!works.leave()){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
 document.getElementById('show-works')!.addEventListener('click',event=>{if(!customers.leave()){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
 const get=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -40,7 +43,7 @@ function formBusy(form:HTMLFormElement,busy:boolean):void {
 }
 function resetView():void {
  get('office-status').textContent='';get('login-feedback').textContent='';
- generation++;customers.reset();works.reset();current=undefined;people=[];projects=[];dirty=false;workerRequest=undefined;
+ generation++;customers.reset();works.reset();quotes.reset();current=undefined;people=[];projects=[];dirty=false;workerRequest=undefined;
  get('office-app').hidden=true;get('login-area').hidden=false;get('public-identity').hidden=false;get('logout').hidden=true;
  for(const id of ['people-list','assignment-list','project-select','assignment-person','organization-select'])get(id).replaceChildren();
  workerForm.reset();roleForm.reset();get<HTMLInputElement>('login-password').value='';
@@ -124,6 +127,7 @@ async function loadWorkspace():Promise<void> {
   projectSelect.disabled=!projects.some(p=>p.active);
   get('office-app').hidden=false;get('login-area').hidden=true;get('public-identity').hidden=true;get('logout').hidden=false;
   await loadAssignments();
+  quotes.setOrganization(current.is_office?current.organization_id:undefined);
   works.setOrganization(current.is_office?current.organization_id:undefined);
   await customers.setOrganization(current.is_office?current.organization_id:undefined);
  }finally{loading=false;get<HTMLSelectElement>('organization-select').disabled=false;projectSelect.disabled=!projects.some(p=>p.active);}
@@ -168,8 +172,8 @@ roleForm.addEventListener('submit',async event=>{
  finally{mutations--;formBusy(roleForm,false);}
 });
 get('logout').addEventListener('click',async()=>{
- if(mutations||loading||customers.busy||works.busy){message('Várd meg a folyamatban lévő művelet végét.');return;}
- if((dirty||customers.dirty||works.dirty)&&!confirm('Kijelentkezel? A még nem mentett mezők tartalma elvész.'))return;
+ if(mutations||loading||customers.busy||works.busy||quotes.busy){message('Várd meg a folyamatban lévő művelet végét.');return;}
+ if((dirty||customers.dirty||works.dirty||quotes.dirty)&&!confirm('Kijelentkezel? A még nem mentett mezők tartalma elvész.'))return;
  generation++;
  try{await api.logout();resetView();message('Sikeres kijelentkezés.',true);}catch(error){resetView();showError(error);}
 });
@@ -178,10 +182,10 @@ projectSelect.addEventListener('change',()=>{loadAssignments().catch(showError);
 get('organization-select').addEventListener('change',()=>{if(!mutations)loadWorkspace().catch(showError);});
 for(const form of [workerForm,roleForm])form.addEventListener('input',()=>{dirty=true;});
 window.addEventListener('erp:before-update',event=>{
- if(mutations||loading||restoring||customers.busy||works.busy){event.preventDefault();message('Várd meg a folyamatban lévő művelet végét.');}
- else if((dirty||customers.dirty||works.dirty)&&!confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))event.preventDefault();
+ if(mutations||loading||restoring||customers.busy||works.busy||quotes.busy){event.preventDefault();message('Várd meg a folyamatban lévő művelet végét.');}
+ else if((dirty||customers.dirty||works.dirty||quotes.dirty)&&!confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))event.preventDefault();
 });
-window.addEventListener('focus',()=>{if(api.signedIn&&!mutations&&!dirty&&!customers.dirty&&!works.dirty&&!customers.busy&&!works.busy)loadWorkspace().catch(showError);});
+window.addEventListener('focus',()=>{if(api.signedIn&&!mutations&&!dirty&&!customers.dirty&&!works.dirty&&!quotes.dirty&&!customers.busy&&!works.busy&&!quotes.busy)loadWorkspace().catch(showError);});
 get<HTMLInputElement>('assignment-from').value=todayBudapest();
 async function restoreOffice():Promise<void> {
  if(setupOpening||restoring||api.signedIn)return;restoring=true;const epoch=generation;formBusy(loginForm,true);

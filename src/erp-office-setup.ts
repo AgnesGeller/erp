@@ -1,7 +1,7 @@
 const setupParams=new URLSearchParams(location.hash.slice(1));
 const setupToken=setupParams.get('office_setup');const setupName=setupParams.get('manager');
 if(setupToken!==null){document.documentElement.dataset.erpSetup='true';history.replaceState(null,'',location.pathname+location.search);}
-const setupApiUrl=new URL('./erp-api.js?v=0.2.0',import.meta.url);
+const setupApiUrl=new URL('./erp-api.js?v=0.3.0',import.meta.url);
 const {ErpApi}=await import(setupApiUrl.href) as typeof import('./erp-api.js');
 const setupApi=new ErpApi();
 const setupGet=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;

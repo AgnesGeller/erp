@@ -1,12 +1,12 @@
 {
   "name": "diszkertek-erp",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node node_modules/typescript/bin/tsc",
     "check": "node node_modules/typescript/bin/tsc --noEmit",
-    "test": "node --test tests/pwa.test.mjs tests/database.test.mjs tests/gateway.test.mjs tests/erp-api.test.mjs tests/office-login.test.mjs tests/customers-database.test.mjs tests/customers-gateway.test.mjs tests/customers-ui.test.mjs tests/project-roles.test.mjs tests/project-roles-ui.test.mjs",
+    "test": "node --test tests/pwa.test.mjs tests/database.test.mjs tests/gateway.test.mjs tests/erp-api.test.mjs tests/office-login.test.mjs tests/customers-database.test.mjs tests/customers-gateway.test.mjs tests/customers-ui.test.mjs tests/project-roles.test.mjs tests/project-roles-ui.test.mjs tests/site-works-database.test.mjs tests/site-works-gateway.test.mjs tests/site-works-ui.test.mjs",
     "check:edge": "node node_modules/typescript/bin/tsc --noEmit --strict --target ES2022 --module ES2022 --lib ES2022,DOM supabase/functions/erp-gateway/handler.ts supabase/functions/erp-gateway/customers.ts"
   },
   "devDependencies": {

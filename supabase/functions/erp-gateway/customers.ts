@@ -24,7 +24,7 @@ export function createCustomerDirectory(options:Options){
   let r:Response;
   try{r=await requestFetch(url,{method,headers:{...headers,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(15000)});}catch{throw new DirectoryError(503,'Az ügyfélnyilvántartás most nem érhető el. A megkezdett mentést később folytathatod.');}
   let data:unknown;try{data=await r.json();}catch{throw new DirectoryError(503,'Az ügyfélnyilvántartás válasza nem olvasható.');}
-  if(!r.ok){const code=data&&typeof data==='object'?'code'in data?String(data.code):'':'';throw new DirectoryError(r.status===409||code==='23505'||code==='40001'?409:r.status===403||code==='42501'?403:503,r.status===409||code==='23505'||code==='40001'?'Az ügyfél már létezik, vagy az adatai időközben megváltoztak. Frissítsd a listát.':r.status===403||code==='42501'?'Irodai jogosultság szükséges.':'Az ügyféladatok mentése vagy betöltése nem sikerült. A mentést újrapróbálhatod.');}
+  if(!r.ok){const validation=data&&typeof data==='object'&&'code'in data&&['22023','23514','23503','22P02','22007','22008'].includes(String(data.code));if(validation)throw new DirectoryError(422,'Ellenőrizd az adatokat és a munkavégzési címet, majd frissítsd a listát.');const code=data&&typeof data==='object'?'code'in data?String(data.code):'':'';throw new DirectoryError(r.status===409||code==='23505'||code==='40001'?409:r.status===403||code==='42501'?403:503,r.status===409||code==='23505'||code==='40001'?'Az ügyfél már létezik, vagy az adatai időközben megváltoztak. Frissítsd a listát.':r.status===403||code==='42501'?'Irodai jogosultság szükséges.':'Az ügyféladatok mentése vagy betöltése nem sikerült. A mentést újrapróbálhatod.');}
   return data;
  }
  const ownHeaders=(token:string)=>({apikey:options.key,Authorization:'Bearer '+token});
@@ -78,11 +78,38 @@ export function createCustomerDirectory(options:Options){
   await rpc('erp_customer_finish',{p_org:org,p_actor:actor,p_request:saved.request_id},'',true);
   return {customer_id:customerId};
  }
+ async function workSites(org:string,actor:string,customerId:unknown){
+  if(!uuid(customerId))throw new DirectoryError(422,'Válassz ügyfelet.');
+  const customers=await sourceRows('customers',{id:'eq.'+customerId});const customer=customers[0];
+  if(!customer||customer.active!==true||customer.review_status!=='approved'||customer.archived_at)throw new DirectoryError(422,'Aktív, jóváhagyott ügyfelet válassz.');
+  const locations=await sourceRows('customer_locations',{customer_id:'eq.'+customerId},true);
+  const sites=await rpc('erp_sync_work_sites',{p_org:org,p_actor:actor,p_customer:customer,p_locations:locations},'',true);
+  return {customer_id:customerId,customer_name:customer.full_name,sites};
+ }
  return async(input:Row,token:string,actor:string,memberships:unknown):Promise<{data?:unknown;error?:string;status?:number}>=>{
   try{
    const org=input.organization_id;
    if(!uuid(org)||!Array.isArray(memberships)||!memberships.some(m=>m.organization_id===org&&m.is_office===true))throw new DirectoryError(403,'Irodai jogosultság szükséges.');
    if(!options.sourceKey||!options.key)throw new DirectoryError(503,'A közös ügyféllista adatkapcsolata még nem érhető el.');
+   if(input.action==='work_sites')return {data:await workSites(org,actor,input.customer_id)};
+   if(input.action==='work_create'){
+    if(!uuid(input.request_id)||!input.payload||typeof input.payload!=='object'||Array.isArray(input.payload))throw new DirectoryError(422,'Érvénytelen munkaadatok.');
+    const p=input.payload as Row;
+    if(!uuid(p.customer_id)||!uuid(p.location_id)||!['construction','maintenance'].includes(String(p.work_type))||typeof p.name!=='string'||p.name.trim().length<2||p.name.trim().length>200||typeof p.description!=='string'||p.description.length>4000)throw new DirectoryError(422,'Add meg az ügyfelet, címet, munkatípust és a munka nevét.');
+    const day=String(p.requested_date??'');const people=String(p.people??'');const hours=String(p.hours??'');
+    if(day&&(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(Date.parse(day))||new Date(day).toISOString().slice(0,10)!==day))throw new DirectoryError(422,'Érvénytelen kért időpont.');
+    if(people&&(!/^\d+$/.test(people)||Number(people)<1||Number(people)>1000)||hours&&(!/^\d+(?:\.\d{1,2})?$/.test(hours)||Number(hours)<=0||Number(hours)>10000))throw new DirectoryError(422,'Ellenőrizd a létszámot és az óraszámot.');
+    const payload={customer_id:p.customer_id,location_id:p.location_id,work_type:p.work_type,name:p.name.trim(),description:p.description.trim(),requested_date:day,people,hours};
+    await workSites(org,actor,p.customer_id);
+    return {data:await rpc('erp_create_site_work',{p_org:org,p_request:input.request_id,p_data:payload},token)};
+   }
+   if(input.action==='work_confirm'){
+    if(!uuid(input.work_id)||!Number.isSafeInteger(input.revision)||typeof input.day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(input.day)||!Number.isFinite(Date.parse(input.day))||new Date(input.day).toISOString().slice(0,10)!==input.day)throw new DirectoryError(422,'Add meg a jóváhagyott munkanapot.');
+    const rows=await rpc('erp_list_site_works',{p_org:org},token) as Row[];const work=rows.find(w=>w.id===input.work_id);
+    if(!work)throw new DirectoryError(403,'A munka nem érhető el.');
+    await workSites(org,actor,work.customer_id);
+    return {data:await rpc('erp_site_work_action',{p_org:org,p_work:input.work_id,p_revision:input.revision,p_action:'confirm',p_day:input.day},token)};
+   }
    if(input.action==='customer_create'){
     if(!uuid(input.request_id))throw new DirectoryError(422,'A mentés azonosítója hibás.');
     const payload=customerPayload(input.payload);

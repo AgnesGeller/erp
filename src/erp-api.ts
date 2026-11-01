@@ -88,7 +88,7 @@ export class ErpApi {
     }
     catch(error) {if(error instanceof ApiError&&(error.status===401||(name==='erp_session'&&error.status===403))&&epoch===this.epoch)this.clear();throw error;}
   }
-  async customers<T>(action:'customers_list'|'customer_create'|'customer_resume',args:Record<string,unknown>):Promise<T> {
+  async customers<T>(action:'customers_list'|'customer_create'|'customer_resume'|'work_sites'|'work_create'|'work_confirm',args:Record<string,unknown>):Promise<T> {
     const epoch=this.epoch;const token=await this.accessToken();
     if(epoch!==this.epoch||!this.tokens)throw new ApiError('A munkamenet megváltozott.',401);
     try{const result=await this.request<{data:T}>({action,...args},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}

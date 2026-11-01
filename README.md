@@ -6,7 +6,7 @@ Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációján
 
 ## Jelenlegi állapot – 2026. november 1.
 
-**A jelenlegi verzió 0.1.9:** a Személyek menüben elérhető a Munkalap közös ügyfélnyilvántartása, két karaktertől ékezetfüggetlen lenyíló kereséssel, ABC-sorrendű találatokkal és összecsukható adatlapokkal. Az iroda új ügyfelet és címet vehet fel a közös listába, a külön engedélyezett új adatok mentésével. Meglévő forrásadatot nem írunk át. Ági és Tamás saját ERP-belépése és a D betűs ikon megmarad. A teljes ERP többi üzleti modulja még fejlesztés alatt áll.
+**A jelenlegi verzió 0.2.0:** az ügyfél kiválasztása után konkrét munkavégzési címhez rögzíthető kertépítési előkészítés és karbantartási igény. A karbantartást az iroda jóváhagyott munkanappal véglegesíti; utána adhatók hozzá megbízások. A kertépítés indítását az elfogadott árajánlat feltétele védi. Emellett az Ügyfelek menüben elérhető a Munkalap közös ügyfélnyilvántartása, két karaktertől ékezetfüggetlen lenyíló kereséssel, ABC-sorrendű találatokkal és összecsukható adatlapokkal. Az iroda új ügyfelet és címet vehet fel a közös listába, a külön engedélyezett új adatok mentésével. Meglévő forrásadatot nem írunk át. Ági és Tamás saját ERP-belépése és a D betűs ikon megmarad. A teljes ERP többi üzleti modulja még fejlesztés alatt áll.
 
 [Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
 
@@ -30,6 +30,7 @@ Az ábra tervet mutat. A szaggatott vonalak még nem létező ERP-kapcsolatokat 
 - [A csatolt árajánlat-kalkulátor felmérése](docs/kalkulator-felmeres.md): ellenőrzött képletek, 163 árlistasor, 22 kategória, sablonok és megfeleltetési problémák.
 - [Ügyféllisták összevetése](docs/ugyfellista-egyeztetes.md): Munkalap, Kassza, Napi feladatok és ERP darabszámai, szűrései és eszközfrissítése.
 - [Ügyfélnyilvántartás és közös lista](docs/ugyfelnyilvantartas.md): használat, szinkron, engedélyezett új ügyfélmentés és hibakezelés.
+- [Címhez kapcsolódó munkák](docs/cimhez-kapcsolodo-munkak.md): rögzítés, karbantartás jóváhagyása, állapotok, adatvédelem és a kertépítés ajánlati feltétele.
 - [Munkánkénti szerepkörök](docs/szerepkorok.md): Építésvezető, Karbantartásvezető, Kertépítő, Kertész; szerveroldali korlátok és ellenőrzések.
 - [Aktuális irodai belépés](docs/irodai-belepes.md): Ági és Tamás saját ERP-fiókja, megjegyzett munkamenet, ellenőrzés.
 - [A 0.1.4 belépési alap történeti leírása](docs/belepes-es-jogosultsagok.md): használat, adatvédelem, telepített szerveroldal, ellenőrzések és korlátok.
@@ -205,3 +206,13 @@ A külön ellenőrzés szerint a Kassza 152 aktív, nem archivált ügyfelet, a 
 A Munkák és megbízások lenyílóban **Építésvezető, Karbantartásvezető, Kertépítő és Kertész** választható. A két vezető a megfelelő munkaterületén kap vezetői jogosultságot; a két dolgozói szerep jogosultsága azonos és mindkét területen használható. Szerepet csak az iroda oszthat. Külön Projektvezető nincs.
 
 A választó és az adatbázis is ellenőrzi a munka típusát. Több vezető és több szerep lehetséges. Munka kiválasztása nélkül a szerepek megtekinthetők, de mentés nem indítható. A teljes ellenőrzés 106 sikeres teszteredményt adott. Részletek és a jelenlegi funkcióhatárok: [munkánkénti szerepkörök](docs/szerepkorok.md).
+### 0.2.0 – Munkavégzési címhez kapcsolódó munkák
+
+1. Az **Ügyfelek** menüben keress legalább két karakterrel, majd nyisd meg az ügyfelet.
+2. Kattints az **Új munka / igény ehhez az ügyfélhez** gombra, és válaszd ki a pontos munkavégzési címet.
+3. Add meg a típust, a megnevezést és a feladatot. A kért nap, létszám és óraszám külön lenyílóban adható meg. Mentsd az igényt.
+4. A **Munkák** menüben nyisd le a rögzített tételt. Karbantartásnál add meg a jóváhagyott napot, és hagyd jóvá. Ezután a Munkatársak és megbízások résznél kioszthatók a szerepek.
+
+A kertépítési előkészítés nem indít el munkavégzést: a PDF 12. pontja szerinti elfogadott árajánlat és külön indítás szükséges. Az ajánlatmodul még nem készült el, ezért ennek megkerülését a kiszolgáló és az adatbázis is tiltja. A karbantartási igény a PDF 18. pontja szerinti irodai jóváhagyással véglegesíthető. Naptári kapacitásfoglalást ez a lépés nem végez.
+
+Az új munkák kizárólag az ERP-ben keletkeznek. A közös ügyfél- és címlistát ehhez csak olvassuk; a régi Munkalapba munkát, megbízást vagy állapotot nem írunk. A többi eszköz a központi ERP-adatokat újranyitáskor, fókuszváltáskor vagy a Lista frissítése gombbal tölti be. Nem mentett űrlapot nem írunk felül. A korábbi ügyfélszámok dátumozott ellenőrzési eredmények; a közös lista a napi használat során változhat.

@@ -23,11 +23,11 @@
 <link rel="canonical" href="https://agnesgeller.github.io/erp/">
 <link rel="icon" type="image/png" href="./assets/favicon-d-v1.png">
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon-d-v1.png">
-<link rel="manifest" href="./manifest.webmanifest?v=0.1.9"><link rel="stylesheet" href="./assets/style.css?v=0.1.9">
-<script type="module" src="./assets/js/main.js?v=0.1.9"></script>
-<script type="module" src="./assets/js/erp-office.js?v=0.1.9"></script>
+<link rel="manifest" href="./manifest.webmanifest?v=0.2.0"><link rel="stylesheet" href="./assets/style.css?v=0.2.0">
+<script type="module" src="./assets/js/main.js?v=0.2.0"></script>
+<script type="module" src="./assets/js/erp-office.js?v=0.2.0"></script>
 
-<script type="module" src="./assets/js/erp-office-setup.js?v=0.1.9"></script>
+<script type="module" src="./assets/js/erp-office-setup.js?v=0.2.0"></script>
 </head>
 <body>
 <header><a class="brand" href="./" aria-label="Díszkertek kezdőlap"><img src="./assets/logo.png" width="52" height="52" alt=""><span>DÍSZKERTEK</span></a>
@@ -76,7 +76,7 @@
 <section id="office-app" class="workspace" hidden aria-labelledby="workspace-title">
 <div class="workspace-heading"><div><p class="eyebrow" id="workspace-role">Irodai munkatér</p><h1 id="workspace-title">DÍSZKERTEK</h1></div><button type="button" id="reload-workspace" class="secondary">Lista frissítése</button></div>
 <label id="organization-label" hidden>Szervezet<select id="organization-select"></select></label>
-<nav id="people-navigation" class="workspace-tabs" aria-label="Személyek" hidden><span>Személyek</span><button type="button" id="show-customers" aria-pressed="true">Ügyfelek</button><button type="button" id="show-team" aria-pressed="false">Munkatársak és megbízások</button></nav>
+<nav id="people-navigation" class="workspace-tabs" aria-label="Irodai menü" hidden><span>Irodai menü</span><button type="button" id="show-customers" aria-pressed="true">Ügyfelek</button><button type="button" id="show-team" aria-pressed="false">Munkatársak és megbízások</button><button type="button" id="show-works" aria-pressed="false">Munkák</button></nav>
 <section id="customer-view" hidden aria-labelledby="customers-title">
 <div class="customer-toolbar"><h2 id="customers-title">Ügyfelek</h2><div><button type="button" id="customer-new">+ Új ügyfél</button><button type="button" id="customer-refresh" class="secondary">Adatok frissítése</button></div></div>
 <p id="customer-directory-total" class="field-help"></p><p id="customer-status" class="office-status" role="status" aria-live="polite"></p><div id="customer-pending"></div>
@@ -100,6 +100,21 @@
 </details><button type="submit">Ügyfél mentése</button><button type="button" id="customer-new-cancel" class="secondary">Bezárás</button>
 <p class="field-help">Az ügyfél felvétele nem hoz létre belépési fiókot. Az e-mail és a telefon később is pótolható a közös nyilvántartásban.</p>
 </fieldset></form></details>
+</section>
+<section id="work-view" hidden aria-labelledby="works-title">
+<div class="customer-toolbar"><h2 id="works-title">Munkák és igények</h2><div><button id="work-choose-customer" type="button">+ Ügyfél kiválasztása</button><button id="work-refresh" type="button" class="secondary">Lista frissítése</button></div></div>
+<p id="work-feedback" class="office-status" role="status" aria-live="polite"></p>
+<details id="work-new-panel" class="erp-disclosure" hidden><summary>Új munka / igény – <span id="work-customer-name"></span></summary>
+<form id="work-new-form"><fieldset><legend class="sr-only">Címhez kapcsolódó munka</legend>
+<label for="work-location">Munkavégzési cím</label><select id="work-location" required></select>
+<label for="work-type">Munka típusa</label><select id="work-type"><option value="construction">Kertépítési előkészítés</option><option value="maintenance">Kertkarbantartási igény</option></select>
+<p class="field-help">A kertépítés elfogadott árajánlatból, külön indítással indulhat. A karbantartási igényt az iroda hagyja jóvá.</p>
+<label for="work-name">Munka megnevezése</label><input id="work-name" required minlength="2" maxlength="200">
+<label for="work-description">Feladat leírása</label><textarea id="work-description" rows="3" maxlength="4000"></textarea>
+<details class="erp-disclosure"><summary>Kért időpont, létszám és időtartam</summary><label for="work-requested-day">Kért nap – nem végleges foglalás</label><input id="work-requested-day" type="date"><div class="work-fields"><div><label for="work-people">Kért létszám (fő)</label><input id="work-people" type="number" min="1" max="1000" step="1"></div><div><label for="work-hours">Kért időtartam (óra)</label><input id="work-hours" type="number" min="0.01" max="10000" step="0.01"></div></div></details>
+<button id="work-save" type="submit">Igény mentése</button><button id="work-new-cancel" type="button" class="secondary">Bezárás</button>
+</fieldset></form></details>
+<details class="erp-disclosure"><summary>Munkák keresése és szűrése <small id="work-count"></small></summary><label for="work-search">Munka, ügyfél vagy cím keresése</label><input id="work-search" type="search" maxlength="200"><label for="work-status-filter">Állapot</label><select id="work-status-filter"><option value="">Minden állapot</option><option value="preparation">Kertépítési előkészítés</option><option value="requested">Jóváhagyásra váró karbantartás</option><option value="confirmed">Jóváhagyott karbantartás</option><option value="cancelled">Visszavont igény</option></select></details><div id="work-list"></div>
 </section>
 <div class="workspace-columns" id="team-view" hidden>
 <section id="people-section" aria-labelledby="people-title"><details class="erp-disclosure" open><summary id="people-title">Munkatársak</summary><label class="sr-only" for="people-list">Munkatárs kiválasztása</label><select id="people-list" aria-label="Munkatárs kiválasztása"></select></details><details class="erp-disclosure"><summary>Új munkatárs</summary>

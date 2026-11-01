@@ -4,6 +4,7 @@ function text(tag, value) { const item = document.createElement(tag); item.textC
 export class CustomerDirectory {
     api;
     authError;
+    startWork;
     suggestionsOpen = false;
     org;
     epoch = 0;
@@ -21,9 +22,10 @@ export class CustomerDirectory {
     timer;
     newForm = node('customer-new-form');
     profileForm = node('customer-profile-form');
-    constructor(api, authError) {
+    constructor(api, authError, startWork) {
         this.api = api;
         this.authError = authError;
+        this.startWork = startWork;
         node('show-customers').addEventListener('click', () => this.open());
         node('show-team').addEventListener('click', () => this.team());
         node('customer-new').addEventListener('click', () => this.startNew());
@@ -81,15 +83,17 @@ export class CustomerDirectory {
     } node('people-navigation').hidden = !org; if (!org) {
         node('team-view').hidden = false;
         return;
-    } if (!node('team-view').hidden)
+    } if (!node('team-view').hidden || !node('work-view').hidden)
         return; node('customer-view').hidden = false; if (!this.dirty && !this.busy)
         await this.load(); }
     confirmLeave() { return !this.dirty || confirm('A még nem mentett ügyféladatok elvesznek. Folytatod?'); }
     open() { if (this.busy)
-        return; node('team-view').hidden = true; node('customer-view').hidden = false; node('show-customers').setAttribute('aria-pressed', 'true'); node('show-team').setAttribute('aria-pressed', 'false'); if (this.org)
+        return; node('work-view').hidden = true; node('show-works').setAttribute('aria-pressed', 'false'); node('team-view').hidden = true; node('customer-view').hidden = false; node('show-customers').setAttribute('aria-pressed', 'true'); node('show-team').setAttribute('aria-pressed', 'false'); if (this.org)
         void this.load(); }
     team() { if (this.busy || !this.confirmLeave())
-        return; this.closeForm(true); node('customer-view').hidden = true; node('team-view').hidden = false; node('show-customers').setAttribute('aria-pressed', 'false'); node('show-team').setAttribute('aria-pressed', 'true'); }
+        return; node('work-view').hidden = true; node('show-works').setAttribute('aria-pressed', 'false'); this.closeForm(true); node('customer-view').hidden = true; node('team-view').hidden = false; node('show-customers').setAttribute('aria-pressed', 'false'); node('show-team').setAttribute('aria-pressed', 'true'); }
+    leave() { if (this.busy || !this.confirmLeave())
+        return false; this.closeForm(true); return true; }
     closeForm(force = false) { if (this.saving || (!force && !this.confirmLeave()))
         return; this.editing = false; this.creating = false; this.createRequest = undefined; this.createPayload = undefined; this.newForm.reset(); this.unlockNew(); node('customer-new-panel').hidden = true; node('customer-profile-panel').hidden = true; }
     unlockNew() { for (const input of Array.from(this.newForm.querySelectorAll('input,select,textarea')))
@@ -210,6 +214,15 @@ export class CustomerDirectory {
         }
         const panel = node('customer-details');
         panel.replaceChildren();
+        if (this.startWork && customer.active && customer.review_status === 'approved' && !customer.archived_at) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'quiet';
+            button.textContent = 'Új munka / igény ehhez az ügyfélhez';
+            button.addEventListener('click', () => { if (this.leave())
+                this.startWork(customer.id, customer.full_name); });
+            panel.append(button);
+        }
         const terms = { 'Típus': customer.details.customer_type ?? '', 'Kapcsolattartó': customer.details.contact_name ?? '', 'Telefon': customer.details.phone ?? '', 'E-mail': customer.details.email ?? '', 'Adószám': customer.details.tax_number ?? '' };
         const details = document.createElement('dl');
         for (const [label, value] of Object.entries(terms))

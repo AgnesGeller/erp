@@ -1,9 +1,9 @@
-const linkModule = new URL('./erp-auth-link.js?v=0.1.9', import.meta.url);
+const linkModule = new URL('./erp-auth-link.js?v=0.2.0', import.meta.url);
 const { readAuthLink } = await import(linkModule.href);
 const callback = readAuthLink(location.href);
 if (callback.recognized)
     history.replaceState(null, '', callback.cleanedUrl);
-const apiModule = new URL('./erp-api.js?v=0.1.9', import.meta.url);
+const apiModule = new URL('./erp-api.js?v=0.2.0', import.meta.url);
 const { ErpApi } = await import(apiModule.href);
 const api = new ErpApi();
 const el = (id) => document.getElementById(id);

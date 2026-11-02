@@ -67,3 +67,7 @@ Ellenőrzés: 175 sikeres teszteredmény; TypeScript-fordítás és gateway/MI-k
 Források a szolgáltatás kiválasztásához: [Groq beszédfelismerés](https://console.groq.com/docs/speech-to-text), [csomagok és számlázás](https://console.groq.com/docs/billing-faqs), [korlátok](https://console.groq.com/docs/rate-limits), [adatkezelés](https://console.groq.com/docs/your-data), [Whisper nyelvek](https://github.com/openai/whisper/blob/main/whisper/tokenizer.py). A szöveges jegyzetek és média közötti különbség, valamint a kézi/MI működés a fejlesztői PDF 7. pontjára és a megrendelő legutóbbi fájltárolási döntésére épül.
 
 A 0.4.1 kiadás a fókuszváltások utáni teljes munkatérfrissítést 30 másodperces időközzel korlátozza. A gyors ismételt fókuszváltás nem indít újra folyton egy betöltést, ezért a menügombot nem blokkolja újra ugyanaz a háttérolvasás. A kézi frissítés változatlan. A 473f641 alapkiadás GitHub Pages közzététele sikeres volt; a 0.4.1 ezt a célzott javítást tartalmazza.
+
+### Nyitott éles ellenőrzés
+
+A 0.4.1 Pages-közzététel sikeres és a menüpont megjelenik, de a menü megnyitásának utolsó éles UI-próbája még függőben van. A helyi próba nem helyettesíti ezt. A tesztlap lehetséges megerősítésének elfogadását az automatikus jóváhagyás nem engedte; a felhasználó távollétében itt megálltunk. A részletes körülményeket a fejlesztési napló rögzíti.

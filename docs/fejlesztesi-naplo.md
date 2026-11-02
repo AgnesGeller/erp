@@ -231,3 +231,7 @@ A megrendelő kérésére a README rövid áttekintésre, használati hivatkozá
 - Kézi ajánlatátadás: szinkron után önálló ajánlati piszkozat, másolt főtételek/méretek/belső jegyzet/fájlkapcsolat és eredeti felmérés-verzió. Ár nem keletkezik találgatásból.
 - 173 sikeres teszt, frontend-fordítás és kiszolgálói típusellenőrzés. Az elkülönített böngészős próba igazolta a szöveg és fotó helyi megmaradását újranyitás után és az ajánlatba átadást. Nem használt éles ügyfelet vagy valódi külső MI-t. A böngésző fájlkezelési automatizálása több alkalommal hosszú várakozást okozott; ezt nem az alkalmazás sikerjelzésének tekintettük.
 - A README rövid marad; a használat, telepítés, titokbeállítás, tesztek és tényleges korlátok a felmeresek.md dokumentumban vannak. Teljesen bezárt alkalmazás offline belépése, folyamatos élő átirat és automatikus, árlistához illesztett MI-ajánlat még hátravan. Ezeket nem jelöltük késznek.
+
+## 2026. november 2. – 0.4.1: fókuszváltás és menükattintás
+
+Az éles böngészős ellenőrzésben az ismétlődő fókuszváltás teljes munkatérfrissítést indított, amely a betöltés idejére megfoghatta a Felmérések menügombot. A fókusz által kért frissítés most legalább 30 másodperces időközt tart; a kézi frissítés nem korlátozott. Két új, a tényleges eseménykezelőt futtató teszt ellenőrzi a gyors ismétlést és a folyamatban levő felmérés védelmét. Összesen 175 sikeres teszteredmény. A 473f641 alapkiadás push és Pages-közzététel kész, a célzott javítás külön commitban követi. A README 43 soros marad.

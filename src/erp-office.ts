@@ -1,15 +1,15 @@
 import type { OrganizationSession } from './erp-api.js';
 const setupOpening=new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
-const apiUrl=new URL('./erp-api.js?v=0.4.0',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.4.0',import.meta.url);
+const apiUrl=new URL('./erp-api.js?v=0.4.1',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.4.1',import.meta.url);
 const {ErpApi,ApiError}=await import(apiUrl.href) as typeof import('./erp-api.js');
 const {projectPeriod,todayBudapest,periodLabel}=await import(datesUrl.href) as typeof import('./erp-dates.js');
-const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.4.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
+const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.4.1',import.meta.url).href) as typeof import('./erp-project-roles.js');
 const api=new ErpApi();
-const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.4.0',import.meta.url).href) as typeof import('./erp-customers.js');
-const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.4.0',import.meta.url).href) as typeof import('./erp-site-works.js');
-const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.4.0',import.meta.url).href) as typeof import('./erp-quotes.js');
-const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.4.0',import.meta.url).href) as typeof import('./erp-surveys.js');
+const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.4.1',import.meta.url).href) as typeof import('./erp-customers.js');
+const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.4.1',import.meta.url).href) as typeof import('./erp-site-works.js');
+const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.4.1',import.meta.url).href) as typeof import('./erp-quotes.js');
+const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.4.1',import.meta.url).href) as typeof import('./erp-surveys.js');
 const customers=new CustomerDirectory(api,error=>{if(!api.signedIn)showError(error);},(id,name)=>{void works.selectCustomer(id,name);},(id,name)=>{void quotes.selectCustomer(id,name);},surveysEnabled?(id,name)=>{void surveys.selectCustomer(id,name);}:undefined);
 const works=new SiteWorks(api,error=>{if(!api.signedIn)showError(error);},loadWorkspace,()=>{customers.open();get<HTMLInputElement>('customer-search').focus();});
 const quotes=new QuoteDesk(api,error=>{if(!api.signedIn)showError(error);},()=>{customers.open();get<HTMLInputElement>('customer-search').focus();},loadWorkspace,media=>surveys.showMedia(media));
@@ -32,6 +32,7 @@ let generation=0;
 let mutations=0;
 let dirty=false;
 let loading=false;
+let lastWorkspaceRefresh=0;
 let restoring=false;
 let assignmentRequest=0;
 let workerRequest: {name:string;id:string}|undefined;
@@ -103,7 +104,7 @@ async function loadAssignments():Promise<void> {
  }
 }
 async function loadWorkspace():Promise<void> {
- if(loading||!api.signedIn)return;loading=true;const epoch=generation;get<HTMLSelectElement>('organization-select').disabled=true;projectSelect.disabled=true;
+ if(loading||!api.signedIn)return;loading=true;lastWorkspaceRefresh=Date.now();const epoch=generation;get<HTMLSelectElement>('organization-select').disabled=true;projectSelect.disabled=true;
  try{
   const memberships=await api.rpc<OrganizationSession[]>('erp_session');
   if(epoch!==generation)return;
@@ -190,7 +191,7 @@ window.addEventListener('erp:before-update',event=>{
  if(mutations||loading||restoring||customers.busy||works.busy||quotes.busy||surveys.busy){event.preventDefault();message('Várd meg a folyamatban lévő művelet végét.');}
  else if((dirty||customers.dirty||works.dirty||quotes.dirty||surveys.dirty)&&!confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))event.preventDefault();
 });
-window.addEventListener('focus',()=>{if(api.signedIn&&!mutations&&!dirty&&!customers.dirty&&!works.dirty&&!quotes.dirty&&!surveys.dirty&&!customers.busy&&!works.busy&&!quotes.busy&&!surveys.busy)loadWorkspace().catch(showError);});
+window.addEventListener('focus',()=>{if(Date.now()-lastWorkspaceRefresh>=30000&&api.signedIn&&!mutations&&!dirty&&!customers.dirty&&!works.dirty&&!quotes.dirty&&!surveys.dirty&&!customers.busy&&!works.busy&&!quotes.busy&&!surveys.busy)loadWorkspace().catch(showError);});
 get<HTMLInputElement>('assignment-from').value=todayBudapest();
 async function restoreOffice():Promise<void> {
  if(setupOpening||restoring||api.signedIn)return;restoring=true;const epoch=generation;formBusy(loginForm,true);

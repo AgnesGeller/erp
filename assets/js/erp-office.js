@@ -1,14 +1,14 @@
 const setupOpening = new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.4.0', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.4.0', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.4.1', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.4.1', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
-const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.4.0', import.meta.url).href);
+const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.4.1', import.meta.url).href);
 const api = new ErpApi();
-const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.4.0', import.meta.url).href);
-const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.4.0', import.meta.url).href);
-const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.4.0', import.meta.url).href);
-const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.4.0', import.meta.url).href);
+const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.4.1', import.meta.url).href);
+const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.4.1', import.meta.url).href);
+const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.4.1', import.meta.url).href);
+const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.4.1', import.meta.url).href);
 const customers = new CustomerDirectory(api, error => { if (!api.signedIn)
     showError(error); }, (id, name) => { void works.selectCustomer(id, name); }, (id, name) => { void quotes.selectCustomer(id, name); }, surveysEnabled ? (id, name) => { void surveys.selectCustomer(id, name); } : undefined);
 const works = new SiteWorks(api, error => { if (!api.signedIn)
@@ -54,6 +54,7 @@ let generation = 0;
 let mutations = 0;
 let dirty = false;
 let loading = false;
+let lastWorkspaceRefresh = 0;
 let restoring = false;
 let assignmentRequest = 0;
 let workerRequest;
@@ -186,6 +187,7 @@ async function loadWorkspace() {
     if (loading || !api.signedIn)
         return;
     loading = true;
+    lastWorkspaceRefresh = Date.now();
     const epoch = generation;
     get('organization-select').disabled = true;
     projectSelect.disabled = true;
@@ -377,7 +379,7 @@ window.addEventListener('erp:before-update', event => {
     else if ((dirty || customers.dirty || works.dirty || quotes.dirty || surveys.dirty) && !confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))
         event.preventDefault();
 });
-window.addEventListener('focus', () => { if (api.signedIn && !mutations && !dirty && !customers.dirty && !works.dirty && !quotes.dirty && !surveys.dirty && !customers.busy && !works.busy && !quotes.busy && !surveys.busy)
+window.addEventListener('focus', () => { if (Date.now() - lastWorkspaceRefresh >= 30000 && api.signedIn && !mutations && !dirty && !customers.dirty && !works.dirty && !quotes.dirty && !surveys.dirty && !customers.busy && !works.busy && !quotes.busy && !surveys.busy)
     loadWorkspace().catch(showError); });
 get('assignment-from').value = todayBudapest();
 async function restoreOffice() {

@@ -1,4 +1,4 @@
-const { validateSurvey, checkMediaBytes, surveyMime, surveyUuid } = await import(new URL('./erp-survey-model.js?v=0.4.0', import.meta.url).href);
+const { validateSurvey, checkMediaBytes, surveyMime, surveyUuid } = await import(new URL('./erp-survey-model.js?v=0.4.1', import.meta.url).href);
 const zip = async () => await import(new URL('../vendor/fflate-0.8.2.js', import.meta.url).href);
 export async function surveyHash(blob) { return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()))).map(x => x.toString(16).padStart(2, '0')).join(''); }
 export function downloadSurveyFile(blob, name) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000); }

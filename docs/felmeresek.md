@@ -1,4 +1,4 @@
-# Felmérések – 0.4.0
+# Felmérések – 0.4.1
 
 ## Mire használható?
 
@@ -62,6 +62,8 @@ A telepítés kezdetben a már meglévő, SET ROLE-t nem engedő ERP-tagság mia
 
 Új források: src/erp-surveys.ts, erp-survey-model.ts, erp-survey-store.ts, erp-survey-archive.ts; saját SQL-tervek és két saját Edge Function. A build a közös felmérés-ellenőrzőt is generálja a kiszolgálónak. Új helyi csomagtelepítés nincs; a ZIP-hez a meglévő, verziórögzített fflate használható. A service worker csak a saját statikus modulokat tárolja, ügyféladatot vagy API-választ nem.
 
-Ellenőrzés: 173 sikeres teszteredmény; TypeScript-fordítás és gateway/MI-kód típusellenőrzés; elkülönített böngészőben ár nélküli felmérés, valódi helyi IndexedDB-mentés, fotó hozzáadása, újranyitás utáni megmaradás, valamint a jegyzet és fájlkapcsolat kézi ajánlatátadása. Éles kitalált felmérés vagy ajánlat nem készült.
+Ellenőrzés: 175 sikeres teszteredmény; TypeScript-fordítás és gateway/MI-kód típusellenőrzés; elkülönített böngészőben ár nélküli felmérés, valódi helyi IndexedDB-mentés, fotó hozzáadása, újranyitás utáni megmaradás, valamint a jegyzet és fájlkapcsolat kézi ajánlatátadása. Éles kitalált felmérés vagy ajánlat nem készült.
 
 Források a szolgáltatás kiválasztásához: [Groq beszédfelismerés](https://console.groq.com/docs/speech-to-text), [csomagok és számlázás](https://console.groq.com/docs/billing-faqs), [korlátok](https://console.groq.com/docs/rate-limits), [adatkezelés](https://console.groq.com/docs/your-data), [Whisper nyelvek](https://github.com/openai/whisper/blob/main/whisper/tokenizer.py). A szöveges jegyzetek és média közötti különbség, valamint a kézi/MI működés a fejlesztői PDF 7. pontjára és a megrendelő legutóbbi fájltárolási döntésére épül.
+
+A 0.4.1 kiadás a fókuszváltások utáni teljes munkatérfrissítést 30 másodperces időközzel korlátozza. A gyors ismételt fókuszváltás nem indít újra folyton egy betöltést, ezért a menügombot nem blokkolja újra ugyanaz a háttérolvasás. A kézi frissítés változatlan. A 473f641 alapkiadás GitHub Pages közzététele sikeres volt; a 0.4.1 ezt a célzott javítást tartalmazza.

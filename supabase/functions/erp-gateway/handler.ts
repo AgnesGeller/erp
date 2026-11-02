@@ -1,5 +1,5 @@
 type FeatureHandler=(input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}>;
-type GatewayOptions = { quotes?:FeatureHandler; url: string; anonKey: string; serviceKey?: string; emailFlowsEnabled?: boolean; fetchImpl?: typeof fetch; customers?: (input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}> };
+type GatewayOptions = { surveys?:FeatureHandler; quotes?:FeatureHandler; url: string; anonKey: string; serviceKey?: string; emailFlowsEnabled?: boolean; fetchImpl?: typeof fetch; customers?: (input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}> };
 const allowedOrigins = new Set(['https://agnesgeller.github.io','http://127.0.0.1:5194','http://localhost:5194']);
 const allowedRpc = new Set(['erp_session','erp_list_people','erp_create_worker_request','erp_list_projects','erp_list_assignments','erp_assign_project_role','erp_revoke_assignment','erp_customer_profile_save','erp_project_role_access','erp_list_site_works','erp_site_work_action']);
 type TokenResult = { access_token: string; refresh_token: string; expires_in: number };
@@ -55,13 +55,14 @@ export function createGateway(options: GatewayOptions): (req: Request) => Promis
     }
     try {
       const raw=await req.text();
-      if (new TextEncoder().encode(raw).length>32768) return reply({error:'Túl nagy kérés.'},413);
+      if (new TextEncoder().encode(raw).length>262144) return reply({error:'Túl nagy kérés.'},413);
       let input: Record<string,unknown>;
       try {
         const value: unknown=JSON.parse(raw);
         if (!value || typeof value!=='object' || Array.isArray(value)) throw new Error();
         input=value as Record<string,unknown>;
       } catch { return reply({error:'Érvénytelen kérés.'},400); }
+      if(!String(input.action).startsWith('survey_')&&new TextEncoder().encode(raw).length>32768)return reply({error:'Túl nagy kérés.'},413);
       if(input.action==='office_setup') {
         if(!['agi','tamas'].includes(String(input.login_name))||typeof input.setup_token!=='string'||! /^[a-f0-9]{64}$/.test(input.setup_token)
         ||typeof input.password!=='string'||! /^[0-9]{6,12}$/.test(input.password))return reply({error:'Érvénytelen beállítás. A PIN-kód 6–12 számjegy legyen.'},400);
@@ -160,6 +161,13 @@ export function createGateway(options: GatewayOptions): (req: Request) => Promis
         const {response}=await call('/auth/v1/logout?scope=local',{},token);
         if (!response.ok && response.status!==401) throw new GatewayError(503,'A kijelentkezés visszaigazolása nem érkezett meg.');
         return reply({success:true});
+      }
+      if(typeof input.action==='string'&&input.action.startsWith('survey_')){
+        if(!options.surveys)return reply({error:'A felmérési szolgáltatás nem érhető el.'},503);
+        const {response:verified,data:actor}=await call('/auth/v1/user',undefined,token);
+        if(!verified.ok||!actor||typeof actor!=='object'||!('id'in actor))return reply({error:'A munkamenet lejárt. Jelentkezz be újra.'},401);
+        const memberships=await rpc('erp_session',{},token);const result=await options.surveys(input,token,String(actor.id),memberships);
+        return reply(result.error?{error:result.error}:{data:result.data},result.status??200);
       }
       if(typeof input.action==='string'&&input.action.startsWith('quote_')){
         if(!options.quotes)return reply({error:'Az ajánlati szolgáltatás nem érhető el.'},503);

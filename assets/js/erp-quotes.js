@@ -1,4 +1,4 @@
-const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.3.0', import.meta.url).href);
+const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.4.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const labels = { draft: 'Piszkozat', ready: 'Elkészült, kiküldésre vár', sent: 'Kiküldött', accepted: 'Elfogadott', rejected: 'Elutasított', withdrawn: 'Visszavont' };
 const eventNames = { save: 'Mentés', ready: 'Elkészültnek jelölve', draft: 'Visszaállítva szerkesztésre', revise: 'Revízió indítva', accept: 'Árajánlat elfogadva', reject: 'Ajánlat elutasítva', withdraw: 'Ajánlat visszavonva', start: 'Kertépítés elindítva', mail_processing: 'Kiküldési rögzítés', mail_sent: 'Kiküldés visszaigazolva', manual_send_confirmed: 'Kézi kiküldés irodai visszaigazolása' };
@@ -22,6 +22,7 @@ export class QuoteDesk {
     authError;
     chooseCustomer;
     completed;
+    viewSurveyMedia;
     org;
     epoch = 0;
     edit = 0;
@@ -43,11 +44,12 @@ export class QuoteDesk {
     mailRequest;
     typeId = '';
     templateId = '';
-    constructor(api, authError, chooseCustomer, completed) {
+    constructor(api, authError, chooseCustomer, completed, viewSurveyMedia) {
         this.api = api;
         this.authError = authError;
         this.chooseCustomer = chooseCustomer;
         this.completed = completed;
+        this.viewSurveyMedia = viewSurveyMedia;
         el('show-quotes').addEventListener('click', () => { void this.open(); });
         el('show-prices').addEventListener('click', () => { void this.open(true); });
         el('quote-new').addEventListener('click', () => { if (this.leave())
@@ -121,8 +123,8 @@ export class QuoteDesk {
         return false; if (this.dirty && !confirm('A még nem mentett ajánlati vagy árlista-módosítások elvesznek. Folytatod?'))
         return false; clearTimeout(this.timer); this.changed = false; this.catalogChanged = false; this.pending = undefined; this.input = undefined; this.current = undefined; this.book = undefined; el('quote-editor').hidden = true; return true; }
     async open(prices = false, refresh = true) { if (!this.org)
-        return; for (const id of ['customer-view', 'team-view', 'work-view'])
-        el(id).hidden = true; el('quote-view').hidden = prices; el('prices-view').hidden = !prices; for (const name of ['customers', 'team', 'works', 'quotes', 'prices'])
+        return; for (const id of ['customer-view', 'team-view', 'work-view', 'survey-view'])
+        el(id).hidden = true; el('quote-view').hidden = prices; el('prices-view').hidden = !prices; for (const name of ['customers', 'team', 'works', 'quotes', 'prices', 'surveys'])
         el('show-' + name).setAttribute('aria-pressed', String(name === (prices ? 'prices' : 'quotes'))); if (refresh && !this.busy) {
         if (prices)
             await this.loadBook();
@@ -222,6 +224,8 @@ export class QuoteDesk {
         if (epoch === this.epoch)
             this.loading = false;
     } }
+    async selectSurvey(payload) { await this.selectCustomer(payload.customer_id, ''); if (!this.input || this.input.customer_id !== payload.customer_id || !this.sites.some(s => s.id === payload.location_id))
+        throw Error('A felmérés munkavégzési címe most nem érhető el.'); this.input = structuredClone(payload); this.changed = true; this.renderEditor(); this.message('A felmérés főtételei, méretei, jegyzetei és helyi fájlkapcsolatai átvéve. Add hozzá az árazott sorokat.'); }
     touch() { this.edit++; this.changed = true; this.calculate(); clearTimeout(this.timer); if (this.current?.quote.status === 'draft' && !this.pending)
         this.timer = setTimeout(() => { if (!this.busy)
             void this.save(true); }, 2500); }
@@ -291,6 +295,13 @@ export class QuoteDesk {
             field.disabled = !this.editable;
             d.append(field);
             input(field, 'Főtétel megnevezése', section.name, v => { section.name = v; d.querySelector('summary').textContent = v || 'Főtétel megnevezése szükséges'; this.touch(); });
+            if (section.survey_note || section.survey_media?.length) {
+                const note = fold(field, 'Felmérési jegyzetek és mellékletek – belső');
+                if (section.survey_note)
+                    note.append(n('p', section.survey_note));
+                for (const media of section.survey_media ?? [])
+                    note.append(button(media.kind === 'photo' ? 'Felmérési fotó megnyitása' : 'Hangjegyzet megnyitása', () => this.viewSurveyMedia?.(media)));
+            }
             const dimensions = fold(field, 'Főtétel méretei');
             for (const [key, label] of [['area', 'Terület (m²)'], ['length', 'Hossz (m)'], ['width', 'Szélesség (m)']])
                 input(dimensions, label, section[key], v => { section[key] = v; this.touch(); }, 'number');
@@ -556,7 +567,7 @@ export class QuoteDesk {
         return;
     } if (this.catalogChanged && !confirm('A még nem mentett árlista-módosításokat felváltja az import. Folytatod?'))
         return; const epoch = this.epoch; this.loading = true; try {
-        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.3.0', import.meta.url).href);
+        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.4.0', import.meta.url).href);
         const imported = await readCalculator(file);
         if (epoch !== this.epoch)
             return;

@@ -23,11 +23,11 @@
 <link rel="canonical" href="https://agnesgeller.github.io/erp/">
 <link rel="icon" type="image/png" href="./assets/favicon-d-v1.png">
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon-d-v1.png">
-<link rel="manifest" href="./manifest.webmanifest?v=0.3.0"><link rel="stylesheet" href="./assets/style.css?v=0.3.0">
-<script type="module" src="./assets/js/main.js?v=0.3.0"></script>
-<script type="module" src="./assets/js/erp-office.js?v=0.3.0"></script>
+<link rel="manifest" href="./manifest.webmanifest?v=0.4.0"><link rel="stylesheet" href="./assets/style.css?v=0.4.0">
+<script type="module" src="./assets/js/main.js?v=0.4.0"></script>
+<script type="module" src="./assets/js/erp-office.js?v=0.4.0"></script>
 
-<script type="module" src="./assets/js/erp-office-setup.js?v=0.3.0"></script>
+<script type="module" src="./assets/js/erp-office-setup.js?v=0.4.0"></script>
 </head>
 <body>
 <header><a class="brand" href="./" aria-label="Díszkertek kezdőlap"><img src="./assets/logo.png" width="52" height="52" alt=""><span>DÍSZKERTEK</span></a>
@@ -76,7 +76,7 @@
 <section id="office-app" class="workspace" hidden aria-labelledby="workspace-title">
 <div class="workspace-heading"><div><p class="eyebrow" id="workspace-role">Irodai munkatér</p><h1 id="workspace-title">DÍSZKERTEK</h1></div><button type="button" id="reload-workspace" class="secondary">Lista frissítése</button></div>
 <label id="organization-label" hidden>Szervezet<select id="organization-select"></select></label>
-<nav id="people-navigation" class="workspace-tabs" aria-label="Irodai menü" hidden><span>Irodai menü</span><button type="button" id="show-customers" aria-pressed="true">Ügyfelek</button><button type="button" id="show-team" aria-pressed="false">Munkatársak és megbízások</button><button type="button" id="show-works" aria-pressed="false">Munkák</button><button type="button" id="show-quotes" aria-pressed="false">Árajánlatok</button><button type="button" id="show-prices" aria-pressed="false">Árlisták és sablonok</button></nav>
+<nav id="people-navigation" class="workspace-tabs" aria-label="Irodai menü" hidden><span>Irodai menü</span><button type="button" id="show-customers" aria-pressed="true">Ügyfelek</button><button type="button" id="show-team" aria-pressed="false">Munkatársak és megbízások</button><button type="button" id="show-works" aria-pressed="false">Munkák</button><button type="button" id="show-surveys" aria-pressed="false" hidden>Felmérések</button><button type="button" id="show-quotes" aria-pressed="false">Árajánlatok</button><button type="button" id="show-prices" aria-pressed="false">Árlisták és sablonok</button></nav>
 <section id="customer-view" hidden aria-labelledby="customers-title">
 <div class="customer-toolbar"><h2 id="customers-title">Ügyfelek</h2><div><button type="button" id="customer-new">+ Új ügyfél</button><button type="button" id="customer-refresh" class="secondary">Adatok frissítése</button></div></div>
 <p id="customer-directory-total" class="field-help"></p><p id="customer-status" class="office-status" role="status" aria-live="polite"></p><div id="customer-pending"></div>
@@ -101,6 +101,24 @@
 <p class="field-help">Az ügyfél felvétele nem hoz létre belépési fiókot. Az e-mail és a telefon később is pótolható a közös nyilvántartásban.</p>
 </fieldset></form></details>
 </section>
+<section id="survey-view" hidden aria-labelledby="survey-heading">
+<div class="customer-toolbar"><h2 id="survey-heading">Felmérések</h2><div><button type="button" id="survey-new">+ Ügyfél kiválasztása</button><button type="button" class="secondary" id="survey-sync">Szinkronizálás</button></div></div>
+<p id="survey-feedback" class="office-status" role="status" aria-live="polite"></p>
+<details class="erp-disclosure"><summary>Felmérés keresése és csomag importálása</summary><label for="survey-search">Megnevezés, ügyfél vagy cím</label><input id="survey-search" type="search"><label for="survey-import">Letöltött felmérési csomag</label><input id="survey-import" type="file" accept=".zip"></details>
+<details class="erp-disclosure"><summary>Mentett felmérések</summary><div id="survey-list"></div></details>
+<section id="survey-editor" hidden><h3 id="survey-editor-name"></h3>
+<fieldset id="survey-fields"><legend class="sr-only">Felmérés adatai</legend>
+<label for="survey-wishes">Az ügyfél elképzelései – mit szeretne?</label><textarea id="survey-wishes" rows="3" maxlength="10000"></textarea>
+<details class="erp-disclosure"><summary>Felmérés adatai és munkavégzési cím</summary><label for="survey-title">Felmérés megnevezése</label><input id="survey-title" maxlength="200"><label for="survey-work-type">Munkaterület</label><select id="survey-work-type"><option value="construction">Kertépítés</option><option value="maintenance">Kertkarbantartás</option></select><label for="survey-location">Munkavégzési cím</label><select id="survey-location"></select></details></fieldset>
+<button id="survey-organize" type="button" class="quiet" hidden>Jegyzet rendezése MI-vel</button><div id="survey-sections"></div><button id="survey-add-section" type="button" class="quiet">+ Új főtétel</button>
+<div class="quote-toolbar"><button id="survey-save" type="button">Mentés ezen az eszközön</button><button id="survey-export" type="button" class="secondary">Felmérés és fájlok letöltése</button><button id="survey-to-quote" type="button" class="secondary">Árajánlat készítése kézzel</button></div>
+<p class="field-help">A fotók és hangjegyzetek csak ezen az eszközön vannak. Másik eszközre a letöltött csomag importálásával vihetők át. A böngészőadatok törlése előtt készíts letöltött másolatot.</p>
+<details class="erp-disclosure" id="survey-server-panel"><summary>Szerverváltozat összehasonlítása</summary><button id="survey-reload-server" type="button" class="quiet">Szerverváltozat megtekintése</button><div id="survey-server-copy"></div></details>
+</section></section>
+<dialog id="survey-ai-dialog" class="quote-dialog"><h2>Rendezett felmérés – ellenőrzés</h2><p>Az új főtételek az eredetiek mellé kerülnek. Az eredeti jegyzetek és hangok megmaradnak; az MI nem állapít meg árakat.</p><div id="survey-ai-result"></div><button type="button" id="survey-ai-apply">Ellenőriztem, új főtételekként hozzáadom</button><button type="button" id="survey-ai-close" class="secondary">Bezárás hozzáadás nélkül</button></dialog>
+<dialog id="survey-media-dialog" class="quote-dialog"><button type="button" id="survey-media-close" class="quiet">Bezárás</button><div id="survey-media-content"></div></dialog>
+
+
 <section id="quote-view" hidden aria-labelledby="quotes-title"><div class="customer-toolbar"><h2 id="quotes-title">Árajánlatok</h2><div><button type="button" id="quote-new">+ Ügyfél kiválasztása</button><button type="button" id="quote-refresh" class="secondary">Lista frissítése</button></div></div><p id="quote-feedback" class="office-status" role="status" aria-live="polite"></p>
 <details class="erp-disclosure"><summary>Ajánlatok keresése</summary><label for="quote-search">Ajánlat, ügyfél vagy cím</label><input id="quote-search" type="search"><label for="quote-status-filter">Állapot</label><select id="quote-status-filter"><option value="">Minden állapot</option><option value="draft">Piszkozat</option><option value="ready">Elkészült, kiküldésre vár</option><option value="sent">Kiküldött</option><option value="accepted">Elfogadott</option><option value="rejected">Elutasított</option><option value="withdrawn">Visszavont</option></select></details><details class="erp-disclosure" open><summary>Ajánlatlista</summary><div id="quote-list"></div></details>
 <section id="quote-editor" hidden><h3 id="quote-editor-title"></h3><fieldset id="quote-fields"><legend class="sr-only">Ajánlat adatai</legend><label for="quote-location">Munkavégzési cím</label><select id="quote-location" required></select><label for="quote-title">Ajánlat megnevezése</label><input id="quote-title" required maxlength="200"><label for="quote-vat">ÁFA</label><select id="quote-vat"><option value="0">0%</option><option value="27">27%</option><option value="aam">Alanyi adómentes</option></select><details class="erp-disclosure"><summary>Belső tervezési óradíj</summary><label for="quote-hourly">Ügyfélnek számlázott óradíj (Ft/főóra) – csak az iroda látja</label><input id="quote-hourly" type="number" min="0.01" step="0.01"><p class="field-help">A tervezett emberperc a munkadíj és az óradíj alapján számolható. Hiányzó óradíjból nem számítunk időt.</p></details><details class="erp-disclosure"><summary>Az ajánlatra vonatkozó információk</summary><label for="quote-info-template">Információsablon hozzáadása</label><select id="quote-info-template"></select><label for="quote-information">Az ügyfélnek szánt információk</label><textarea id="quote-information" rows="4" maxlength="30000"></textarea></details></fieldset>

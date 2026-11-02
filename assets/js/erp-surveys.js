@@ -1,0 +1,614 @@
+const { validateSurvey, surveyToQuote, surveyMime } = await import(new URL('./erp-survey-model.js?v=0.4.0', import.meta.url).href);
+const { SurveyStore } = await import(new URL('./erp-survey-store.js?v=0.4.0', import.meta.url).href);
+const { surveyHash, downloadSurveyFile, exportSurvey, importSurvey } = await import(new URL('./erp-survey-archive.js?v=0.4.0', import.meta.url).href);
+export const surveysEnabled = true;
+const el = (id) => document.getElementById(id);
+const n = (tag, text = '') => { const e = document.createElement(tag); e.textContent = text; return e; };
+function btn(text, action) { const b = n('button', text); b.type = 'button'; b.className = 'quiet'; b.addEventListener('click', action); return b; }
+function field(parent, label, value, change, area = false) { const l = n('label', label), x = document.createElement(area ? 'textarea' : 'input'); x.value = value; x.maxLength = area ? 20000 : 200; if (area)
+    x.rows = 4; x.addEventListener('input', () => change(x.value)); l.append(x); parent.append(l); return x; }
+function fold(parent, title, open = false) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.open = open; d.append(n('summary', title)); parent.append(d); return d; }
+export class SurveyDesk {
+    api;
+    authError;
+    chooseCustomer;
+    startQuote;
+    aiEnabled = false;
+    aiProposal;
+    org;
+    owner;
+    epoch = 0;
+    row;
+    rows = [];
+    saving = false;
+    loading = false;
+    changed = false;
+    saveFailed = false;
+    timer;
+    writes = Promise.resolve();
+    store = new SurveyStore();
+    urls = [];
+    recorder;
+    stream;
+    recordingSection;
+    constructor(api, authError, chooseCustomer, startQuote) {
+        this.api = api;
+        this.authError = authError;
+        this.chooseCustomer = chooseCustomer;
+        this.startQuote = startQuote;
+        el('survey-media-close').addEventListener('click', () => el('survey-media-dialog').close());
+        el('show-surveys').addEventListener('click', () => { void this.open(); });
+        el('survey-new').addEventListener('click', () => { void this.leave().then(ok => { if (ok)
+            this.chooseCustomer(); }); });
+        el('survey-organize').addEventListener('click', () => { void this.organize(); });
+        el('survey-ai-close').addEventListener('click', () => el('survey-ai-dialog').close());
+        el('survey-ai-apply').addEventListener('click', () => { if (!this.row || !this.aiProposal)
+            return; for (const s of this.aiProposal.sections)
+            this.row.document.sections.push({ id: crypto.randomUUID(), name: s.name, length: s.length, width: s.width, area: '', notes: s.notes + (s.uncertain ? '\nTisztázandó: ' + s.uncertain : ''), media: [] }); this.touch(); this.renderSections(); el('survey-ai-dialog').close(); this.aiProposal = undefined; });
+        el('survey-sync').addEventListener('click', () => { void this.sync(); });
+        el('survey-save').addEventListener('click', () => { void this.persist(); });
+        el('survey-add-section').addEventListener('click', () => { if (!this.row || this.busy)
+            return; this.row.document.sections.push({ id: crypto.randomUUID(), name: '', length: '', width: '', area: '', notes: '', media: [] }); this.touch(); this.renderSections(); });
+        el('survey-export').addEventListener('click', () => { void this.export(); });
+        el('survey-import').addEventListener('change', () => { void this.import(); });
+        el('survey-to-quote').addEventListener('click', () => { void this.toQuote(); });
+        el('survey-search').addEventListener('input', () => { void this.listLocal(); });
+        el('survey-reload-server').addEventListener('click', () => { void this.serverCopy(); });
+        for (const [id, key] of [['survey-title', 'title'], ['survey-wishes', 'wishes'], ['survey-work-type', 'work_type'], ['survey-location', 'location_id']])
+            el(id).addEventListener('input', () => { if (this.row) {
+                this.row.document[key] = (el(id).value);
+                if (id === 'survey-location')
+                    this.row.site_address = el(id).selectedOptions[0]?.textContent ?? '';
+                this.touch();
+            } });
+        window.addEventListener('online', () => { if (this.owner && !this.busy)
+            void this.sync(); });
+        window.addEventListener('beforeunload', event => { if (this.dirty || this.busy) {
+            event.preventDefault();
+            event.returnValue = '';
+        } });
+    }
+    persisting = 0;
+    get busy() { return this.saving || this.loading || !!this.recorder || this.persisting > 0; }
+    get dirty() { return this.changed || this.saveFailed; }
+    message(value, kind = '') { el('survey-feedback').textContent = (kind === 'success' ? '✓ ' : '') + value; el('survey-feedback').className = 'office-status ' + kind; }
+    error(e) { this.message(e instanceof Error ? e.message : 'A felmérés kezelése nem sikerült.', 'error'); if (!this.api.signedIn)
+        this.authError(e); }
+    setOrganization(org, person) { const owner = org && person ? org + '/' + person : undefined; if (owner !== this.owner) {
+        this.reset();
+        this.org = org;
+        this.owner = owner;
+        this.aiEnabled = false;
+        if (org && surveysEnabled)
+            void this.aiOptions();
+    } }
+    reset() { this.epoch++; clearTimeout(this.timer); this.stopRecording(); this.org = undefined; this.owner = undefined; this.row = undefined; this.rows = []; this.aiProposal = undefined; this.aiEnabled = false; for (const id of ['survey-media-dialog', 'survey-ai-dialog'])
+        el(id).close(); el('survey-media-content').replaceChildren(); el('survey-ai-result').replaceChildren(); this.changed = false; this.saveFailed = false; this.saving = false; this.loading = false; this.releaseUrls(); el('survey-view').hidden = true; el('survey-editor').hidden = true; el('survey-list').replaceChildren(); el('survey-sections').replaceChildren(); el('survey-feedback').textContent = ''; }
+    releaseUrls() { for (const url of this.urls)
+        URL.revokeObjectURL(url); this.urls = []; }
+    async leave() { if (this.busy) {
+        this.message('Várd meg a műveletet, illetve fejezd be a hangfelvételt.');
+        return false;
+    } await this.persist(); return !this.dirty; }
+    touch() { this.changed = true; this.saveFailed = false; clearTimeout(this.timer); this.message('Helyi mentés folyamatban…'); this.timer = setTimeout(() => { void this.persist(); }, 750); }
+    async persist() {
+        clearTimeout(this.timer);
+        const row = this.row, owner = this.owner, epoch = this.epoch;
+        if (!row || !owner || !this.changed)
+            return;
+        const snapshot = structuredClone(row.document), stamp = new Date().toISOString();
+        this.changed = false;
+        this.persisting++;
+        const run = async () => { try {
+            const saved = { ...row, document: snapshot, dirty: true, updated_at: stamp };
+            row.localVersion = await this.store.put(saved, row.localVersion);
+            row.dirty = true;
+            row.updated_at = stamp;
+            if (epoch === this.epoch) {
+                this.saveFailed = false;
+                if (!this.changed)
+                    this.message('Ezen az eszközön elmentve. A többi eszközhöz használd a Szinkronizálás gombot.', 'success');
+            }
+        }
+        catch (e) {
+            if (epoch === this.epoch) {
+                this.changed = true;
+                this.saveFailed = true;
+                this.error(e);
+            }
+        }
+        finally {
+            this.persisting--;
+        } };
+        this.writes = this.writes.then(run, run);
+        await this.writes;
+    }
+    async open() { if (!this.owner)
+        return; for (const name of ['customers', 'team', 'works', 'quotes', 'prices']) {
+        const id = name === 'customers' ? 'customer' : name === 'works' ? 'work' : name === 'quotes' ? 'quote' : name;
+        el(id + '-view').hidden = true;
+        el('show-' + name).setAttribute('aria-pressed', 'false');
+    } el('show-surveys').setAttribute('aria-pressed', 'true'); el('survey-view').hidden = false; await this.listLocal(); if (navigator.onLine && !this.row)
+        await this.refresh(); }
+    async listLocal() { if (!this.owner)
+        return; const epoch = this.epoch, owner = this.owner; try {
+        const local = await this.store.list(owner);
+        if (epoch !== this.epoch)
+            return;
+        const merged = new Map(this.rows.map(r => [r.id, r]));
+        for (const r of local)
+            merged.set(r.id, { ...r, title: r.document.title });
+        const query = el('survey-search').value.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('hu');
+        const list = el('survey-list');
+        list.replaceChildren();
+        for (const r of [...merged.values()].sort((a, b) => b.updated_at.localeCompare(a.updated_at))) {
+            if (![r.title, r.customer_name, r.site_address].join(' ').normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('hu').includes(query))
+                continue;
+            const b = btn('', () => { void this.load(r.id); });
+            b.className = 'customer-row';
+            b.append(n('strong', r.title || 'Névtelen felmérés'), n('span', r.customer_name + ' · ' + r.site_address), n('small', r.dirty || !r.revision ? 'Ezen az eszközön mentve; szinkronizálásra vár' : 'Szerverre mentett felmérés'));
+            list.append(b);
+        }
+        if (!list.children.length)
+            list.append(n('p', 'Nincs megjeleníthető felmérés.'));
+    }
+    catch (e) {
+        this.error(e);
+    } }
+    async refresh() { if (!this.org || this.busy)
+        return; this.loading = true; const epoch = this.epoch; try {
+        this.rows = await this.api.customers('survey_list', { organization_id: this.org });
+        if (epoch === this.epoch)
+            await this.listLocal();
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch)
+            this.loading = false;
+    } }
+    async selectCustomer(id, name) {
+        if (!this.org || !this.owner || !await this.leave())
+            return;
+        await this.open();
+        this.loading = true;
+        const epoch = this.epoch;
+        try {
+            const ctx = await this.api.customers('work_sites', { organization_id: this.org, customer_id: id });
+            if (epoch !== this.epoch)
+                return;
+            const locations = el('survey-location');
+            locations.replaceChildren(new Option('Válassz munkavégzési címet', ''));
+            for (const s of ctx.sites)
+                locations.add(new Option(s.address, s.id));
+            const only = ctx.sites.length === 1 ? ctx.sites[0] : undefined;
+            this.row = { id: crypto.randomUUID(), owner: this.owner, revision: 0, localVersion: 0, customer_name: name, site_address: only?.address ?? '', updated_at: new Date().toISOString(), dirty: true, document: { customer_id: id, location_id: only?.id ?? '', title: 'Helyszíni felmérés', work_type: 'construction', wishes: '', sections: [{ id: crypto.randomUUID(), name: '', length: '', width: '', area: '', notes: '', media: [] }] } };
+            this.changed = true;
+            this.render();
+            await this.persist();
+            this.message('A főtételhez elég egy megnevezés és néhány szó. A mentéshez ár nem szükséges.');
+        }
+        catch (e) {
+            if (epoch === this.epoch)
+                this.error(e);
+        }
+        finally {
+            if (epoch === this.epoch)
+                this.loading = false;
+        }
+    }
+    async load(id) { if (!this.owner || !this.org || !await this.leave())
+        return; const epoch = this.epoch, owner = this.owner; this.loading = true; try {
+        let row = (await this.store.list(owner)).find(r => r.id === id);
+        if (!row || (!row.dirty && navigator.onLine)) {
+            const remote = await this.api.customers('survey_get', { organization_id: this.org, survey_id: id });
+            if (epoch !== this.epoch)
+                return;
+            const version = row?.localVersion ?? 0;
+            row = { ...remote, owner, localVersion: version, dirty: false };
+            row.localVersion = await this.store.put(row, version);
+        }
+        if (epoch !== this.epoch)
+            return;
+        this.row = row;
+        this.changed = false;
+        this.saveFailed = false;
+        const select = el('survey-location');
+        select.replaceChildren(new Option(row.site_address, row.document.location_id));
+        this.render();
+        this.message(row.dirty ? 'Helyi változat; még nincs szinkronizálva.' : 'A felmérés betöltve. A mellékletek az eredeti eszközön vagy letöltött csomagban vannak.');
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch)
+            this.loading = false;
+    } }
+    render() { if (!this.row)
+        return; el('survey-editor').hidden = false; el('survey-editor-name').textContent = this.row.customer_name; el('survey-title').value = this.row.document.title; el('survey-wishes').value = this.row.document.wishes; el('survey-work-type').value = this.row.document.work_type; el('survey-location').value = this.row.document.location_id; el('survey-location').disabled = this.row.revision > 0; this.renderSections(); }
+    renderSections() {
+        this.releaseUrls();
+        const parent = el('survey-sections');
+        parent.replaceChildren();
+        if (!this.row)
+            return;
+        for (const [index, s] of this.row.document.sections.entries()) {
+            const d = fold(parent, s.name || 'Új főtétel', this.row.document.sections.length === 1);
+            field(d, 'Főtétel megnevezése', s.name, v => { s.name = v; d.querySelector('summary').textContent = v || 'Új főtétel'; this.touch(); });
+            const sizes = fold(d, 'Méretek – nem kötelező');
+            for (const [key, label] of [['length', 'Hossz (m)'], ['width', 'Szélesség (m)'], ['area', 'Terület (m²)']]) {
+                const x = field(sizes, label, s[key], v => { s[key] = v; this.touch(); });
+                x.inputMode = 'decimal';
+            }
+            field(d, 'Helyszíni jegyzet', s.notes, v => { s.notes = v; this.touch(); }, true);
+            const attachments = fold(d, 'Fotók és hangjegyzetek (' + s.media.length + ')');
+            attachments.append(n('p', 'A fájlok ezen az eszközön maradnak. Biztonsági másolathoz töltsd le a felmérési csomagot.'));
+            for (const m of s.media) {
+                const r = n('div');
+                r.className = 'survey-media-row';
+                r.append(n('span', m.kind === 'photo' ? 'Fotó' : 'Hangjegyzet'), btn('Megnyitás', () => { void this.media(m, false); }), btn('Letöltés', () => { void this.media(m, true); }), btn('Kivétel a felmérésből', () => { if (this.busy || !confirm('Kiveszed ezt a mellékletet a felmérésből? A helyi fájlpéldány megmarad.'))
+                    return; s.media = s.media.filter(x => x.id !== m.id); this.touch(); this.renderSections(); }));
+                if (m.kind === 'audio' && this.aiEnabled)
+                    r.append(btn('Magyar hangátirat készítése', () => { void this.transcribe(s, m); }));
+                attachments.append(r);
+            }
+            const label = n('label', 'Fotók hozzáadása'), photos = document.createElement('input');
+            photos.type = 'file';
+            photos.accept = 'image/jpeg,image/png,image/webp';
+            photos.multiple = true;
+            photos.addEventListener('change', () => { void this.addPhotos(s, Array.from(photos.files ?? [])); });
+            label.append(photos);
+            attachments.append(label);
+            const audioLabel = n('label', 'Hangfájl hozzáadása'), audio = document.createElement('input');
+            audio.type = 'file';
+            audio.accept = 'audio/webm,audio/ogg,audio/mp4,audio/wav';
+            audio.addEventListener('change', () => { const f = audio.files?.[0]; if (f)
+                void this.attach(s, f, f.type.split(';')[0]); });
+            audioLabel.append(audio);
+            attachments.append(audioLabel);
+            attachments.append(btn(this.recordingSection === s.id ? 'Hangfelvétel befejezése' : 'Hangjegyzet rögzítése', () => { if (this.recorder)
+                this.stopRecording();
+            else
+                void this.record(s); }));
+            const move = (delta) => { if (this.busy || !this.row)
+                return; const all = this.row.document.sections, j = index + delta; if (j < 0 || j >= all.length)
+                return; [all[index], all[j]] = [all[j], all[index]]; this.touch(); this.renderSections(); };
+            d.append(btn('Feljebb', () => move(-1)), btn('Lejjebb', () => move(1)), btn('Főtétel kivétele', () => { if (this.busy || !this.row || !confirm('Kiveszed ezt a főtételt és mellékletkapcsolatait? A korábbi mentett változatok megmaradnak.'))
+                return; this.row.document.sections.splice(index, 1); this.touch(); this.renderSections(); }));
+        }
+    }
+    async attach(section, blob, mime) { if (!this.row || !this.owner || this.busy)
+        return; const epoch = this.epoch, row = this.row, owner = this.owner; this.loading = true; try {
+        const rule = surveyMime[mime];
+        if (!rule || blob.size < 1 || blob.size > rule.limit)
+            throw Error('A fotó legfeljebb 6 MB, a hang legfeljebb 12 MB lehet, támogatott formátumban.');
+        const id = crypto.randomUUID(), sha256 = await surveyHash(blob);
+        await this.store.putMedia({ key: owner + '/' + id, owner, survey_id: row.id, id, blob });
+        if (epoch !== this.epoch)
+            return;
+        section.media.push({ id, kind: rule.kind, mime, size: blob.size, sha256 });
+        this.touch();
+        await this.persist();
+        this.renderSections();
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch)
+            this.loading = false;
+    } }
+    async addPhotos(section, files) { const epoch = this.epoch, rowId = this.row?.id; for (const file of files) {
+        if (epoch !== this.epoch || this.row?.id !== rowId)
+            return;
+        if (file.size > 20 * 1024 * 1024) {
+            this.error(Error('Egy forráskép legfeljebb 20 MB lehet.'));
+            continue;
+        }
+        const url = URL.createObjectURL(file);
+        try {
+            const img = new Image();
+            img.src = url;
+            await img.decode();
+            if (img.width * img.height > 40000000)
+                throw Error('A kép túl nagy felbontású.');
+            const scale = Math.min(1, 1920 / Math.max(img.width, img.height)), canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.width * scale));
+            canvas.height = Math.max(1, Math.round(img.height * scale));
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            const blob = await new Promise((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(Error('A kép nem alakítható át.')), 'image/jpeg', 0.85));
+            if (epoch === this.epoch && this.row?.id === rowId)
+                await this.attach(section, blob, 'image/jpeg');
+        }
+        catch (e) {
+            this.error(e);
+        }
+        finally {
+            URL.revokeObjectURL(url);
+        }
+    } }
+    async record(section) { if (this.busy || !this.owner)
+        return; const epoch = this.epoch; try {
+        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined')
+            throw Error('Ez a böngésző nem támogatja a hangrögzítést. Hangfájl külön is hozzáadható.');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (epoch !== this.epoch) {
+            stream.getTracks().forEach(t => t.stop());
+            return;
+        }
+        const mime = ['audio/webm', 'audio/mp4', 'audio/ogg'].find(m => MediaRecorder.isTypeSupported(m));
+        if (!mime) {
+            stream.getTracks().forEach(t => t.stop());
+            throw Error('Nincs támogatott hangformátum.');
+        }
+        this.stream = stream;
+        const rec = new MediaRecorder(stream, { mimeType: mime }), chunks = [];
+        this.recorder = rec;
+        this.recordingSection = section.id;
+        let size = 0;
+        rec.ondataavailable = e => { if (e.data.size) {
+            chunks.push(e.data);
+            size += e.data.size;
+            if (size > 11 * 1024 * 1024)
+                this.stopRecording();
+        } };
+        rec.onstop = () => { stream.getTracks().forEach(t => t.stop()); this.recorder = undefined; this.stream = undefined; this.recordingSection = undefined; if (epoch === this.epoch) {
+            void this.attach(section, new Blob(chunks, { type: mime }), mime);
+            this.renderSections();
+        } };
+        rec.start(1000);
+        this.renderSections();
+        this.message('Hangfelvétel folyamatban. A mentéshez válaszd a Hangfelvétel befejezése gombot.');
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    } }
+    stopRecording() { if (this.recorder && this.recorder.state !== 'inactive')
+        this.recorder.stop(); this.stream?.getTracks().forEach(t => t.stop()); }
+    showMedia(m) { void this.media(m, false); }
+    async aiOptions() { const epoch = this.epoch; try {
+        const data = await this.api.surveyAi(this.org, { action: 'options' });
+        if (epoch !== this.epoch)
+            return;
+        this.aiEnabled = data.enabled;
+        el('survey-organize').hidden = !data.enabled;
+        if (this.row)
+            this.renderSections();
+    }
+    catch { /* A kézi és offline felmérés az MI-szolgáltatás nélkül is használható. */ } }
+    async transcribe(section, m) { if (!this.owner || !this.org || this.busy)
+        return; await this.persist(); if (this.dirty)
+        return; const epoch = this.epoch; this.loading = true; this.lock(true); this.message('Magyar hangátirat készül…'); try {
+        const file = await this.store.media(this.owner, m.id);
+        if (!file)
+            throw Error('A hang nincs ezen az eszközön. Importáld a felmérési csomagot.');
+        const form = new FormData();
+        form.append('audio', file.blob, 'felmeres.' + surveyMime[m.mime].extension);
+        const result = await this.api.surveyAi(this.org, form);
+        if (epoch !== this.epoch)
+            return;
+        section.notes += (section.notes ? '\n\n' : '') + 'Hangátirat:\n' + result.text;
+        this.touch();
+        await this.persist();
+        this.renderSections();
+        this.message('Az átírt magyar szöveg a jegyzet végére került. Az eredeti hang és jegyzet megmaradt. Ellenőrizd az átírást.', 'success');
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.loading = false;
+            this.lock(false);
+        }
+    } }
+    async organize() { if (!this.row || !this.org || this.busy || !this.aiEnabled)
+        return; await this.persist(); if (this.dirty)
+        return; const epoch = this.epoch; this.loading = true; this.lock(true); this.message('A jegyzet rendezése folyamatban…'); try {
+        const source = 'Az ügyfél elképzelései: ' + this.row.document.wishes + '\n' + this.row.document.sections.map(s => s.name + '\n' + s.notes + '\nMéretek: hossz ' + s.length + ' m; szélesség ' + s.width + ' m; terület ' + s.area + ' m²').join('\n\n');
+        const proposal = await this.api.surveyAi(this.org, { action: 'organize', source });
+        if (epoch !== this.epoch)
+            return;
+        this.aiProposal = proposal;
+        const box = el('survey-ai-result');
+        box.replaceChildren();
+        for (const s of this.aiProposal.sections)
+            box.append(n('h4', s.name), n('p', s.notes), n('p', s.uncertain ? 'Tisztázandó: ' + s.uncertain : ''));
+        el('survey-ai-dialog').showModal();
+        this.message('Az MI javaslata ellenőrzésre vár. Az eredeti jegyzetet nem írta felül.');
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.loading = false;
+            this.lock(false);
+        }
+    } }
+    async media(m, download) { if (!this.owner)
+        return; const epoch = this.epoch, owner = this.owner; try {
+        const local = await this.store.media(owner, m.id);
+        if (epoch !== this.epoch)
+            return;
+        if (!local)
+            throw Error('Ez a fájl nincs ezen az eszközön. Importáld az eredeti eszközön letöltött felmérési csomagot.');
+        if (download) {
+            downloadSurveyFile(local.blob, 'Diszkertek_' + m.id + '.' + surveyMime[m.mime].extension);
+            return;
+        }
+        const url = URL.createObjectURL(local.blob);
+        this.urls.push(url);
+        const box = el('survey-media-content');
+        box.replaceChildren();
+        const view = document.createElement(m.kind === 'photo' ? 'img' : 'audio');
+        view.src = url;
+        if (view instanceof HTMLImageElement)
+            view.alt = 'Felméréshez csatolt fotó';
+        else
+            view.controls = true;
+        box.append(view);
+        el('survey-media-dialog').showModal();
+    }
+    catch (e) {
+        this.error(e);
+    } }
+    async sync(currentOnly = false) {
+        if (!this.org || !this.owner || this.busy)
+            return;
+        await this.persist();
+        if (this.dirty)
+            return;
+        if (!navigator.onLine) {
+            this.message('Nincs internet. A helyi jegyzet és fájlok megmaradnak.');
+            return;
+        }
+        const epoch = this.epoch, owner = this.owner, org = this.org;
+        this.saving = true;
+        this.lock(true);
+        this.message('Felmérések szinkronizálása…');
+        let failures = 0;
+        try {
+            for (const saved of await this.store.list(owner)) {
+                if (epoch !== this.epoch)
+                    return;
+                if (!saved.dirty || (currentOnly && saved.id !== this.row?.id))
+                    continue;
+                try {
+                    while (saved.dirty) {
+                        validateSurvey(saved.document);
+                        saved.pending ??= { request_id: crypto.randomUUID(), revision: saved.revision, document: structuredClone(saved.document) };
+                        saved.localVersion = await this.store.put(saved, saved.localVersion);
+                        const ack = await this.api.customers('survey_save', { organization_id: org, survey_id: saved.id, request_id: saved.pending.request_id, revision: saved.pending.revision, document: saved.pending.document });
+                        if (epoch !== this.epoch)
+                            return;
+                        saved.revision = ack.revision;
+                        saved.dirty = JSON.stringify(saved.document) !== JSON.stringify(saved.pending.document);
+                        saved.pending = undefined;
+                        saved.localVersion = await this.store.put(saved, saved.localVersion);
+                        if (this.row?.id === saved.id)
+                            this.row = saved;
+                    }
+                }
+                catch (e) {
+                    failures++;
+                    if (epoch === this.epoch)
+                        this.error(Error(saved.document.title + ': ' + (e instanceof Error ? e.message : 'A szinkronizálás nem sikerült.')));
+                    if (!this.api.signedIn) {
+                        this.authError(e);
+                        return;
+                    }
+                }
+            }
+            if (!failures)
+                this.message('A felmérések szövege szinkronban van. A fotók és hangok továbbra is csak helyben vannak.', 'success');
+            await this.listLocal();
+        }
+        catch (e) {
+            if (epoch === this.epoch)
+                this.error(e);
+        }
+        finally {
+            if (epoch === this.epoch) {
+                this.saving = false;
+                this.lock(false);
+                if (this.row)
+                    el('survey-location').disabled = this.row.revision > 0;
+            }
+        }
+        if (epoch === this.epoch && !failures && this.row && !this.row.dirty && this.row.revision > 0) {
+            await this.load(this.row.id);
+            this.message('A felmérés szövege szinkronban van. A fájlok helyben maradtak.', 'success');
+        }
+    }
+    lock(value) { el('survey-fields').disabled = value; for (const x of Array.from(el('survey-sections').querySelectorAll('input,textarea,button')))
+        x.disabled = value; }
+    async export() { if (!this.row || this.busy)
+        return; await this.persist(); if (this.dirty)
+        return; const epoch = this.epoch, owner = this.owner, row = this.row; try {
+        const result = await exportSurvey(row, id => this.store.media(owner, id));
+        if (epoch !== this.epoch)
+            return;
+        downloadSurveyFile(result.blob, 'Diszkertek_felmeres_' + this.row.id + '.zip');
+        this.message(result.missing ? 'A letöltés elindult; ' + result.missing + ' melléklet nincs ezen az eszközön.' : 'A felmérési csomag letöltése elindult. Őrizd meg a fájlt biztonsági másolatként.', result.missing ? '' : 'success');
+    }
+    catch (e) {
+        this.error(e);
+    } }
+    async import() {
+        const file = el('survey-import').files?.[0];
+        if (!file || !this.owner || !await this.leave())
+            return;
+        const epoch = this.epoch, owner = this.owner;
+        this.loading = true;
+        try {
+            const data = await importSurvey(file);
+            if (epoch !== this.epoch)
+                return;
+            let row = (await this.store.list(owner)).find(r => r.id === data.id);
+            if (row && (row.document.customer_id !== data.document.customer_id || row.document.location_id !== data.document.location_id))
+                throw Error('A csomag másik ügyfélhez vagy címhez tartozik.');
+            for (const m of data.media) {
+                const descriptor = data.document.sections.flatMap(s => s.media).find(x => x.id === m.id);
+                const existing = await this.store.media(owner, m.id);
+                if (existing && await surveyHash(existing.blob) !== descriptor.sha256)
+                    throw Error('Eltérő helyi mellékletazonosító. A meglévő fájlt nem írtuk felül.');
+                if (!existing)
+                    await this.store.putMedia({ key: owner + '/' + m.id, owner, survey_id: data.id, id: m.id, blob: m.blob });
+            }
+            if (!row) {
+                row = { id: data.id, owner, revision: data.revision, localVersion: 0, dirty: data.revision === 0, customer_name: data.customer_name, site_address: data.site_address, document: data.document, updated_at: new Date().toISOString() };
+                row.localVersion = await this.store.put(row, 0);
+            }
+            if (epoch !== this.epoch)
+                return;
+            this.row = row;
+            this.changed = false;
+            this.saveFailed = false;
+            el('survey-location').replaceChildren(new Option(row.site_address, row.document.location_id));
+            this.render();
+            this.message('A csomag helyi fájljai átvehetők. Meglévő jegyzetet és szerveradatot nem írtunk felül. A szöveg frissítéséhez használd a Szinkronizálás gombot.', 'success');
+            await this.listLocal();
+        }
+        catch (e) {
+            if (epoch === this.epoch)
+                this.error(e);
+        }
+        finally {
+            if (epoch === this.epoch)
+                this.loading = false;
+            el('survey-import').value = '';
+        }
+    }
+    async serverCopy() { if (!this.row?.revision || !this.org || this.busy)
+        return; const epoch = this.epoch; try {
+        const remote = await this.api.customers('survey_get', { organization_id: this.org, survey_id: this.row.id });
+        if (epoch !== this.epoch)
+            return;
+        const box = el('survey-server-copy');
+        box.replaceChildren(n('p', 'Szerverváltozat: ' + remote.revision + '. A helyi jegyzeted változatlan.'));
+        for (const s of remote.document.sections)
+            box.append(n('h4', s.name), n('p', s.notes));
+        el('survey-server-panel').open = true;
+    }
+    catch (e) {
+        this.error(e);
+    } }
+    async toQuote() { if (!this.row || this.busy)
+        return; await this.persist(); await this.sync(true); if (this.row.dirty || this.dirty || !this.row.revision)
+        return; try {
+        const payload = surveyToQuote(this.row.document, this.row.id, this.row.revision);
+        await this.startQuote(payload, this.row.id, this.row.revision);
+    }
+    catch (e) {
+        this.error(e);
+    } }
+}

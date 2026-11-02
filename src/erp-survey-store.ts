@@ -1,0 +1,14 @@
+import type {SurveyDocument} from './erp-survey-model.js';
+export interface LocalSurvey {id:string;owner:string;revision:number;localVersion:number;document:SurveyDocument;customer_name:string;site_address:string;updated_at:string;dirty:boolean;pending?:{request_id:string;revision:number;document:SurveyDocument};conflict?:boolean;}
+export interface LocalMedia {key:string;owner:string;survey_id:string;id:string;blob:Blob;}
+export class SurveyStore{
+ private opening:Promise<IDBDatabase>|undefined;
+ private db(){return this.opening??=new Promise<IDBDatabase>((resolve,reject)=>{if(typeof indexedDB==='undefined'){reject(Error('A böngésző nem engedi a helyi felmérésmentést.'));return;}
+ const r=indexedDB.open('diszkertek-erp-surveys-v1',1);r.onupgradeneeded=()=>{r.result.createObjectStore('surveys',{keyPath:'key'});r.result.createObjectStore('media',{keyPath:'key'});};r.onsuccess=()=>{const db=r.result;db.onversionchange=()=>{db.close();this.opening=undefined;};resolve(db);};r.onerror=()=>{this.opening=undefined;reject(Error('A helyi tárhely nem nyitható meg.'));};r.onblocked=()=>reject(Error('Zárd be az ERP másik régi ablakát a helyi tárhely frissítéséhez.'));});}
+ async list(owner:string):Promise<LocalSurvey[]>{const db=await this.db();return new Promise((resolve,reject)=>{const r=db.transaction('surveys').objectStore('surveys').getAll();r.onsuccess=()=>resolve(r.result.filter((x:LocalSurvey)=>x.owner===owner));r.onerror=()=>reject(Error('A helyi felmérések nem olvashatók.'));});}
+ async put(row:LocalSurvey,expected:number){const db=await this.db();return new Promise<number>((resolve,reject)=>{const tx=db.transaction('surveys','readwrite'),store=tx.objectStore('surveys'),r=store.get(row.owner+'/'+row.id);let conflict=false;
+ r.onsuccess=()=>{if((r.result?.localVersion??0)!==expected){conflict=true;tx.abort();return;}store.put({...row,key:row.owner+'/'+row.id,localVersion:expected+1});};
+ tx.oncomplete=()=>resolve(expected+1);tx.onabort=tx.onerror=()=>reject(Error(conflict?'Ezt a helyi felmérést másik ablak módosította. Nyisd meg újra; a jelenlegi szöveget előbb másold ki.':'A helyi mentés nem sikerült. Ellenőrizd a szabad tárhelyet; ne zárd be az ablakot.'));});}
+ async putMedia(row:LocalMedia){const db=await this.db();return new Promise<void>((resolve,reject)=>{const tx=db.transaction('media','readwrite');tx.objectStore('media').put(row);tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(Error('A melléklet nem menthető helyben. Ellenőrizd a szabad tárhelyet.'));});}
+ async media(owner:string,id:string):Promise<LocalMedia|undefined>{const db=await this.db();return new Promise((resolve,reject)=>{const r=db.transaction('media').objectStore('media').get(owner+'/'+id);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(Error('A helyi melléklet nem olvasható.'));});}
+}

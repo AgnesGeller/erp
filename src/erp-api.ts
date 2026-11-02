@@ -88,11 +88,19 @@ export class ErpApi {
     }
     catch(error) {if(error instanceof ApiError&&(error.status===401||(name==='erp_session'&&error.status===403))&&epoch===this.epoch)this.clear();throw error;}
   }
-  async customers<T>(action:'customers_list'|'customer_create'|'customer_resume'|'work_sites'|'work_create'|'work_confirm'|'quote_catalog'|'quote_list'|'quote_context'|'quote_get'|'quote_save'|'quote_catalog_save'|'quote_transition'|'quote_pdf'|'quote_manual_sent',args:Record<string,unknown>):Promise<T> {
+  async customers<T>(action:'customers_list'|'customer_create'|'customer_resume'|'work_sites'|'work_create'|'work_confirm'|'quote_catalog'|'quote_list'|'quote_context'|'quote_get'|'quote_save'|'quote_catalog_save'|'quote_transition'|'quote_pdf'|'quote_manual_sent'|'survey_list'|'survey_get'|'survey_save',args:Record<string,unknown>):Promise<T> {
     const epoch=this.epoch;const token=await this.accessToken();
     if(epoch!==this.epoch||!this.tokens)throw new ApiError('A munkamenet megváltozott.',401);
     try{const result=await this.request<{data:T}>({action,...args},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}
     catch(error){if(epoch===this.epoch&&error instanceof ApiError&&error.status===401)this.clear();throw error;}
+  }
+  async surveyAi<T>(organizationId:string,input:Record<string,unknown>|FormData):Promise<T> {
+    const epoch=this.epoch,token=await this.accessToken();if(epoch!==this.epoch||!this.tokens)throw new ApiError('A munkamenet megváltozott.',401);
+    const multipart=input instanceof FormData;if(multipart)input.set('organization_id',organizationId);
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);
+    try{let response:Response;try{response=await this.requestFetch.call(globalThis,ENDPOINT.replace('/erp-gateway','/erp-survey-ai'),{method:'POST',headers:{Authorization:'Bearer '+token,...(multipart?{}:{'Content-Type':'application/json'})},body:multipart?input:JSON.stringify({...input,organization_id:organizationId}),cache:'no-store',signal:controller.signal});}catch{throw new ApiError('Az MI-szolgáltatás most nem érhető el. A hang és a jegyzet megmaradt.',0);}
+    const result=await response.json();if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);if(!response.ok){if(response.status===401)this.clear();throw new ApiError(result?.error??'Az MI-feldolgozás nem sikerült.',response.status);}return result as T;
+    }finally{clearTimeout(timer);}
   }
   async logout():Promise<void> {
     const token=this.tokens?.access_token;this.clear();

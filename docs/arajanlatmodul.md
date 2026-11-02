@@ -1,4 +1,4 @@
-# Árajánlatok, árlisták és sablonok – 0.3.0
+# Árajánlatok, árlisták és sablonok – 0.5.0
 
 Állapot: a 0.3.0 felület, a saját adatbázis és gateway élesben működik. A célzott éles ellenőrzés 2026. november 2-án lezárult. Követelmény: a teljes fejlesztői PDF 8–12. pontja és a csatolt Excel-kalkulátor. A Munkalap közös ügyféllistáját ehhez csak olvassuk; az ajánlatok, árak, sablonok és történeti változatok kizárólag az ERP-ben keletkeznek.
 
@@ -9,7 +9,7 @@
 3. Adj hozzá főtételt, nevezd el, majd válassz munkasablont, Kategória → Típus szerinti árlistás sort vagy egyedi tételt. A sorok és árösszetevők lenyithatók. Nem szükséges az egyedi tételt az árlistába felvenni.
 4. Töltsd ki a sorhoz szükséges mennyiségeket. A főtétel területét a kompatibilis tételek örökölhetik; a m² nem másolódik automatikusan folyóméterbe. A sor saját mennyiségének kézi módosítása kikapcsolja az öröklést. Az opcionális sor külön pipával vehető ki/be.
 5. Az Ajánlat mentése az első piszkozatot hozza létre. Már mentett piszkozatnál a szerkesztés után 2,5 másodperces nyugalmi idővel automatikus mentés is történik. A sikertelen mentés látható hibát ad; nem írjuk felül másik eszköz újabb revízióját.
-6. A PDF-előnézet mentés előtti, teljesen kiszámolható ajánlatból is kérhető. A PDF letöltése valódi PDF-fájlt ad. A megjelenítés Kompakt vagy Normál lehet. Hiányzó ár/mennyiség esetén javítandó lista jelenik meg, nem hamis nulla végösszeg.
+6. A PDF-előnézet szerkesztés közben nyitva maradhat, és 0,9 másodperc nyugalmi idő után frissül. Külön lapon is megnyitható az aktuális pillanatkép. Mentés előtt és hiányos adatokkal MUNKAVÁLTOZAT készül, hiányzó összegeknél — jellel; ez nem kiküldhető ajánlat. Kompakt/Normál nézet és PDF-letöltés választható. A főösszesítő, az ÁFA és a bruttó összeg kiemelt; minden főtétel a saját nevén kap részösszeget.
 7. Ellenőrzés után jelöld „Elkészült, kiküldésre vár” állapotúnak. Ez lezárja a közvetlen szerkesztést; visszalépés szerkesztésre külön művelet.
 8. A Kézi levélküldés ablakban a címzett az ügyféladatból előkészül, a tárgy és a levélszöveg szerkeszthető. Töltsd le a PDF-et, csatold a saját leveleződben, és küldd el. A levél-előkészítő hivatkozás önmagában nem csatol fájlt és nem küld levelet. A „PDF-et csatolva ténylegesen elküldtem” pipa és a Kézi kiküldés rögzítése csak a megtörtént küldés irodai tényrögzítése; nem levelezőszerver-visszaigazolás.
 9. Kiküldés után rögzíthető az ügyfél elfogadása vagy elutasítása. Elfogadáskor saját ERP-kertépítés keletkezik Indításra váró állapotban. A Kertépítés indítása külön, megerősített művelet; csak utána lehet munkatársi megbízást adni. A dolgozók a korábbi alkalmazásaikat tovább használják.
@@ -73,3 +73,13 @@ A felmérésből indítás és a felmérés MI-feldolgozása a külön Felméré
 Az éles 0.3.0 felület saját munkamenettel betöltötte az ajánlatlistát és az árlista 163 típusát, 22 kategóriáját, három sablonját. A többcímes ügyfélhez nem választott automatikusan címet. Nem mentett egyedi tételnél a böngésző és az éles PDF azonos eredményt adott, 27%-os ÁFÁ-val is. Az éles PDF letöltődött, szerkezeti, szöveges és vizuális ellenőrzése sikeres; a belső óradíj nem jelenik meg benne. Az eredeti XLSX böngészős beolvasása is sikeres, az import-előkészítést új árlistaváltozat mentése nélkül zártuk be.
 
 A 390 px mobilnézetben nincs vízszintes kilógás; a célzott ellenőrzés végén nem volt böngészős konzolhiba vagy figyelmeztetés. A teljes 151 teszteredmény ismét sikeres. Éles próbaajánlat nem mentődött, levélküldés vagy annak visszaigazolása, elfogadás és munkakezdés nem történt. Ezek valódi éles végigpróbálása az első üzleti ajánlathoz tartozik; az automatizált adatbázistesztek külön ellenőrzik őket. A próba PDF és képe kizárólag helyben marad, ügyféladat nem kerül a repositoryba.
+
+## Szerkesztés és kézi levélküldés – 0.5.0
+
+A sor fejlécében a Tétel törlése gomb becsukott sornál is elérhető. A Visszavonás és Újra az ajánlat, valamint az árlisták és sablonok aktuális szerkesztési munkamenetében használható; a főtétel/anyag/sablonsor törlése is visszaállítható. Ez nem helyettesíti a kiküldött/elfogadott pénzügyi változások jóváhagyását. A mentett történeti változatokat nem törli. Új ajánlat megnyitásakor vagy újratöltéskor a helyi Undo-lista újraindul.
+
+A számok legfeljebb két tizedessel jelennek meg; a pontos eredeti számítás és az anyag egységnyi alapra vonatkozó belső szorzója változatlan.
+
+Kézi küldéskor az alapértelmezett program mellett Gmail, Outlook és Yahoo webes levélírója választható. Más levelezőbe a címzett/tárgy/szöveg kimásolható; az EML levélfájl a PDF-et is tartalmazza, de megnyitása/szerkesztése a levelező támogatásától függ. Sem a hivatkozás, sem az EML letöltése nem küld levelet. A kész PDF-et webes levelezőben kézzel kell csatolni. A tényleges küldés után pipáld be a visszaigazolást.
+
+Az ügyfél saját belépése és kertépítés-követése még nincs kész. A teljes PDF-hez viszonyított állapot: [specifikációs állapotlista](specifikacio-allapot.md).

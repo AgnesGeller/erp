@@ -2,14 +2,14 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **Verzió: 0.4.1**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **Verzió: 0.5.0**
 
 ## Mi használható?
 
 - Ági és Tamás saját irodai belépése, megjegyzett munkamenettel.
 - Közös ügyféllista, munkavégzési címek, munkák és munkatársi megbízások.
 - Helyszíni felmérés: kézi jegyzetek, méretek, helyi fotók/hangok, letölthető csomag és kézi ajánlatátadás.
-- Árajánlatkészítés: 163 árazott típus, 22 kategória, három sablon, PDF-letöltés és kézi kiküldés rögzítése.
+- Árajánlatkészítés: 163 árazott típus, 22 kategória, három sablon, frissülő PDF-előnézet, tételtörlés/visszavonás és választható kézi levelezés.
 - Telepítés és frissítés a felső menüből; mobilon is használható felület.
 
 A járdasablon pontosítandó sorait a főnök ajánlatkészítéskor választja ki. A teljes ERP fejlesztése még folyamatban van; a Groq MI-próbájához saját szerveroldali kulcs szükséges.
@@ -22,6 +22,7 @@ A járdasablon pontosítandó sorait a főnök ajánlatkészítéskor választja
 - [Felmérések és helyi fájlok](docs/felmeresek.md) · [Árajánlatok, árlisták és sablonok](docs/arajanlatmodul.md)
 - [Adatbázisterv](docs/adatbazisterv.md) · [Jogosultságok](docs/szerepkorok.md) · [Excel-kalkulátor](docs/kalkulator-felmeres.md)
 - [Fejlesztési napló](docs/fejlesztesi-naplo.md) · [Részletes projektleírás és előzmények](docs/reszletes-projektleiras.md)
+- [A fejlesztői PDF teljesítési állapota és hátralévő modulok](docs/specifikacio-allapot.md)
 - [Menthető PDF-pillanatképek](output/pdf/) – korábbi dokumentációs változatok.
 
 A Munkalap az elsődleges ügyféllista. Az ERP új ügyfelet és első címet a külön engedély szerint menthet bele; meglévő forrásadatot nem ír át. A többi alkalmazás kódja és adatbázis-szerkezete változatlan. Ügyféladat, belső árlista és jelszó nem kerülhet a GitHubra.
@@ -38,6 +39,6 @@ npm test
 npm run check:edge
 ```
 
-Legutóbbi ellenőrzés: **2026. november 2., 175 sikeres teszteredmény**, éles PDF-letöltés és mobilnézet ellenőrizve. A felmérési menü végső éles UI-próbája még függőben van. A teljes üzleti folyamat éles próbája az első valódi ajánlatnál következik. Telepítési és folytatási részletek a [projektleírásban](docs/reszletes-projektleiras.md).
+Legutóbbi ellenőrzés: **2026. november 2., 188 sikeres teszteredmény**, éles PDF-letöltés és mobilnézet ellenőrizve. A felmérési menü végső éles UI-próbája még függőben van. A teljes üzleti lánc átadási próbája a hátralévő modulok elkészülése után következik. Telepítési és folytatási részletek a [projektleírásban](docs/reszletes-projektleiras.md).
 
 +36 70 634 9630 · [info@diszkertek.hu](mailto:info@diszkertek.hu) · [www.diszkertek.hu](https://www.diszkertek.hu/)

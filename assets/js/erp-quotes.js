@@ -1,4 +1,5 @@
-const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.4.1', import.meta.url).href);
+const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await import(new URL('./erp-quote-tools.js?v=0.5.0', import.meta.url).href);
+const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.5.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const labels = { draft: 'Piszkozat', ready: 'Elkészült, kiküldésre vár', sent: 'Kiküldött', accepted: 'Elfogadott', rejected: 'Elutasított', withdrawn: 'Visszavont' };
 const eventNames = { save: 'Mentés', ready: 'Elkészültnek jelölve', draft: 'Visszaállítva szerkesztésre', revise: 'Revízió indítva', accept: 'Árajánlat elfogadva', reject: 'Ajánlat elutasítva', withdraw: 'Ajánlat visszavonva', start: 'Kertépítés elindítva', mail_processing: 'Kiküldési rögzítés', mail_sent: 'Kiküldés visszaigazolva', manual_send_confirmed: 'Kézi kiküldés irodai visszaigazolása' };
@@ -7,12 +8,13 @@ const uuid = () => crypto.randomUUID();
 const money = (v) => v === null || v === undefined ? 'Nem számítható' : Number(v).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' Ft';
 function n(tag, value = '') { const item = document.createElement(tag); item.textContent = value; return item; }
 function button(label, run) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = 'quiet'; b.addEventListener('click', run); return b; }
-function input(parent, label, value, change, kind = 'text', max = 200) { const l = n('label', label), field = document.createElement(kind === 'textarea' ? 'textarea' : 'input'); field.value = String(value ?? ''); if (kind !== 'textarea')
+function input(parent, label, value, change, kind = 'text', max = 200, precise = false) { const l = n('label', label), field = document.createElement(kind === 'textarea' ? 'textarea' : 'input'); field.value = kind === 'number' ? quoteInput(value, precise) : String(value ?? ''); if (kind !== 'textarea')
     field.type = kind; field.maxLength = max; if (kind === 'number') {
     field.min = '0';
     field.step = 'any';
 } if (kind === 'textarea')
-    field.rows = 3; field.addEventListener('input', () => change(field.value)); l.append(field); parent.append(l); return field; }
+    field.rows = 3; field.addEventListener('input', () => change(field.value)); if (kind === 'number' && !precise)
+    field.addEventListener('blur', () => { field.value = quoteInput(field.value); }); l.append(field); parent.append(l); return field; }
 function select(parent, label, value, options, change) { const l = n('label', label), field = document.createElement('select'); for (const [v, title] of options)
     field.add(new Option(title, v)); field.value = value; field.addEventListener('change', () => change(field.value)); l.append(field); parent.append(l); return field; }
 function fold(parent, title, open = false) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.open = open; d.append(n('summary', title)); parent.append(d); return d; }
@@ -23,6 +25,10 @@ export class QuoteDesk {
     chooseCustomer;
     completed;
     viewSurveyMedia;
+    history = new EditHistory();
+    bookHistory = new EditHistory();
+    pdfSequence = 0;
+    previewTimer;
     org;
     epoch = 0;
     edit = 0;
@@ -61,6 +67,10 @@ export class QuoteDesk {
         el('quote-search').addEventListener('input', () => this.renderList());
         el('quote-status-filter').addEventListener('change', () => this.renderList());
         el('quote-material-export').addEventListener('click', () => this.exportMaterials());
+        el('price-undo').addEventListener('click', () => this.restoreBook(false));
+        el('price-redo').addEventListener('click', () => this.restoreBook(true));
+        el('quote-undo').addEventListener('click', () => this.restoreEdit(false));
+        el('quote-redo').addEventListener('click', () => this.restoreEdit(true));
         el('quote-save').addEventListener('click', () => { void this.save(); });
         el('quote-add-section').addEventListener('click', () => { if (!this.input || !this.editable)
             return; this.input.sections.push({ id: uuid(), name: '', area: '', length: '', width: '', lines: [] }); this.touch(); this.renderSections(); });
@@ -75,8 +85,12 @@ export class QuoteDesk {
         } });
         el('quote-preview').addEventListener('click', () => { void this.pdf(false); });
         el('quote-download').addEventListener('click', () => { void this.pdf(true); });
-        el('quote-pdf-close').addEventListener('click', () => el('quote-pdf-dialog').close());
+        el('quote-pdf-close').addEventListener('click', () => this.closePreview());
         el('quote-pdf-mode').addEventListener('change', () => { void this.pdf(false); });
+        el('quote-pdf-refresh').addEventListener('click', () => { void this.pdf(false); });
+        el('quote-mail-provider').addEventListener('change', () => this.mailLink());
+        el('quote-mail-copy').addEventListener('click', () => { void this.copyMail(); });
+        el('quote-mail-eml').addEventListener('click', () => { void this.downloadEmail(); });
         el('quote-mail').addEventListener('click', () => this.mail());
         el('quote-mail-close').addEventListener('click', () => { if (!this.busy)
             el('quote-mail-dialog').close(); });
@@ -87,11 +101,11 @@ export class QuoteDesk {
         el('price-save').addEventListener('click', () => { void this.saveBook(); });
         el('price-type').addEventListener('change', () => { this.typeId = el('price-type').value; this.renderType(); });
         el('price-new-type').addEventListener('click', () => { if (!this.book)
-            return; const t = this.blankType(); this.book.types.push(t); this.typeId = t.id; this.catalogChanged = true; this.renderBook(); });
+            return; const t = this.blankType(); this.book.types.push(t); this.typeId = t.id; this.touchBook(); this.renderBook(); });
         el('price-template').addEventListener('change', () => { this.templateId = el('price-template').value; this.renderTemplate(); });
         el('price-new-template').addEventListener('click', () => { if (!this.book)
-            return; const t = { id: uuid(), name: '', lines: [] }; this.book.templates.push(t); this.templateId = t.id; this.catalogChanged = true; this.renderBook(); });
-        el('price-info-new').addEventListener('click', () => { this.book?.info_templates.push({ id: uuid(), name: '', body: '' }); this.catalogChanged = true; this.renderInfo(); });
+            return; const t = { id: uuid(), name: '', lines: [] }; this.book.templates.push(t); this.templateId = t.id; this.touchBook(); this.renderBook(); });
+        el('price-info-new').addEventListener('click', () => { this.book?.info_templates.push({ id: uuid(), name: '', body: '' }); this.touchBook(); this.renderInfo(); });
         el('quote-info-template').addEventListener('change', () => { if (!this.input || !this.editable)
             return; const t = this.book?.info_templates.find((v) => v.id === el('quote-info-template').value); if (t) {
             this.input.information = [this.input.information, t.body].filter(Boolean).join('\n\n');
@@ -110,9 +124,9 @@ export class QuoteDesk {
     get editable() { return !this.current || this.current.quote.status === 'draft'; }
     message(value, kind = '') { const target = el(!el('prices-view').hidden ? 'price-feedback' : 'quote-feedback'); target.textContent = (kind === 'success' ? '✓ ' : '') + value; target.className = 'office-status ' + kind; }
     error(error) { this.message(error instanceof Error ? error.message : 'A művelet nem sikerült.', 'error'); this.authError(error); }
-    reset() { this.epoch++; clearTimeout(this.timer); this.org = undefined; this.changed = false; this.catalogChanged = false; this.loading = false; this.saving = false; this.input = undefined; this.current = undefined; this.pending = undefined; this.book = undefined; this.customer = undefined; this.rows = []; this.sites = []; this.bookRevision = 0; this.mailRequest = undefined; for (const id of ['quote-view', 'prices-view', 'quote-editor'])
+    reset() { this.epoch++; this.history.reset(); this.bookHistory.reset(); this.closePreview(); clearTimeout(this.timer); this.org = undefined; this.changed = false; this.catalogChanged = false; this.loading = false; this.saving = false; this.input = undefined; this.current = undefined; this.pending = undefined; this.book = undefined; this.customer = undefined; this.rows = []; this.sites = []; this.bookRevision = 0; this.mailRequest = undefined; for (const id of ['quote-view', 'prices-view', 'quote-editor'])
         el(id).hidden = true; for (const id of ['quote-list', 'quote-sections', 'price-type-editor', 'price-template-editor', 'price-info-editor', 'quote-history', 'quote-actions'])
-        el(id).replaceChildren(); for (const id of ['quote-pdf-dialog', 'quote-mail-dialog'])
+        el(id).replaceChildren(); for (const id of ['quote-mail-dialog'])
         el(id).close(); if (this.objectUrl)
         URL.revokeObjectURL(this.objectUrl); this.objectUrl = undefined; el('quote-pdf-frame').src = 'about:blank'; }
     setOrganization(org) { if (this.org !== org) {
@@ -121,7 +135,7 @@ export class QuoteDesk {
     } }
     leave() { if (this.busy)
         return false; if (this.dirty && !confirm('A még nem mentett ajánlati vagy árlista-módosítások elvesznek. Folytatod?'))
-        return false; clearTimeout(this.timer); this.changed = false; this.catalogChanged = false; this.pending = undefined; this.input = undefined; this.current = undefined; this.book = undefined; el('quote-editor').hidden = true; return true; }
+        return false; clearTimeout(this.timer); this.closePreview(); this.history.reset(); this.bookHistory.reset(); this.changed = false; this.catalogChanged = false; this.pending = undefined; this.input = undefined; this.current = undefined; this.book = undefined; el('quote-editor').hidden = true; return true; }
     async open(prices = false, refresh = true) { if (!this.org)
         return; for (const id of ['customer-view', 'team-view', 'work-view', 'survey-view'])
         el(id).hidden = true; el('quote-view').hidden = prices; el('prices-view').hidden = !prices; for (const name of ['customers', 'team', 'works', 'quotes', 'prices', 'surveys'])
@@ -147,8 +161,11 @@ export class QuoteDesk {
             this.error(e);
     }
     finally {
-        if (epoch === this.epoch)
+        if (epoch === this.epoch) {
             this.loading = false;
+            this.historyButtons();
+            this.bookButtons();
+        }
     } }
     async selectCustomer(id, name) { if (!this.org || !this.leave())
         return; await this.open(false, false); const epoch = this.epoch; this.loading = true; this.message('Ügyféladatok és árlista betöltése…'); try {
@@ -171,8 +188,11 @@ export class QuoteDesk {
             this.error(e);
     }
     finally {
-        if (epoch === this.epoch)
+        if (epoch === this.epoch) {
             this.loading = false;
+            this.historyButtons();
+            this.bookButtons();
+        }
     } }
     async list(silent = false) { if (!this.org || this.busy)
         return; const epoch = this.epoch; this.loading = true; try {
@@ -188,8 +208,11 @@ export class QuoteDesk {
             this.error(e);
     }
     finally {
-        if (epoch === this.epoch)
+        if (epoch === this.epoch) {
             this.loading = false;
+            this.historyButtons();
+            this.bookButtons();
+        }
     } }
     renderList() { const list = el('quote-list'); list.replaceChildren(); const query = el('quote-search').value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase(); const state = el('quote-status-filter').value; for (const q of this.rows.filter(q => (!state || q.status === state) && [q.number, q.title, q.customer_name, q.address].join(' ').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().includes(query))) {
         const b = button('', () => { void this.loadQuote(q.id); });
@@ -212,6 +235,7 @@ export class QuoteDesk {
             this.customer = v.customer;
             this.sites = [{ id: saved.quote.source_location_id, address: v.customer.address }];
             this.changed = false;
+            this.history.reset(this.input);
         }
         this.renderEditor();
         this.message('Az ajánlat betöltve.', 'success');
@@ -221,12 +245,16 @@ export class QuoteDesk {
             this.error(e);
     }
     finally {
-        if (epoch === this.epoch)
+        if (epoch === this.epoch) {
             this.loading = false;
+            this.historyButtons();
+            this.bookButtons();
+        }
     } }
     async selectSurvey(payload) { await this.selectCustomer(payload.customer_id, ''); if (!this.input || this.input.customer_id !== payload.customer_id || !this.sites.some(s => s.id === payload.location_id))
-        throw Error('A felmérés munkavégzési címe most nem érhető el.'); this.input = structuredClone(payload); this.changed = true; this.renderEditor(); this.message('A felmérés főtételei, méretei, jegyzetei és helyi fájlkapcsolatai átvéve. Add hozzá az árazott sorokat.'); }
-    touch() { this.edit++; this.changed = true; this.calculate(); clearTimeout(this.timer); if (this.current?.quote.status === 'draft' && !this.pending)
+        throw Error('A felmérés munkavégzési címe most nem érhető el.'); this.input = structuredClone(payload); this.history.reset(this.input); this.changed = true; this.renderEditor(); this.message('A felmérés főtételei, méretei, jegyzetei és helyi fájlkapcsolatai átvéve. Add hozzá az árazott sorokat.'); }
+    touch(record = true) { if (record && this.input)
+        this.history.remember(this.input, ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName ?? '') ? document.activeElement : undefined); this.edit++; this.changed = true; this.historyButtons(); this.queuePreview(); this.calculate(); clearTimeout(this.timer); if (this.current?.quote.status === 'draft' && !this.pending)
         this.timer = setTimeout(() => { if (!this.busy)
             void this.save(true); }, 2500); }
     calculate() { if (!this.input)
@@ -248,7 +276,7 @@ export class QuoteDesk {
                         value = section[key] ?? '';
                 }
                 if (field !== document.activeElement)
-                    field.value = String(value);
+                    field.value = quoteInput(value);
             }
         }
         el('quote-totals').textContent = this.output.issues.length ? 'Az ajánlat még nem teljes.' : 'Anyag: ' + money(this.output.material) + ' · Munkadíj: ' + money(this.output.labor) + ' · ÁFA vetítési alap: ' + money(this.output.tax_base) + ' · Bruttó: ' + money(this.output.gross);
@@ -260,9 +288,9 @@ export class QuoteDesk {
             for (const line of section.lines) {
                 if (line.incomplete)
                     continue;
-                d.append(n('p', line.label + ' · ' + Number(line.quantity).toLocaleString('hu-HU') + ' ' + line.unit + ' · Anyag egységára: ' + money(line.material_unit) + ' · Munka egységára: ' + money(line.labor_unit) + ' · Anyag: ' + money(line.material) + ' · Munkadíj: ' + money(line.labor) + ' · Együtt: ' + money(line.net) + (line.planned_minutes ? ' · Tervezett emberperc: ' + Number(line.planned_minutes).toLocaleString('hu-HU') : '')));
+                d.append(n('p', line.label + ' · ' + quoteNumber(line.quantity) + ' ' + line.unit + ' · Anyag egységára: ' + money(line.material_unit) + ' · Munka egységára: ' + money(line.labor_unit) + ' · Anyag: ' + money(line.material) + ' · Munkadíj: ' + money(line.labor) + ' · Együtt: ' + money(line.net) + (line.planned_minutes ? ' · Tervezett emberperc: ' + quoteNumber(line.planned_minutes) : '')));
                 for (const m of line.materials)
-                    d.append(n('p', m.name + ' · Beépítendő: ' + Number(m.installed).toLocaleString('hu-HU') + ' ' + m.unit + ' · Beszerzendő: ' + Number(m.purchase).toLocaleString('hu-HU') + ' ' + m.unit + (m.trips ? ' · Fuvar: ' + m.trips : '') + ' · Belső beszerzési érték: ' + money(m.purchase_cost)));
+                    d.append(n('p', m.name + ' · Beépítendő: ' + quoteNumber(m.installed) + ' ' + m.unit + ' · Beszerzendő: ' + quoteNumber(m.purchase) + ' ' + m.unit + (m.trips ? ' · Fuvar: ' + m.trips : '') + ' · Belső beszerzési érték: ' + money(m.purchase_cost)));
             }
         }
     }
@@ -272,8 +300,9 @@ export class QuoteDesk {
         el('quote-issues').replaceChildren(n('li', e instanceof Error ? e.message : 'Ellenőrizd a mezőket.'));
     } }
     renderEditor() { if (!this.input)
-        return; el('quote-editor').hidden = false; el('quote-editor-title').textContent = (this.current?.quote.number ?? 'Új árajánlat') + ' · ' + (this.customer?.name ?? ''); for (const [id, key] of [['quote-title', 'title'], ['quote-vat', 'vat'], ['quote-hourly', 'hourly_rate'], ['quote-information', 'information']])
-        el(id).value = String(this.input[key] ?? ''); const address = el('quote-location'); address.replaceChildren(new Option('Válassz munkavégzési címet', '')); for (const site of this.sites)
+        return; if (!this.history.initialized)
+        this.history.reset(this.input); this.historyButtons(); el('quote-editor').hidden = false; el('quote-editor-title').textContent = (this.current?.quote.number ?? 'Új árajánlat') + ' · ' + (this.customer?.name ?? ''); for (const [id, key] of [['quote-title', 'title'], ['quote-vat', 'vat'], ['quote-hourly', 'hourly_rate'], ['quote-information', 'information']])
+        el(id).value = key === 'hourly_rate' ? quoteInput(this.input[key]) : String(this.input[key] ?? ''); const address = el('quote-location'); address.replaceChildren(new Option('Válassz munkavégzési címet', '')); for (const site of this.sites)
         address.add(new Option(site.address, site.id)); address.value = this.input.location_id; address.disabled = !!this.current; el('quote-fields').disabled = !this.editable; el('quote-save').disabled = !this.editable; el('quote-add-section').disabled = !this.editable; const infos = el('quote-info-template'); infos.replaceChildren(new Option('Válassz információsablont', '')); for (const t of this.book?.info_templates ?? [])
         infos.add(new Option(t.name, t.id)); this.renderSections(); this.calculate(); this.renderActions(); this.renderHistory(); }
     blankType() { return { id: uuid(), name: '', category: 'Egyéb', unit: 'db', unit2: '', mode: 'excel', main: '', auxiliary: '0', transport: '0', labor: '', material_cm: '0', labor_cm: '0', material_min: '0', labor_min: '0', total_min: '0', materials: [], defaults: {}, internal_info: '' }; }
@@ -355,11 +384,11 @@ export class QuoteDesk {
                     input(l, 'Egyéb megjegyzés – az ügyfél is látja', line.public_note, v => { line.public_note = v; this.touch(); }, 'textarea', 4000);
                     fold(l, 'Hasznos információk – belső munkautasítás').append(n('p', t.internal_info || 'Ehhez a típushoz nincs belső munkautasítás.'));
                 }
-                l.append(button('Tétel kivétele', () => { if (confirm('Kiveszed ezt a tételt a szerkesztett ajánlatból?')) {
-                    section.lines = section.lines.filter((v) => v.id !== line.id);
-                    this.touch();
-                    this.renderSections();
-                } }));
+                const remove = button('Tétel törlése', () => { if (!this.editable || this.busy || this.pending)
+                    return; section.lines = section.lines.filter((v) => v !== line); this.touch(); this.renderSections(); this.message('A tételt töröltük. A Visszavonás gombbal visszaállíthatod.', 'success'); });
+                remove.addEventListener('click', e => e.preventDefault());
+                remove.className = 'quote-line-remove quiet';
+                l.querySelector('summary').append(remove);
             }
             field.append(button('Főtétel kivétele', () => { if (confirm('Kiveszed ezt a főtételt és sorait a szerkesztett ajánlatból?')) {
                 this.input.sections = this.input.sections.filter((s) => s.id !== section.id);
@@ -371,7 +400,7 @@ export class QuoteDesk {
     materials(parent, t, change) { const render = () => { parent.querySelectorAll(':scope > div').forEach(v => v.remove()); const box = document.createElement('div'); for (const m of t.materials) {
         const d = fold(box, m.name || 'Anyag megnevezése szükséges');
         for (const [key, label, kind] of [['name', 'Anyagnév', 'text'], ['factor', 'Szükséges mennyiség egységnyi alapra', 'number'], ['unit', 'Mértékegység', 'text'], ['waste', 'Ráhagyás (%)', 'number'], ['pack', 'Csomagméret – 0: nincs', 'number'], ['capacity', 'Egy fuvar kapacitása – 0: nincs', 'number'], ['unit_price', 'Belső beszerzési egységár (Ft)', 'number'], ['supplier', 'Beszerzési hely / beszállító', 'text']])
-            input(d, label, m[key], v => { m[key] = v; change(); }, kind);
+            input(d, label, m[key], v => { m[key] = v; change(); }, kind, 200, key === 'factor');
         input(d, 'Egyedi anyagmennyiség-képlet – elhagyható', m.quantity_formula, v => { m.quantity_formula = v; change(); }, 'text', 300);
         select(d, 'Számítás alapja', m.basis, [['quantity', 'Tétel számított mennyisége'], ['area', 'Terület (m²)'], ['volume', 'Térfogat (m³)'], ['length', 'Hossz (m)'], ['count', 'Darabszám']], v => { m.basis = v; change(); });
         select(d, 'Beszerzés felelőse', m.owner ?? 'workers', [['workers', 'Kivitelezők szerzik be'], ['office', 'Iroda szerzi be – telephelyen átvehető']], v => { m.owner = v; change(); });
@@ -407,6 +436,7 @@ export class QuoteDesk {
     finally {
         if (epoch === this.epoch) {
             this.saving = false;
+            this.historyButtons();
             if (this.changed && !this.pending && this.current?.quote.status === 'draft' && edit !== this.edit)
                 this.timer = setTimeout(() => { void this.save(true); }, 2500);
         }
@@ -451,41 +481,80 @@ export class QuoteDesk {
         box.append(n('p', new Date(e.created_at).toLocaleString('hu-HU') + ' · ' + (e.actor_name ?? 'Irodai felhasználó') + ' · ' + (eventNames[e.event] ?? 'Ajánlati esemény'))); for (const c of this.current?.changes ?? []) {
         const d = fold(box, c.from + '. → ' + c.to + '. változat · ' + new Date(c.date).toLocaleString('hu-HU') + ' · ' + (c.actor ?? 'Irodai felhasználó'));
         for (const row of c.rows)
-            d.append(n('p', row.kind === 'metadata' ? row.line + ' · ' + row.before + ' → ' + row.after : row.line + ' · Mennyiség: ' + (row.before?.params?.q1 ?? '–') + ' → ' + (row.after?.params?.q1 ?? '–') + ' · Anyag egységára: ' + money(row.before?.pricing?.main) + ' → ' + money(row.after?.pricing?.main) + ' · Munka egységára: ' + money(row.before?.pricing?.labor) + ' → ' + money(row.after?.pricing?.labor)));
+            d.append(n('p', row.kind === 'metadata' ? row.line + ' · ' + row.before + ' → ' + row.after : row.line + ' · Mennyiség: ' + quoteNumber(row.before?.params?.q1) + ' → ' + quoteNumber(row.after?.params?.q1) + ' · Anyag egységára: ' + money(row.before?.pricing?.main) + ' → ' + money(row.after?.pricing?.main) + ' · Munka egységára: ' + money(row.before?.pricing?.labor) + ' → ' + money(row.after?.pricing?.labor)));
     } }
-    async pdf(download) { if (!this.org || !this.input || this.busy)
-        return; const epoch = this.epoch, edit = this.edit; this.saving = true; this.message('PDF készítése…'); try {
-        const args = this.current && !this.changed ? { quote_id: this.current.quote.id } : { payload: structuredClone(this.input) };
+    historyButtons() { for (const [id, available] of [['quote-undo', this.history.canUndo], ['quote-redo', this.history.canRedo]])
+        el(id).disabled = !available || !this.editable || this.busy || !!this.pending; }
+    restoreEdit(redo) { if (!this.editable || this.busy || this.pending)
+        return; const restored = redo ? this.history.redo() : this.history.undo(); if (!restored)
+        return; this.input = restored; this.touch(false); this.renderEditor(); this.message(redo ? 'A módosítást újra alkalmaztuk.' : 'A legutóbbi módosítást visszavontuk.', 'success'); }
+    closePreview() { this.pdfSequence++; clearTimeout(this.previewTimer); el('quote-pdf-dialog').hidden = true; }
+    queuePreview() { if (el('quote-pdf-dialog').hidden)
+        return; this.pdfSequence++; el('quote-pdf-state').textContent = 'A megjelenített PDF frissítésre vár…'; el('quote-pdf-save').hidden = true; el('quote-pdf-open').hidden = true; clearTimeout(this.previewTimer); this.previewTimer = setTimeout(() => { void this.pdf(false); }, 900); }
+    async pdf(download) { if (!this.org || !this.input)
+        return; const epoch = this.epoch, edit = this.edit, sequence = ++this.pdfSequence; el('quote-pdf-dialog').hidden = false; el('quote-pdf-state').textContent = 'PDF készítése…'; el('quote-pdf-save').hidden = true; el('quote-pdf-open').hidden = true; try {
+        const args = this.editable ? { payload: structuredClone(this.input) } : { quote_id: this.current.quote.id };
         const result = await this.api.customers('quote_pdf', { organization_id: this.org, ...args, normal: el('quote-pdf-mode').value === 'normal' });
-        if (epoch !== this.epoch || edit !== this.edit)
+        if (epoch !== this.epoch || edit !== this.edit || sequence !== this.pdfSequence)
             return;
         const bytes = Uint8Array.from(atob(result.pdf), c => c.charCodeAt(0));
-        if (this.objectUrl)
-            URL.revokeObjectURL(this.objectUrl);
+        const old = this.objectUrl;
         this.objectUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
         const a = el('quote-pdf-save');
         a.href = this.objectUrl;
         a.download = result.filename;
+        a.hidden = false;
+        const open = el('quote-pdf-open');
+        open.href = this.objectUrl;
+        open.hidden = false;
         el('quote-pdf-frame').src = this.objectUrl;
-        if (download)
+        if (old)
+            setTimeout(() => URL.revokeObjectURL(old), 1000);
+        el('quote-pdf-state').textContent = '✓ A PDF a jelenlegi szerkesztést mutatja.';
+        if (download) {
             a.click();
-        else if (!el('quote-pdf-dialog').open)
-            el('quote-pdf-dialog').showModal();
-        this.message(download ? 'A PDF elkészült, a letöltés elindult.' : 'A PDF-előnézet elkészült.', 'success');
+            this.message('A PDF elkészült, a letöltés elindult.', 'success');
+        }
     }
     catch (e) {
-        if (epoch === this.epoch)
+        if (epoch === this.epoch && sequence === this.pdfSequence) {
+            el('quote-pdf-state').textContent = 'A PDF nem frissült. A Frissítés gombbal újrapróbálhatod.';
             this.error(e);
-    }
-    finally {
-        if (epoch === this.epoch)
-            this.saving = false;
+        }
     } }
     mail() { if (!this.current || this.current.quote.status !== 'ready' || this.dirty) {
         this.message('Előbb mentsd és jelöld elkészültnek az ajánlatot.');
         return;
     } const v = this.current.versions.find((v) => v.version === this.current.quote.current_version); el('quote-mail-to').value = v.customer.email ?? ''; el('quote-mail-subject').value = 'DÍSZKERTEK – ' + this.current.quote.number + ' – ' + this.current.quote.title; el('quote-mail-body').value = 'Kedves ' + v.customer.name + '!\n\nCsatolva küldjük a megbeszélt munkákra vonatkozó árajánlatunkat. Kérdés esetén örömmel állunk rendelkezésedre.\n\nÜdvözlettel:\nDíszkertek\n+36 70 634 9630'; el('quote-mail-confirm').checked = false; this.mailRequest = undefined; this.mailLink(); el('quote-mail-dialog').showModal(); }
-    mailLink() { el('quote-mail-open').href = 'mailto:' + encodeURIComponent(el('quote-mail-to').value) + '?subject=' + encodeURIComponent(el('quote-mail-subject').value) + '&body=' + encodeURIComponent(el('quote-mail-body').value); }
+    mailFields() { return { to: el('quote-mail-to').value, subject: el('quote-mail-subject').value, body: el('quote-mail-body').value }; }
+    mailLink() { const links = mailLinks(this.mailFields()); const provider = el('quote-mail-provider').value; el('quote-mail-open').href = links[provider] ?? links.default; }
+    async copyMail() { try {
+        const f = this.mailFields();
+        await navigator.clipboard.writeText('Címzett: ' + f.to + '\nTárgy: ' + f.subject + '\n\n' + f.body);
+        el('quote-mail-feedback').textContent = '✓ A levél adatait másoltuk. Illeszd be a saját leveleződbe, és csatold a PDF-et.';
+    }
+    catch {
+        el('quote-mail-feedback').textContent = 'A másolás nem sikerült. A mezőkből kézzel is kimásolhatod az adatokat.';
+    } }
+    async downloadEmail() { if (!this.org || !this.current || this.current.quote.status !== 'ready' || this.dirty || this.busy)
+        return; const epoch = this.epoch, id = this.current.quote.id; try {
+        el('quote-mail-feedback').textContent = 'Levél és PDF-melléklet előkészítése…';
+        const result = await this.api.customers('quote_pdf', { organization_id: this.org, quote_id: id, normal: el('quote-pdf-mode').value === 'normal' });
+        if (epoch !== this.epoch || this.current?.quote.id !== id || this.current.quote.status !== 'ready' || this.dirty)
+            return;
+        const content = emailDraft(this.mailFields(), result.pdf, result.filename, 'erp_' + uuid().replaceAll('-', ''));
+        const url = URL.createObjectURL(new Blob([content], { type: 'message/rfc822' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.filename.replace(/\.pdf$/, '.eml');
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        el('quote-mail-feedback').textContent = '✓ A PDF-et tartalmazó levélfájl letöltése elindult. A küldést a saját leveleződben végezd el.';
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            el('quote-mail-feedback').textContent = e instanceof Error ? e.message : 'A levélfájl nem készíthető el.';
+    } }
     async manualSent() { if (!this.org || !this.current || this.busy || !el('quote-mail-confirm').checked)
         return; const epoch = this.epoch, id = this.current.quote.id; this.mailRequest ??= uuid(); this.saving = true; try {
         await this.api.customers('quote_manual_sent', { organization_id: this.org, quote_id: id, revision: this.current.quote.revision, request_id: this.mailRequest, recipient: el('quote-mail-to').value, subject: el('quote-mail-subject').value, body: el('quote-mail-body').value, confirmed: true });
@@ -501,15 +570,26 @@ export class QuoteDesk {
             this.error(e);
     }
     finally {
-        if (epoch === this.epoch)
+        if (epoch === this.epoch) {
             this.saving = false;
+            this.historyButtons();
+            this.bookButtons();
+        }
     } }
+    touchBook() { if (this.book)
+        this.bookHistory.remember(this.book, ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName ?? '') ? document.activeElement : undefined); this.catalogChanged = true; this.bookButtons(); }
+    bookButtons() { for (const [id, available] of [['price-undo', this.bookHistory.canUndo], ['price-redo', this.bookHistory.canRedo]])
+        el(id).disabled = !available || this.busy; }
+    restoreBook(redo) { if (this.busy)
+        return; const restored = redo ? this.bookHistory.redo() : this.bookHistory.undo(); if (!restored)
+        return; this.book = restored; this.catalogChanged = true; this.renderBook(); this.message(redo ? 'Az árlista módosítását újra alkalmaztuk.' : 'Az árlista legutóbbi módosítását visszavontuk.', 'success'); }
     renderBook() { if (!this.book)
-        return; const types = el('price-type'); types.replaceChildren(new Option('Válassz típust', '')); for (const t of [...this.book.types].sort((a, b) => (a.category + ' ' + a.name).localeCompare(b.category + ' ' + b.name, 'hu')))
+        return; if (!this.bookHistory.initialized)
+        this.bookHistory.reset(this.book); this.bookButtons(); const types = el('price-type'); types.replaceChildren(new Option('Válassz típust', '')); for (const t of [...this.book.types].sort((a, b) => (a.category + ' ' + a.name).localeCompare(b.category + ' ' + b.name, 'hu')))
         types.add(new Option(t.category + ' – ' + t.name, t.id)); types.value = this.typeId; el('price-count').textContent = this.book.types.length + ' típus · ' + new Set(this.book.types.map((t) => t.category)).size + ' kategória · ' + this.bookRevision + '. árlistaváltozat'; const templates = el('price-template'); templates.replaceChildren(new Option('Válassz sablont', '')); for (const t of this.book.templates)
         templates.add(new Option(t.name || 'Megnevezés szükséges', t.id)); templates.value = this.templateId; this.renderType(); this.renderTemplate(); this.renderInfo(); }
     renderType() { const editor = el('price-type-editor'); editor.replaceChildren(); const t = this.book?.types.find((v) => v.id === this.typeId); if (!t)
-        return; const change = () => { this.catalogChanged = true; }; for (const [key, label] of [['category', 'Kategória'], ['name', 'Típus'], ['unit', 'Mértékegység'], ['unit2', 'Második mértékegység – ha szükséges']])
+        return; const change = () => { this.touchBook(); }; for (const [key, label] of [['category', 'Kategória'], ['name', 'Típus'], ['unit', 'Mértékegység'], ['unit2', 'Második mértékegység – ha szükséges']])
         input(editor, label, t[key], v => { t[key] = v; change(); }); select(editor, 'Számítási mód', t.mode, Object.entries(modes), v => { t.mode = v; if (v === 'custom') {
         t.fields ??= [{ key: 'q1', label: 'Mennyiség', unit: t.unit, required: true, inherit: '' }];
         t.quantity_formula ??= 'q1';
@@ -533,7 +613,7 @@ export class QuoteDesk {
         input(defaults, label, t.defaults?.[key], v => { t.defaults ??= {}; t.defaults[key] = v; change(); }, 'number'); this.materials(fold(editor, 'Anyagjegyzék és ráhagyás'), t, change); input(editor, 'Hasznos információk – csak belső munkautasítás', t.internal_info, v => { t.internal_info = v; change(); }, 'textarea', 12000); if (t.source)
         editor.append(n('p', 'Forrás: ' + t.source.sheet + ' · ' + t.source.row + '. sor')); }
     renderTemplate() { const editor = el('price-template-editor'); editor.replaceChildren(); const t = this.book?.templates.find((v) => v.id === this.templateId); if (!t)
-        return; const change = () => { this.catalogChanged = true; }; input(editor, 'Sablon neve', t.name, v => { t.name = v; change(); }); for (const row of t.lines) {
+        return; const change = () => { this.touchBook(); }; input(editor, 'Sablon neve', t.name, v => { t.name = v; change(); }); for (const row of t.lines) {
         const type = this.book?.types.find((v) => v.id === row.type_id);
         const d = fold(editor, type ? type.category + ' – ' + type.name : 'Pontosítandó: ' + row.unresolved);
         this.typePicker(d, row.type_id ?? '', type => { row.type_id = type.id; row.unresolved = ''; change(); this.renderTemplate(); });
@@ -550,8 +630,8 @@ export class QuoteDesk {
     } const add = fold(editor, 'Új sablonsor'); this.typePicker(add, '', type => { t.lines.push({ type_id: type.id, params: { ...type.defaults }, optional: false }); change(); this.renderTemplate(); }); }
     renderInfo() { const editor = el('price-info-editor'); editor.replaceChildren(); for (const t of this.book?.info_templates ?? []) {
         const d = fold(editor, t.name || 'Információsablon megnevezése szükséges');
-        input(d, 'Sablon neve', t.name, v => { t.name = v; this.catalogChanged = true; });
-        input(d, 'Az ügyfélnek szánt tájékoztató szöveg', t.body, v => { t.body = v; this.catalogChanged = true; }, 'textarea', 20000);
+        input(d, 'Sablon neve', t.name, v => { t.name = v; this.touchBook(); });
+        input(d, 'Az ügyfélnek szánt tájékoztató szöveg', t.body, v => { t.body = v; this.touchBook(); }, 'textarea', 20000);
     } }
     exportMaterials() { if (!this.output || this.output.issues.length) {
         this.message('Előbb javítsd az ajánlat hiányzó adatait.');
@@ -567,7 +647,7 @@ export class QuoteDesk {
         return;
     } if (this.catalogChanged && !confirm('A még nem mentett árlista-módosításokat felváltja az import. Folytatod?'))
         return; const epoch = this.epoch; this.loading = true; try {
-        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.4.1', import.meta.url).href);
+        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.5.0', import.meta.url).href);
         const imported = await readCalculator(file);
         if (epoch !== this.epoch)
             return;
@@ -575,7 +655,7 @@ export class QuoteDesk {
             return;
         imported.info_templates = this.book?.info_templates ?? [];
         this.book = imported;
-        this.catalogChanged = true;
+        this.touchBook();
         this.typeId = '';
         this.templateId = '';
         this.renderBook();
@@ -586,8 +666,11 @@ export class QuoteDesk {
             this.error(e);
     }
     finally {
-        if (epoch === this.epoch)
+        if (epoch === this.epoch) {
             this.loading = false;
+            this.historyButtons();
+            this.bookButtons();
+        }
     } }
     async saveBook() { if (!this.org || !this.book || this.busy)
         return; const epoch = this.epoch; this.saving = true; const controls = Array.from(el('prices-view').querySelectorAll('input,select,textarea,button')); for (const control of controls)
@@ -609,6 +692,7 @@ export class QuoteDesk {
             this.saving = false;
             for (const control of controls)
                 control.disabled = false;
+            this.bookButtons();
         }
     } }
 }

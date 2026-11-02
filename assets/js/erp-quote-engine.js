@@ -235,7 +235,7 @@ export function calculateQuote(input) {
                 labor += lab;
                 const rate = input.hourly_rate ? decimal(input.hourly_rate, 'Ügyfélnek számlázott óradíj') : 0n;
                 const minutes = rate > 0n ? formatted(div(mul(lab, 60n * SCALE), rate)) : null;
-                return { id: line.id, label: cleanName(t.category) + ' – ' + cleanName(t.name), quantity: formatted(displayQuantity ?? quantity), unit: t.unit, parameter_note: second > 0n ? 'Második mennyiség: ' + formatted(second) + ' ' + t.unit2 : '', material_unit: money(second > 0n ? mul(materialUnit, second) : materialUnit), labor_unit: money(second > 0n ? mul(laborUnit, second) : laborUnit), material: money(mat), labor: money(lab), net: money(mat + lab), minimum_adjustment: money(minimumApplied), public_note: text(line.public_note ?? '', 4000, 'Egyéb megjegyzés'), materials, planned_minutes: minutes, internal_info: t.internal_info, trace: { raw_material: money(rawMaterial), raw_labor: money(rawLabor), area: formatted(area), volume: formatted(volume), thickness_cm: formatted(thickness) } };
+                return { id: line.id, label: cleanName(t.category) + ' – ' + cleanName(t.name), quantity: formatted(displayQuantity ?? quantity), unit: t.unit, parameter_note: second > 0n ? 'Második mennyiség: ' + money(second).replace(/\.?0+$/, '') + ' ' + t.unit2 : '', material_unit: money(second > 0n ? mul(materialUnit, second) : materialUnit), labor_unit: money(second > 0n ? mul(laborUnit, second) : laborUnit), material: money(mat), labor: money(lab), net: money(mat + lab), minimum_adjustment: money(minimumApplied), public_note: text(line.public_note ?? '', 4000, 'Egyéb megjegyzés'), materials, planned_minutes: minutes, internal_info: t.internal_info, trace: { raw_material: money(rawMaterial), raw_labor: money(rawLabor), area: formatted(area), volume: formatted(volume), thickness_cm: formatted(thickness) } };
             }
             catch (error) {
                 issues.push((si + 1) + '. főtétel, ' + (li + 1) + '. sor: ' + (error instanceof Error ? error.message : 'Hibás tétel.'));
@@ -255,10 +255,12 @@ export function calculateQuote(input) {
     return { engine_version: '1', rounding: 'line-2-vat-total-2', sections, issues, material: issues.length ? null : money(totalMaterial), labor: issues.length ? null : money(totalLabor), tax_base: issues.length ? null : money(base), vat: issues.length ? null : money(vat), gross: issues.length ? null : money(base + vat), vat_mode: String(input.vat), information: input.information ?? '' };
 }
 // Kizárólag ez a kifejezett engedélylista kerülhet ügyfél-PDF-be vagy ügyfélexportba.
-export function customerQuote(output) {
-    if (output.issues?.length)
+export function customerQuote(output, draft = false) {
+    if (!draft && output.issues?.length)
         throw Error('A PDF-hez előbb javítsd az összes hiányzó vagy hibás tételt.');
-    return { engine_version: output.engine_version, material: output.material, labor: output.labor, tax_base: output.tax_base, vat: output.vat, gross: output.gross, vat_mode: output.vat_mode, information: output.information, sections: output.sections.map((s) => ({ name: s.name, material: s.material, labor: s.labor, net: s.net, lines: s.lines.map((l) => ({ label: l.label, quantity: l.quantity, unit: l.unit, parameter_note: l.parameter_note, material_unit: l.material_unit, labor_unit: l.labor_unit, material: l.material, labor: l.labor, net: l.net, minimum_adjustment: l.minimum_adjustment, public_note: l.public_note, materials: l.materials.map((m) => ({ name: m.name, unit: m.unit, installed: m.installed })) })) })) };
+    const moneyKeys = ['material', 'labor', 'tax_base', 'vat', 'gross'];
+    const totals = Object.fromEntries(moneyKeys.map(k => [k, output[k]]));
+    return { engine_version: output.engine_version, ...totals, draft_preview: draft, vat_mode: output.vat_mode, information: output.information, sections: output.sections.map((s) => { const incomplete = !s.name || !s.lines.length || s.lines.some((l) => l.incomplete); return { name: s.name || 'Megnevezés nélkül', material: incomplete ? null : s.material, labor: incomplete ? null : s.labor, net: incomplete ? null : s.net, lines: s.lines.map((l) => l.incomplete ? { label: l.label, incomplete: true, quantity: null, unit: '', material_unit: null, labor_unit: null, material: null, labor: null, net: null, minimum_adjustment: null, materials: [] } : { label: l.label, quantity: l.quantity, unit: l.unit, parameter_note: l.parameter_note, material_unit: l.material_unit, labor_unit: l.labor_unit, material: l.material, labor: l.labor, net: l.net, minimum_adjustment: l.minimum_adjustment, public_note: l.public_note, materials: l.materials.map((m) => ({ name: m.name, unit: m.unit, installed: m.installed })) }) }; }) };
 }
 export function quoteChanges(before, after) { const old = new Map(); for (const section of before.sections ?? [])
     for (const l of section.lines ?? [])

@@ -239,3 +239,15 @@ Az éles böngészős ellenőrzésben az ismétlődő fókuszváltás teljes mun
 ## 2026. november 2. – átadás előtti megállás
 
 A 8a3a052 commit GitHub Pages-közzététele sikeres, a publikus verzió 0.4.1. A saját irodai automatikus belépés és az új Felmérések menüpont megjelenése élesben látható. A menü megnyitásának utolsó UI-próbája nem zárult le: az automatizált kattintás nem váltott nézetet, ezért nem állítjuk, hogy a fókuszkorlát ezt élesben bizonyítottan megoldotta. Az elkülönített helyi próba korábbi megerősítése is felmerült lehetséges akadályként, de ezt nem bizonyítottuk. Az automatikus jóváhagyási ellenőrzés a tesztlap feltételes megerősítés-elfogadását nem engedte nem mentett adat elvesztésének kockázata miatt; az elutasított műveletet nem hajtottuk végre és nem kerültük meg. A felhasználó távollétében kérdésnél megállást kért. Következő alkalom: a kizárólag szintetikus helyi tesztlap állapotának biztonságos rendezése, az éles menüpróba lezárása, majd a saját ERP_GROQ_API_KEY beállítása és valódi magyar MI-próba. Kulcs vagy új fizetős szolgáltatás nem lett beállítva.
+
+## 2026. november 2. – 0.5.0: ajánlati javítások és PDF-követelményaudit
+
+- Legfeljebb két tizedes a megjelenítésben, pontos belső anyagszorzók és számítás megtartásával.
+- Mindig elérhető tételtörlés, ajánlati és árlista-/sablonszerkesztési Visszavonás/Újra; az elfogadott pénzügyi pillanatkép védett marad.
+- Nyitva tartható, szerkesztés után frissülő PDF-panel; későn érkező válaszok eldobása, hibavisszajelzés; hiányos, egyértelműen jelölt munkaváltozat hamis nulla összegek nélkül.
+- ÁFA-vetítési alap, ÁFA/bruttó kiemelése, név szerinti főtétel-részösszeg; teljes sorok együtt tartása az oldaltörésnél, ha elférnek.
+- Választható kézi levelező, másolás, PDF-mellékletes EML; automatikus küldés nincs.
+- Külön specifikációs állapotlista készült: a teljes ERP nem kész, az ügyfélportál és kivitelezési folyamat még hátravan. README rövid maradt.
+- Új adatbázis-, Auth- vagy jogosultságmódosítás nincs; másik alkalmazás nem változott.
+
+Ellenőrzés: 188 regressziós teszt, TypeScript- és gateway-típusellenőrzés, 163/163 Excel-paritás, Kompakt/Normál/hiányos PDF helyi előállítása és képi ellenőrzése. Elkülönített felületpróba: becsukott sorból törlés → Visszavonás; szerkesztés nyitott PDF-panel mellett; hibás/késői PDF-válasz tesztelve. Az új EML valódi levelezővel végzett megnyitási próbája és az ügyfélportál még hátravan. Saját gateway: v13 ACTIVE, séma-/Auth-változtatás nélkül.

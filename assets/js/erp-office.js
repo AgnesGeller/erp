@@ -1,14 +1,14 @@
 const setupOpening = new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.4.1', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.4.1', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.5.0', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.5.0', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
-const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.4.1', import.meta.url).href);
+const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.5.0', import.meta.url).href);
 const api = new ErpApi();
-const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.4.1', import.meta.url).href);
-const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.4.1', import.meta.url).href);
-const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.4.1', import.meta.url).href);
-const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.4.1', import.meta.url).href);
+const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.5.0', import.meta.url).href);
+const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.5.0', import.meta.url).href);
+const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.5.0', import.meta.url).href);
+const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.5.0', import.meta.url).href);
 const customers = new CustomerDirectory(api, error => { if (!api.signedIn)
     showError(error); }, (id, name) => { void works.selectCustomer(id, name); }, (id, name) => { void quotes.selectCustomer(id, name); }, surveysEnabled ? (id, name) => { void surveys.selectCustomer(id, name); } : undefined);
 const works = new SiteWorks(api, error => { if (!api.signedIn)

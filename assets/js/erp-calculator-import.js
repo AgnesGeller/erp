@@ -1,4 +1,4 @@
-const { cleanName, validateBook } = await import(new URL('./erp-quote-engine.js?v=0.4.1', import.meta.url).href);
+const { cleanName, validateBook } = await import(new URL('./erp-quote-engine.js?v=0.5.0', import.meta.url).href);
 export async function readCalculator(file) {
     if (!/\.xlsx$/i.test(file.name) || file.size > 25000000)
         throw Error('Legfeljebb 25 MB méretű XLSX-kalkulátort válassz.');

@@ -216,3 +216,7 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - 390 px mobilnézet vízszintes kilógás nélkül. Teljes regresszió ismét 151 sikeres eredmény. Az ellenőrzés végén a böngésző konzolhibát és figyelmeztetést nem jelzett.
 - A megrendelő pontosítása: a járdasablon öt nyitott sorát a főnök ajánlatkészítéskor választja ki. A README és a használati útmutató ezt rögzíti; a korábbi 0.2.0 állapotleírást és az elavult, jövő idejű árlistabetöltési szöveget javítottuk.
 - Alkalmazáskód-, adatbázis-, Auth- és más alkalmazást érintő változtatás nem kellett. Próbaajánlat, próbamunka, új árlistaváltozat vagy kiküldési tény nem mentődött. A valódi kiküldés/elfogadás/indítás üzleti ellenőrzése az első tényleges ajánlatnál következik. Új modul fejlesztését ez az ellenőrzés nem indította el.
+
+## 2026. november 2. – rövid README
+
+A megrendelő kérésére a README rövid áttekintésre, használati hivatkozásokra és fejlesztési parancsokra szűkült. A teljes korábbi szöveg a [részletes projektleírásban](reszletes-projektleiras.md) megmaradt, a relatív hivatkozások az új helyhez igazítva. Alkalmazáskód vagy adatbázis nem változott. Ellenőrzés: helyi dokumentum- és képhivatkozások, Git-diff; build és üzleti teszt ismétlése nem szükséges.

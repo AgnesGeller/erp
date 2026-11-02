@@ -1,6 +1,6 @@
 import {customerQuote,type Obj} from './quote-engine.ts';
 type Reply={data?:any;error?:string;status?:number};
-type Options={url:string;key:string;anonKey:string;fetchImpl?:typeof fetch;pdf:(data:any,normal:boolean)=>Promise<Uint8Array>};
+type Options={kind?:'client'|'staff';url:string;key:string;anonKey:string;fetchImpl?:typeof fetch;pdf:(data:any,normal:boolean)=>Promise<Uint8Array>};
 const id=(v:unknown):v is string=>typeof v==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(v);
 const email=(v:unknown):v is string=>typeof v==='string'&&v.length<=254&&/^[^\s@<>\x00-\x1f]+@[^\s@<>\x00-\x1f]+\.[^\s@<>\x00-\x1f]+$/.test(v);
 const sha=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(v=>v.toString(16).padStart(2,'0')).join('');
@@ -10,9 +10,9 @@ class ClientError extends Error{constructor(public status:number,message:string)
 export function verifiedSession(token:string){try{const raw=token.split('.')[1];const claims=JSON.parse(atob(raw.replace(/-/g,'+').replace(/_/g,'/')));if(!id(claims.sub)||!id(claims.session_id))throw Error();return {user:claims.sub as string,session:claims.session_id as string};}catch{throw new ClientError(401,'A munkamenet nem használható. Jelentkezz be újra.');}}
 export function clientPortalView(raw:Obj){return {name:String(raw.name??''),sites:(raw.sites??[]).map((s:Obj)=>({id:s.id,address:s.address})),projects:(raw.projects??[]).map((p:Obj)=>({id:p.id,name:p.name,work_type:p.work_type,status:p.status,address:p.address,location_id:p.location_id,scheduled_date:p.scheduled_date,quote_id:p.quote_id,updated_at:p.updated_at})),quotes:(raw.quotes??[]).map((q:Obj)=>({id:q.id,number:q.number,status:q.status,title:q.title,date:q.date,version:q.version,customer:{name:q.customer?.name,address:q.customer?.address},calculation:customerQuote(q.calculation)}))};}
 export function createClientAccess(options:Options){
- const request=options.fetchImpl??fetch;
+ const kind=options.kind??'client';const request=options.fetchImpl??fetch;
  async function call(path:string,body:unknown,admin=true,method='POST'):Promise<any>{let response:Response;try{response=await request(options.url+path,{method,headers:{apikey:admin?options.key:options.anonKey,'Content-Type':'application/json',...(admin?{Authorization:'Bearer '+options.key}:{})},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});}catch{throw new ClientError(503,'A visszaigazolás nem érkezett meg. Várj két percet, majd ugyanazzal a hivatkozással újrapróbálhatod.');}let data:any;try{data=await response.json();}catch{throw new ClientError(503,'A szolgáltatás válasza nem olvasható.');}if(!response.ok){if(path.startsWith('/auth/v1/token'))throw new ClientError(response.status===429?429:401,'A belépés nem sikerült. Ellenőrizd az e-mail-címet és a jelszót.');const code=data?.code;throw new ClientError(code==='40001'||code==='23505'?409:code==='42501'?403:422,code==='40001'||code==='23505'?'Az adatok megváltoztak vagy az e-mail már foglalt. Frissítsd az adatokat.':code==='42501'?'Ehhez nincs aktív ügyfél-hozzáférésed.':'A művelet nem sikerült. Ellenőrizd az adatokat; beállítási hiba esetén két perc múlva újrapróbálhatod.');}return data;}
- const rpc=(name:string,args:Obj)=>call('/rest/v1/rpc/'+name,args);
+ const rpc=(name:string,args:Obj)=>call('/rest/v1/rpc/'+(kind==='staff'?name.replace(/^erp_client_/,'erp_staff_'):name),args);
  async function check(token:string){const c=verifiedSession(token);await rpc('erp_client_session_check',{p_user:c.user,p_session:c.session});}
  async function publicAction(input:Obj):Promise<Obj>{
   if(input.action==='client_recover'){if(!email(input.email))throw new ClientError(422,'Adj meg egy érvényes e-mail-címet.');await rpc('erp_client_recover',{p_email:input.email});return {success:true,message:'Ha van ilyen aktív ERP-ügyfélfiók, az iroda megkapta a kérésedet, és elküldi a jelszóbeállító hivatkozást. A levél nem automatikusan érkezik.'};}
@@ -21,7 +21,7 @@ export function createClientAccess(options:Options){
    const claim=await rpc('erp_client_claim',{p_hash:await sha(input.setup_token)});if(!claim.allowed)throw new ClientError(claim.busy?409:403,claim.busy?'A jelszóbeállítás folyamatban van. Várj két percet.':'A beállító hivatkozás lejárt, visszavonták vagy már felhasználták. Kérj újat az irodától.');
    let user=await rpc('erp_client_auth_lookup',{p_account:claim.account_id,p_claim:claim.claim_id});
    if(claim.auth_user_id&&user!==claim.auth_user_id)throw new ClientError(403,'A fiók azonosítása nem sikerült. Kérj segítséget az irodától.');
-   const account=await call('/auth/v1/admin/users'+(user?'/'+user:''),user?{password:input.password}:{email:claim.email,password:input.password,email_confirm:true,app_metadata:{erp_client_id:claim.account_id}},true,user?'PUT':'POST');
+   const account=await call('/auth/v1/admin/users'+(user?'/'+user:''),user?{password:input.password}:{email:claim.email,password:input.password,email_confirm:true,app_metadata:{[kind==='staff'?'erp_staff_id':'erp_client_id']:claim.account_id}},true,user?'PUT':'POST');
    user=account.id??account.user?.id;if(!id(user))throw new ClientError(503,'Hiányos jelszóbeállítási visszaigazolás. Ugyanazzal a hivatkozással újrapróbálhatod.');
    await rpc('erp_client_finish',{p_account:claim.account_id,p_claim:claim.claim_id,p_user:user});return {success:true};
   }
@@ -31,7 +31,7 @@ export function createClientAccess(options:Options){
    const tokens=await call('/auth/v1/token?grant_type=password',{email:target.email,password:input.password},false);const c=verifiedSession(tokens.access_token);if(c.user!==target.user_id)throw new ClientError(401,'A fiók azonosítása nem sikerült.');
    await rpc('erp_client_session_open',{p_account:target.account_id,p_generation:target.generation,p_user:c.user,p_session:c.session});
    const sessionResponse=await request(options.url+'/rest/v1/rpc/erp_session',{method:'POST',headers:{apikey:options.anonKey,Authorization:'Bearer '+tokens.access_token,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(15000)});const session=await sessionResponse.json();if(!sessionResponse.ok||!Array.isArray(session)||!session.length||session.some(s=>!s.person_id||s.is_office))throw new ClientError(403,'Nincs aktív ügyfél-hozzáférésed.');
-   return {...tokens,session:session.map(s=>({...s,is_client:true}))};
+   return {...tokens,session:session.map(s=>({...s,...(kind==='staff'?{is_staff:true,is_client:false}:{is_client:true})}))};
   }
   throw new ClientError(400,'Nem támogatott ügyfélművelet.');
  }
@@ -58,5 +58,5 @@ export function createClientAccess(options:Options){
   throw new ClientError(400,'Nem támogatott ügyfélművelet.');
  }
  async function close(token:string,actor:string){const c=verifiedSession(token);if(c.user!==actor)throw new ClientError(401,'Érvénytelen munkamenet.');await rpc('erp_client_session_close',{p_user:actor,p_session:c.session});}
- return {check,close,handle:async(input:Obj,token?:string,actor?:string,memberships?:unknown):Promise<Reply>=>{try{const result=token&&actor?await authenticated(input,token,actor,memberships):await publicAction(input);return {data:result};}catch(e){return {status:e instanceof ClientError?e.status:503,error:e instanceof ClientError?e.message:'Az ügyfélművelet most nem végezhető el. Próbáld újra később.'};}}};
+ return {check,close,handle:async(input:Obj,token?:string,actor?:string,memberships?:unknown):Promise<Reply>=>{try{const result=token&&actor?await authenticated(input,token,actor,memberships):await publicAction(input);return {data:result};}catch(e){return {status:e instanceof ClientError?e.status:503,error:e instanceof ClientError?(kind==='staff'?e.message.replaceAll('ügyfél','munkatárs').replaceAll('Ügyfél','Munkatárs'):e.message):'Az ügyfélművelet most nem végezhető el. Próbáld újra később.'};}}};
 }

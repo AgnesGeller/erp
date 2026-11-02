@@ -12,6 +12,8 @@
 - Árajánlatkészítés: 163 árazott típus, 22 kategória, három sablon, frissülő PDF-előnézet, tételtörlés/visszavonás és választható kézi levelezés.
 - Telepítés és frissítés a felső menüből; mobilon is használható felület.
 
+A részletes munkaterv és négyszintű átvétel fejlesztés alatt áll; [folytatási pont](docs/munkaterv-folytatasi-pont.md).
+
 A járdasablon pontosítandó sorait a főnök ajánlatkészítéskor választja ki. A teljes ERP fejlesztése még folyamatban van; a Groq MI-próbájához saját szerveroldali kulcs szükséges.
 
 ![Az alkalmazás belépési felülete](docs/kepek/kezdo-desktop.png)

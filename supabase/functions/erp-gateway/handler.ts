@@ -1,5 +1,5 @@
 type FeatureHandler=(input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}>;
-type GatewayOptions = { surveys?:FeatureHandler; quotes?:FeatureHandler; url: string; anonKey: string; serviceKey?: string; emailFlowsEnabled?: boolean; fetchImpl?: typeof fetch; customers?: (input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}> };
+type GatewayOptions = { clients?:FeatureHandler; clientLogout?:(token:string,actor:string)=>Promise<void>; clientSession?:(token:string)=>Promise<void>; surveys?:FeatureHandler; quotes?:FeatureHandler; url: string; anonKey: string; serviceKey?: string; emailFlowsEnabled?: boolean; fetchImpl?: typeof fetch; customers?: (input:Record<string,unknown>,token:string,actor:string,memberships:unknown)=>Promise<{data?:unknown;error?:string;status?:number}> };
 const allowedOrigins = new Set(['https://agnesgeller.github.io','http://127.0.0.1:5194','http://localhost:5194']);
 const allowedRpc = new Set(['erp_session','erp_list_people','erp_create_worker_request','erp_list_projects','erp_list_assignments','erp_assign_project_role','erp_revoke_assignment','erp_customer_profile_save','erp_project_role_access','erp_list_site_works','erp_site_work_action']);
 type TokenResult = { access_token: string; refresh_token: string; expires_in: number };
@@ -63,6 +63,7 @@ export function createGateway(options: GatewayOptions): (req: Request) => Promis
         input=value as Record<string,unknown>;
       } catch { return reply({error:'Érvénytelen kérés.'},400); }
       if(!String(input.action).startsWith('survey_')&&new TextEncoder().encode(raw).length>32768)return reply({error:'Túl nagy kérés.'},413);
+      if(['client_login','client_setup','client_recover'].includes(String(input.action))){if(!options.clients)return reply({error:'Az ügyfélbelépés jelenleg nem érhető el.'},503);const result=await options.clients(input,'','',[]);return reply(result.error?{error:result.error}:result.data,result.status??200);}
       if(input.action==='office_setup') {
         if(!['agi','tamas'].includes(String(input.login_name))||typeof input.setup_token!=='string'||! /^[a-f0-9]{64}$/.test(input.setup_token)
         ||typeof input.password!=='string'||! /^[0-9]{6,12}$/.test(input.password))return reply({error:'Érvénytelen beállítás. A PIN-kód 6–12 számjegy legyen.'},400);
@@ -122,6 +123,7 @@ export function createGateway(options: GatewayOptions): (req: Request) => Promis
           throw new GatewayError(503,'A bejelentkezés most nem végezhető el.');
         let session: unknown;
         try {
+          if(options.clientSession){try{await options.clientSession(tokens.access_token);}catch(e){const status=e&&typeof e==='object'&&'status'in e?e.status:503;throw new GatewayError(status===403||status===401?401:503,'Az ügyfél-munkamenet lejárt vagy most nem ellenőrizhető. Próbáld újra.');}}
           session=await rpc('erp_session',{},tokens.access_token);
           if (!Array.isArray(session) || session.length===0) throw new GatewayError(403,'Nincs aktív ERP-hozzáférésed.');
         } catch (error) {
@@ -157,7 +159,9 @@ export function createGateway(options: GatewayOptions): (req: Request) => Promis
         try { await call('/auth/v1/logout?scope=local',{},token); } catch { /* A böngésző is eldobja az egyszeri tokent. */ }
         return reply({success:true});
       }
+      if(typeof input.action==='string'&&input.action.startsWith('client_')){if(!options.clients)return reply({error:'Az ügyfélfelület nem érhető el.'},503);const {response:verified,data:actor}=await call('/auth/v1/user',undefined,token);if(!verified.ok||!actor||typeof actor!=='object'||!('id'in actor))return reply({error:'Jelentkezz be újra.'},401);const memberships=await rpc('erp_session',{},token);const result=await options.clients(input,token,String(actor.id),memberships);return reply(result.error?{error:result.error}:{data:result.data},result.status??200);}
       if (input.action==='logout') {
+        if(options.clientLogout){const {response:verified,data:actor}=await call('/auth/v1/user',undefined,token);if(verified.ok&&actor&&typeof actor==='object'&&'id'in actor)await options.clientLogout(token,String(actor.id));else if(verified.status!==401)throw new GatewayError(503,'A kijelentkezés visszaigazolása nem érkezett meg. Próbáld újra.');}
         const {response}=await call('/auth/v1/logout?scope=local',{},token);
         if (!response.ok && response.status!==401) throw new GatewayError(503,'A kijelentkezés visszaigazolása nem érkezett meg.');
         return reply({success:true});

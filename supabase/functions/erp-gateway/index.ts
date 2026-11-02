@@ -1,3 +1,4 @@
+import {createClientAccess} from './clients.ts';
 import {createGateway} from './handler.ts';
 import {createCustomerDirectory} from './customers.ts';
 import {createQuotes} from './quotes.ts';
@@ -7,4 +8,5 @@ const url=Deno.env.get('SUPABASE_URL')??'',key=Deno.env.get('SUPABASE_SERVICE_RO
 const customers=createCustomerDirectory({url,key,sourceKey:Deno.env.get('KASSZA_SERVICE_ROLE_KEY')??''});
 const quotes=createQuotes({url,key,context:(organization_id,customer_id,token,actor,memberships)=>customers({action:'quote_context',organization_id,customer_id},token,actor,memberships),pdf:makeQuotePdf});
 const surveys=createSurveys({url,key,context:(organization_id,customer_id,token,actor,memberships)=>customers({action:'work_sites',organization_id,customer_id},token,actor,memberships)});
-Deno.serve(createGateway({url,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',serviceKey:key,emailFlowsEnabled:false,customers,quotes,surveys}));
+const clients=createClientAccess({url,key,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',pdf:makeQuotePdf});
+Deno.serve(createGateway({clients:clients.handle,clientSession:clients.check,clientLogout:clients.close,url,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',serviceKey:key,emailFlowsEnabled:false,customers,quotes,surveys}));

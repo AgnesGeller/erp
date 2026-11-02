@@ -1,16 +1,19 @@
 import type { OrganizationSession } from './erp-api.js';
-const setupOpening=new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
-const apiUrl=new URL('./erp-api.js?v=0.5.0',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.5.0',import.meta.url);
+const clientSetupParams=new URLSearchParams(location.hash.slice(1));let clientSetupToken=clientSetupParams.get('client_setup');const clientSetupOpening=clientSetupToken!==null;if(clientSetupOpening)history.replaceState(null,'',location.pathname+location.search);
+const setupOpening=clientSetupOpening||new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
+const apiUrl=new URL('./erp-api.js?v=0.6.0',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.6.0',import.meta.url);
 const {ErpApi,ApiError}=await import(apiUrl.href) as typeof import('./erp-api.js');
 const {projectPeriod,todayBudapest,periodLabel}=await import(datesUrl.href) as typeof import('./erp-dates.js');
-const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.5.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
+const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.6.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
 const api=new ErpApi();
-const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.5.0',import.meta.url).href) as typeof import('./erp-customers.js');
-const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.5.0',import.meta.url).href) as typeof import('./erp-site-works.js');
-const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.5.0',import.meta.url).href) as typeof import('./erp-quotes.js');
-const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.5.0',import.meta.url).href) as typeof import('./erp-surveys.js');
-const customers=new CustomerDirectory(api,error=>{if(!api.signedIn)showError(error);},(id,name)=>{void works.selectCustomer(id,name);},(id,name)=>{void quotes.selectCustomer(id,name);},surveysEnabled?(id,name)=>{void surveys.selectCustomer(id,name);}:undefined);
+const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.6.0',import.meta.url).href) as typeof import('./erp-customers.js');
+const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.6.0',import.meta.url).href) as typeof import('./erp-site-works.js');
+const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.6.0',import.meta.url).href) as typeof import('./erp-quotes.js');
+const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.6.0',import.meta.url).href) as typeof import('./erp-surveys.js');
+const {ClientAdmin,ClientPortal}=await import(new URL('./erp-clients.js?v=0.6.0',import.meta.url).href) as typeof import('./erp-clients.js');
+const clientAdmin=new ClientAdmin(api,error=>{if(!api.signedIn)showError(error);});const clientPortal=new ClientPortal(api,showError);
+const customers=new CustomerDirectory(api,error=>{if(!api.signedIn)showError(error);},(id,name)=>{void works.selectCustomer(id,name);},(id,name)=>{void quotes.selectCustomer(id,name);},surveysEnabled?(id,name)=>{void surveys.selectCustomer(id,name);}:undefined,(id,name)=>{void clientAdmin.open(id,name);});
 const works=new SiteWorks(api,error=>{if(!api.signedIn)showError(error);},loadWorkspace,()=>{customers.open();get<HTMLInputElement>('customer-search').focus();});
 const quotes=new QuoteDesk(api,error=>{if(!api.signedIn)showError(error);},()=>{customers.open();get<HTMLInputElement>('customer-search').focus();},loadWorkspace,media=>surveys.showMedia(media));
 const surveys=new SurveyDesk(api,error=>{if(!api.signedIn)showError(error);},()=>{customers.open();get<HTMLInputElement>('customer-search').focus();},async payload=>{await quotes.selectSurvey(payload);});
@@ -48,8 +51,8 @@ function formBusy(form:HTMLFormElement,busy:boolean):void {
 }
 function resetView():void {
  get('office-status').textContent='';get('login-feedback').textContent='';
- generation++;customers.reset();works.reset();quotes.reset();surveys.reset();current=undefined;people=[];projects=[];dirty=false;workerRequest=undefined;
- get('office-app').hidden=true;get('login-area').hidden=false;get('public-identity').hidden=false;get('logout').hidden=true;
+ generation++;clientAdmin.reset();clientPortal.reset();customers.reset();works.reset();quotes.reset();surveys.reset();current=undefined;people=[];projects=[];dirty=false;workerRequest=undefined;
+ get('office-app').hidden=true;get('client-login-area').hidden=true;get('client-setup-area').hidden=true;get('login-area').hidden=false;get('public-identity').hidden=false;get('logout').hidden=true;
  for(const id of ['people-list','assignment-list','project-select','assignment-person','organization-select'])get(id).replaceChildren();
  workerForm.reset();roleForm.reset();get<HTMLInputElement>('login-password').value='';
 }
@@ -118,6 +121,8 @@ async function loadWorkspace():Promise<void> {
   get('workspace-role').textContent=current.is_office?'Irodai munkatér':'Saját munkák';
   get('people-section').hidden=!current.is_office;
   if(!current.is_office){people=[];get('people-list').replaceChildren();workerForm.reset();dirty=false;}
+  if(current.is_client){clientAdmin.setOrganization(undefined);customers.reset();works.reset();quotes.reset();surveys.reset();get('office-app').hidden=true;get('login-area').hidden=true;get('client-login-area').hidden=true;get('client-setup-area').hidden=true;get('public-identity').hidden=true;get('logout').hidden=false;await clientPortal.open(current.person_id);return;}
+  clientPortal.reset();clientAdmin.setOrganization(current.is_office?current.organization_id:undefined);get('client-login-area').hidden=true;
   const result=await Promise.all([
    api.rpc<Project[]>('erp_list_projects',{p_org:current.organization_id}),
    current.is_office?api.rpc<Person[]>('erp_list_people',{p_org:current.organization_id}):Promise.resolve([])
@@ -135,7 +140,7 @@ async function loadWorkspace():Promise<void> {
   surveys.setOrganization(current.is_office?current.organization_id:undefined,current.person_id);
   quotes.setOrganization(current.is_office?current.organization_id:undefined);
   works.setOrganization(current.is_office?current.organization_id:undefined);
-  await customers.setOrganization(current.is_office?current.organization_id:undefined);
+  await customers.setOrganization(current.is_office?current.organization_id:undefined);if(current.is_office)await clientAdmin.refreshRequests();
  }finally{loading=false;get<HTMLSelectElement>('organization-select').disabled=false;projectSelect.disabled=!projects.some(p=>p.active);}
 }
 loginForm.addEventListener('invalid',()=>{
@@ -178,8 +183,8 @@ roleForm.addEventListener('submit',async event=>{
  finally{mutations--;formBusy(roleForm,false);}
 });
 get('logout').addEventListener('click',async()=>{
- if(mutations||loading||customers.busy||works.busy||quotes.busy||surveys.busy){message('Várd meg a folyamatban lévő művelet végét.');return;}
- if((dirty||customers.dirty||works.dirty||quotes.dirty||surveys.dirty)&&!confirm('Kijelentkezel? A még nem mentett mezők tartalma elvész.'))return;
+ if(mutations||loading||clientAdmin.busy||clientPortal.busy||customers.busy||works.busy||quotes.busy||surveys.busy){message('Várd meg a folyamatban lévő művelet végét.');return;}
+ if((dirty||clientAdmin.dirty||customers.dirty||works.dirty||quotes.dirty||surveys.dirty)&&!confirm('Kijelentkezel? A még nem mentett mezők tartalma elvész.'))return;
  generation++;
  try{await api.logout();resetView();message('Sikeres kijelentkezés.',true);}catch(error){resetView();showError(error);}
 });
@@ -188,15 +193,26 @@ projectSelect.addEventListener('change',()=>{loadAssignments().catch(showError);
 get('organization-select').addEventListener('change',()=>{if(!mutations)loadWorkspace().catch(showError);});
 for(const form of [workerForm,roleForm])form.addEventListener('input',()=>{dirty=true;});
 window.addEventListener('erp:before-update',event=>{
- if(mutations||loading||restoring||customers.busy||works.busy||quotes.busy||surveys.busy){event.preventDefault();message('Várd meg a folyamatban lévő művelet végét.');}
- else if((dirty||customers.dirty||works.dirty||quotes.dirty||surveys.dirty)&&!confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))event.preventDefault();
+ if(mutations||loading||restoring||clientAdmin.busy||clientPortal.busy||customers.busy||works.busy||quotes.busy||surveys.busy){event.preventDefault();message('Várd meg a folyamatban lévő művelet végét.');}
+ else if((dirty||clientAdmin.dirty||customers.dirty||works.dirty||quotes.dirty||surveys.dirty)&&!confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))event.preventDefault();
 });
-window.addEventListener('focus',()=>{if(Date.now()-lastWorkspaceRefresh>=30000&&api.signedIn&&!mutations&&!dirty&&!customers.dirty&&!works.dirty&&!quotes.dirty&&!surveys.dirty&&!customers.busy&&!works.busy&&!quotes.busy&&!surveys.busy)loadWorkspace().catch(showError);});
+window.addEventListener('focus',()=>{if(Date.now()-lastWorkspaceRefresh>=30000&&api.signedIn&&!mutations&&!dirty&&!clientAdmin.dirty&&!clientAdmin.busy&&!clientPortal.busy&&!customers.dirty&&!works.dirty&&!quotes.dirty&&!surveys.dirty&&!customers.busy&&!works.busy&&!quotes.busy&&!surveys.busy)loadWorkspace().catch(showError);});
+const clientForm=get<HTMLFormElement>('client-login-form'),clientSetupForm=get<HTMLFormElement>('client-setup-form');let clientAuthBusy=false;let clientSetupDirty=false;
+function clientFeedback(text:string,success=false){const x=get(!get('client-setup-area').hidden?'client-setup-feedback':'client-login-feedback');x.textContent=(success?'✓ ':'')+text;x.className='office-status '+(success?'success':'error');}
+get('show-client-login').addEventListener('click',()=>{if(clientAuthBusy)return;get('login-area').hidden=true;get('client-login-area').hidden=false;get<HTMLInputElement>('client-login-email').focus();});
+get('show-office-login').addEventListener('click',()=>{if(clientAuthBusy)return;get('client-login-area').hidden=true;get('login-area').hidden=false;get<HTMLInputElement>('client-login-password').value='';});
+clientForm.addEventListener('submit',async e=>{e.preventDefault();if(clientAuthBusy||loading)return;clientAuthBusy=true;formBusy(clientForm,true);const email=get<HTMLInputElement>('client-login-email').value.trim(),password=get<HTMLInputElement>('client-login-password').value;get<HTMLInputElement>('client-login-password').value='';const epoch=++generation;clientFeedback('Belépés…');try{await api.loginClient(email,password);if(epoch!==generation)return;await loadWorkspace();}catch(error){if(epoch===generation)clientFeedback(error instanceof Error?error.message:'A belépés nem sikerült.');}finally{clientAuthBusy=false;formBusy(clientForm,false);}});
+get('client-forgot').addEventListener('click',async()=>{if(clientAuthBusy)return;const email=get<HTMLInputElement>('client-login-email');if(!email.reportValidity())return;clientAuthBusy=true;formBusy(clientForm,true);try{const result=await api.clientPublic<{message:string}>('client_recover',{email:email.value.trim()});clientFeedback(result.message,true);}catch(error){clientFeedback(error instanceof Error?error.message:'A kérés nem sikerült.');}finally{clientAuthBusy=false;formBusy(clientForm,false);}});
+clientSetupForm.addEventListener('input',()=>{clientSetupDirty=true;});
+clientSetupForm.addEventListener('submit',async e=>{e.preventDefault();if(clientAuthBusy||!clientSetupToken)return;const password=get<HTMLInputElement>('client-new-password').value;if(password!==get<HTMLInputElement>('client-repeat-password').value){clientFeedback('A két jelszó nem egyezik.');return;}clientAuthBusy=true;formBusy(clientSetupForm,true);try{await api.clientPublic('client_setup',{setup_token:clientSetupToken,password});clientSetupToken=null;clientSetupDirty=false;clientSetupForm.reset();get('client-setup-area').hidden=true;get('client-login-area').hidden=false;get('client-login-feedback').textContent='✓ A saját ERP-jelszavadat beállítottad. Most beléphetsz az irodával egyeztetett e-mail-címeddel.';}catch(error){clientFeedback(error instanceof Error?error.message:'A jelszó nem állítható be.');}finally{clientAuthBusy=false;formBusy(clientSetupForm,false);}});
+window.addEventListener('erp:before-update',event=>{if(clientAuthBusy){event.preventDefault();clientFeedback('Várd meg a folyamatban lévő belépési művelet végét.');}else if(clientSetupDirty&&!confirm('Frissíted az alkalmazást? A még nem mentett jelszómezők tartalma elvész.'))event.preventDefault();});
+window.addEventListener('beforeunload',e=>{if(clientAuthBusy||clientSetupDirty||clientAdmin.dirty){e.preventDefault();e.returnValue='';}});
+if(clientSetupOpening){get('login-area').hidden=true;get('client-setup-area').hidden=false;if(!/^[a-f0-9]{64}$/.test(clientSetupToken??'')){clientFeedback('A beállító hivatkozás érvénytelen. Kérj újat az irodától.');formBusy(clientSetupForm,true);}}
 get<HTMLInputElement>('assignment-from').value=todayBudapest();
 async function restoreOffice():Promise<void> {
  if(setupOpening||restoring||api.signedIn)return;restoring=true;const epoch=generation;formBusy(loginForm,true);
  try{if(!api.remembered)return;message('Korábbi belépés ellenőrzése…');const restored=await api.restore();restoring=false;
- if(epoch!==generation||!restored)return;await loadWorkspace();message('Sikeres automatikus belépés.',true);}
+ if(epoch!==generation||!restored)return;await loadWorkspace();if(epoch!==generation||!api.signedIn)return;message('Sikeres automatikus belépés.',true);}
  catch(error){if(epoch===generation)showError(error);}finally{restoring=false;formBusy(loginForm,false);}
 }
 void restoreOffice();

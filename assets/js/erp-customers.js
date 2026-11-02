@@ -7,6 +7,7 @@ export class CustomerDirectory {
     startWork;
     startQuote;
     startSurvey;
+    clientAccess;
     suggestionsOpen = false;
     org;
     epoch = 0;
@@ -24,12 +25,13 @@ export class CustomerDirectory {
     timer;
     newForm = node('customer-new-form');
     profileForm = node('customer-profile-form');
-    constructor(api, authError, startWork, startQuote, startSurvey) {
+    constructor(api, authError, startWork, startQuote, startSurvey, clientAccess) {
         this.api = api;
         this.authError = authError;
         this.startWork = startWork;
         this.startQuote = startQuote;
         this.startSurvey = startSurvey;
+        this.clientAccess = clientAccess;
         node('show-customers').addEventListener('click', () => this.open());
         node('show-team').addEventListener('click', () => this.team());
         node('customer-new').addEventListener('click', () => this.startNew());
@@ -218,6 +220,15 @@ export class CustomerDirectory {
         }
         const panel = node('customer-details');
         panel.replaceChildren();
+        if (this.clientAccess && customer.active && customer.review_status === 'approved' && !customer.archived_at) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'quiet';
+            b.textContent = 'Ügyfél-hozzáférés beállítása';
+            b.addEventListener('click', () => { if (this.leave())
+                this.clientAccess(customer.id, customer.full_name); });
+            panel.append(b);
+        }
         if (this.startSurvey && customer.active && customer.review_status === 'approved' && !customer.archived_at) {
             const b = document.createElement('button');
             b.type = 'button';

@@ -1,6 +1,6 @@
 const SESSION_KEY='diszkertek-erp-office-session-v1';
 const ENDPOINT='https://cszsxjsiwaaibrocibyd.supabase.co/functions/v1/erp-gateway';
-export interface OrganizationSession { organization_id:string; organization_name:string; person_id:string; is_office:boolean; }
+export interface OrganizationSession { organization_id:string; organization_name:string; person_id:string; is_office:boolean; is_client?:boolean; }
 interface Tokens { access_token:string; refresh_token:string; expires_in:number; session:OrganizationSession[]; }
 export class ApiError extends Error { constructor(message:string,public status:number) {super(message);} }
 export class ErpApi {
@@ -64,6 +64,9 @@ export class ErpApi {
     if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott. Jelentkezz be újra.',401);
     this.accept(result);
   }
+  async loginClient(email:string,password:string):Promise<void>{this.clear();const epoch=this.epoch;const value=await this.request<Tokens>({action:'client_login',email,password});if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);this.accept(value);}
+  async clientPublic<T>(action:'client_setup'|'client_recover',args:Record<string,unknown>):Promise<T>{return this.request<T>({action,...args});}
+  async client<T>(action:'client_admin_list'|'client_manage'|'client_issue'|'client_portal'|'client_pdf',args:Record<string,unknown>={}):Promise<T>{const epoch=this.epoch,token=await this.accessToken();if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);try{const result=await this.request<{data:T}>({action,...args},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}catch(e){if(epoch===this.epoch&&e instanceof ApiError&&(e.status===401||(action==='client_portal'&&e.status===403)))this.clear();throw e;}}
   private async accessToken():Promise<string> {
     if (!this.tokens) throw new ApiError('Jelentkezz be a folytatáshoz.',401);
     if (this.expiresAt-Date.now()<60000) {

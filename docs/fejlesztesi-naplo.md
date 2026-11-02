@@ -251,3 +251,15 @@ A 8a3a052 commit GitHub Pages-közzététele sikeres, a publikus verzió 0.4.1. 
 - Új adatbázis-, Auth- vagy jogosultságmódosítás nincs; másik alkalmazás nem változott.
 
 Ellenőrzés: 188 regressziós teszt, TypeScript- és gateway-típusellenőrzés, 163/163 Excel-paritás, Kompakt/Normál/hiányos PDF helyi előállítása és képi ellenőrzése. Elkülönített felületpróba: becsukott sorból törlés → Visszavonás; szerkesztés nyitott PDF-panel mellett; hibás/késői PDF-válasz tesztelve. Az új EML valódi levelezővel végzett megnyitási próbája és az ügyfélportál még hátravan. Saját gateway: v13 ACTIVE, séma-/Auth-változtatás nélkül.
+
+## 2026. november 2. – 0.6.0: saját ügyfélbelépés és munkakövetés
+
+- Az iroda pipával jelöli ki az egy fiókhoz tartozó címeket; több külön forrásrekord is tudatosan ugyanahhoz a fiókhoz rendelhető. Nincs automatikus név szerinti összevonás és nincs közös forrásadat-írás.
+- Saját, külön ERP-technikai Auth-azonosítók; a felületen valódi e-mail és saját jelszó. A korábbi alkalmazások fiókjai/jelszavai nem kerülnek át.
+- Felhasználói jóváhagyás: az iroda kézzel küldi a lejáró, egyszer használható meghívó- és visszaállító hivatkozásokat; az ügyfél maga állítja be jelszavát. Nincs új SMTP vagy fizetős szolgáltatás. Irodai gomb jelzi a visszaállítási kéréseket.
+- Öt saját ERP-tábla FORCE RLS-sel; minden új admin RPC anon/authenticated számára tiltott, csak szerver hívhatja. Az eredeti két saját azonosítási függvény tulajdonosa megmaradt; az ideiglenes ERP-szerep-/CREATE-jogokat visszaállítottuk.
+- Ügyfélhez kötött saját munkamenet: jelszócsere kezdetekor minden régi ügyfélmunkamenet visszavonva, kijelentkezéskor csak az adott eszközé. A visszavont munkamenet régi/frissített JWT-vel sem kap új ERP-hozzáférést.
+- Saját címek, tényleges kertépítés/karbantartás-állapot, egyeztetett nap, legutóbb kiküldött ajánlat és PDF. A készülő irodai revízió, belső beszerzés, Hasznos információk, jutalék és más ügyfél adata nem kerül az ügyfélhez. Frissítés percenként; nyitott lenyílók megmaradnak.
+- Helyi szintetikus adatbázis- és felületpróbák; asztali és 390 px mobilnézet; korábbi belépés visszaállítása és a beállító token címsorból eltávolítása ellenőrizve. Valódi ügyfél-/Auth-próbarekord nem készült.
+- 212 regressziós teszt, TypeScript- és edge-típusellenőrzés. Telepített saját gateway: v15 ACTIVE. Éles adatbázisban irodai jogosultság ellenőrizve; új ügyfél-RPC-k és saját táblák közvetlen olvasása/írása tiltott. Az új objektumok advisor-jelzése csak három INFO szintű, szándékosan policy nélküli, alapból tiltott szerveroldali tábla; új saját WARN nincs.
+- Az első valódi meghívó, jelszóbeállítás és ügyfél-PDF közös éles átvételi próbája az iroda/ügyfél feladata. A részletes munkaterv, négyszintű átvétel, nyolc bejegyzéstípus és pénzügy még megvalósítandó, nem jelentjük késznek. README rövid maradt.

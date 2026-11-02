@@ -121,6 +121,21 @@ export class ErpApi {
             throw new ApiError('A munkamenet megváltozott. Jelentkezz be újra.', 401);
         this.accept(result);
     }
+    async loginClient(email, password) { this.clear(); const epoch = this.epoch; const value = await this.request({ action: 'client_login', email, password }); if (epoch !== this.epoch)
+        throw new ApiError('A munkamenet megváltozott.', 401); this.accept(value); }
+    async clientPublic(action, args) { return this.request({ action, ...args }); }
+    async client(action, args = {}) { const epoch = this.epoch, token = await this.accessToken(); if (epoch !== this.epoch)
+        throw new ApiError('A munkamenet megváltozott.', 401); try {
+        const result = await this.request({ action, ...args }, token);
+        if (epoch !== this.epoch)
+            throw new ApiError('A munkamenet megváltozott.', 401);
+        return result.data;
+    }
+    catch (e) {
+        if (epoch === this.epoch && e instanceof ApiError && (e.status === 401 || (action === 'client_portal' && e.status === 403)))
+            this.clear();
+        throw e;
+    } }
     async accessToken() {
         if (!this.tokens)
             throw new ApiError('Jelentkezz be a folytatáshoz.', 401);

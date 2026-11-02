@@ -1,6 +1,6 @@
 # Árajánlatok, árlisták és sablonok – 0.3.0
 
-Állapot: a konkrét élesítési tervet a megrendelő jóváhagyta, a saját adatbázis és gateway települt; a frontend közzététele a 0.3.0 commit része. Követelmény: a teljes fejlesztői PDF 8–12. pontja és a csatolt Excel-kalkulátor. A Munkalap közös ügyféllistáját ehhez csak olvassuk; az ajánlatok, árak, sablonok és történeti változatok kizárólag az ERP-ben keletkeznek.
+Állapot: a 0.3.0 felület, a saját adatbázis és gateway élesben működik. A célzott éles ellenőrzés 2026. november 2-án lezárult. Követelmény: a teljes fejlesztői PDF 8–12. pontja és a csatolt Excel-kalkulátor. A Munkalap közös ügyféllistáját ehhez csak olvassuk; az ajánlatok, árak, sablonok és történeti változatok kizárólag az ERP-ben keletkeznek.
 
 ## Használat az irodában
 
@@ -29,7 +29,7 @@ flowchart TD
 
 Az eredeti munkafüzet nem módosul és nem mentődik újra. A 163 árazott típus 22 kategóriában szerepel; három sablon olvasható a Minták lapról. A forráslap/sorszám, az eredeti megnevezés és a SHA-256 lenyomat megmarad. A segédoszlop #VALUE! értékei nem válnak azonosítóvá. Képleteket vagy makrót nem futtatunk; árhoz a munkafüzet tárolt, kiszámolt numerikus értéke szükséges.
 
-A két füvesítési sablon minden sora pontos típushoz kapcsolható. A Járda építés öt általános megnevezése pontosítandó: Tükör készítés; Szegély építés; Teherhordó réteg készítés; Ágyazó réteg készítés; Besöprés, vibrálás 3x. A megrendelő az ERP sablonszerkesztőjében választja ki a megfelelő típusokat. Addig ezek nem kapnak kitalált árat, és beillesztett, hiányos sorral az ajánlat nem véglegesíthető.
+A két füvesítési sablon minden sora pontos típushoz kapcsolható. A Járda építés öt általános megnevezése pontosítandó: Tükör készítés; Szegély építés; Teherhordó réteg készítés; Ágyazó réteg készítés; Besöprés, vibrálás 3x. A főnök az adott ajánlat készítésekor, a pontosítandó sor Kategória → Típus mezőiben választja ki a megfelelő megoldást. A közös sablon külön is szerkeszthető, de nem feltétele az ajánlatonkénti pontosításnak. Addig ezek nem kapnak kitalált árat, és beillesztett, hiányos sorral az ajánlat nem véglegesíthető.
 
 Az Árlisták és sablonok menüben a kategória, típus, mértékegység, ár, minimum, paraméter, munkautasítás, anyag és sablon szerkeszthető/bővíthető. Az Excel-feltöltő az eredeti kalkulátor Adatbázis és Minták lapszerkezetét olvassa. Import után előbb ellenőrizhető a szerkesztési változat; csak a Változat mentése véglegesíti. A korábbi árlistaváltozat megmarad. Tetszőleges beszállítói Excel eltérő oszlopainak automatikus megfeleltetését nem állítjuk; a feltöltő az ismert formátumot ellenőrzi.
 
@@ -67,3 +67,9 @@ Kérésazonosító, adatbázis-sorzár és revízióellenőrzés védi a mentés
 - Éles próbaügyfél, próbaajánlat vagy próbakertépítés nem készült. A régi alkalmazások kódja, adata és jogosultsága érintetlen.
 
 A felmérésből indítás és a felmérés MI-feldolgozása a külön Felmérések modul kapcsolódása; a jelenlegi ajánlat kézzel és sablonból szerkeszthető. MI-szolgáltatást vagy fizetős előfizetést ez a változás nem kapcsol be.
+
+## 2026. november 2. – éles ellenőrzés eredménye
+
+Az éles 0.3.0 felület saját munkamenettel betöltötte az ajánlatlistát és az árlista 163 típusát, 22 kategóriáját, három sablonját. A többcímes ügyfélhez nem választott automatikusan címet. Nem mentett egyedi tételnél a böngésző és az éles PDF azonos eredményt adott, 27%-os ÁFÁ-val is. Az éles PDF letöltődött, szerkezeti, szöveges és vizuális ellenőrzése sikeres; a belső óradíj nem jelenik meg benne. Az eredeti XLSX böngészős beolvasása is sikeres, az import-előkészítést új árlistaváltozat mentése nélkül zártuk be.
+
+A 390 px mobilnézetben nincs vízszintes kilógás; a célzott ellenőrzés végén nem volt böngészős konzolhiba vagy figyelmeztetés. A teljes 151 teszteredmény ismét sikeres. Éles próbaajánlat nem mentődött, levélküldés vagy annak visszaigazolása, elfogadás és munkakezdés nem történt. Ezek valódi éles végigpróbálása az első üzleti ajánlathoz tartozik; az automatizált adatbázistesztek külön ellenőrzik őket. A próba PDF és képe kizárólag helyben marad, ügyféladat nem kerül a repositoryba.

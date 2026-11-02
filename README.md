@@ -6,16 +6,28 @@ Ez a repository a teljes Díszkertek ERP fejlesztésének és dokumentációján
 
 ## Árajánlatmodul – 0.3.0
 
-Az árajánlat-szerkesztő, az Excel-alapú árlista/sablonkezelő és az ügyfél-PDF elkészült. **A konkrét élesítést a megrendelő jóváhagyta; az ERP saját adatbázisa és a kiszolgáló települt. A 0.3.0 frontend közzététele a jelenlegi commit része.** A feltöltött kalkulátor 163 árazott típust, 22 kategóriát és három munkasablont ad. Az üzleti árak nem kerülnek a nyilvános repositoryba.
+Az árajánlat-szerkesztő, az Excel-alapú árlista/sablonkezelő és az ügyfél-PDF elkészült. **A 0.3.0 verzió élesben elérhető; az ERP saját adatbázisa, kiszolgálója és GitHub Pages felülete települt. Az éles böngészős ellenőrzés 2026. november 2-án megtörtént.** A feltöltött kalkulátor 163 árazott típust, 22 kategóriát és három munkasablont ad. Az üzleti árak nem kerülnek a nyilvános repositoryba.
 
 Az új folyamat: ügyfél → pontos munkavégzési cím → főtételek és tételsorok → ellenőrzött PDF → kézi levélküldés → irodai kiküldési visszaigazolás → elfogadás → indításra váró kertépítés → külön indítás. A kézi levélküldés a megrendelő legutóbbi döntése; SMTP és automatikus e-mail-küldés nem része ennek az élesítésnek.
 
 - [Az árajánlatmodul használata és ellenőrzése](docs/arajanlatmodul.md)
-- [A jóváhagyásra előkészített adatbázis-telepítés](docs/arajanlat-adatbazis-elesites.md)
+- [A jóváhagyott és végrehajtott adatbázis-telepítés](docs/arajanlat-adatbazis-elesites.md)
 
-## Jelenlegi állapot – 2026. november 1.
+### Mit ellenőriztünk élesben?
 
-**A jelenlegi verzió 0.2.0:** az ügyfél kiválasztása után konkrét munkavégzési címhez rögzíthető kertépítési előkészítés és karbantartási igény. A karbantartást az iroda jóváhagyott munkanappal véglegesíti; utána adhatók hozzá megbízások. A kertépítés indítását az elfogadott árajánlat feltétele védi. Emellett az Ügyfelek menüben elérhető a Munkalap közös ügyfélnyilvántartása, két karaktertől ékezetfüggetlen lenyíló kereséssel, ABC-sorrendű találatokkal és összecsukható adatlapokkal. Az iroda új ügyfelet és címet vehet fel a közös listába, a külön engedélyezett új adatok mentésével. Meglévő forrásadatot nem írunk át. Ági és Tamás saját ERP-belépése és a D betűs ikon megmarad. A teljes ERP többi üzleti modulja még fejlesztés alatt áll.
+- Sikeres automatikus irodai belépés, ajánlatlista és a hitelesített árlista betöltése: 163 típus, 22 kategória, három munkasablon.
+- Ügyfél kiválasztása, a külön munkavégzési címek közötti választás és nem mentett ajánlat kalkulációja.
+- Az éles kiszolgálóval előállított piszkozat-PDF előnézeti művelete és tényleges fájlletöltése; a letöltött fájl magyar szövege, 27%-os számítása és megjelenése is ellenőrizve.
+- Az eredeti Excel böngészős beolvasása 163 típust és három sablont ad. A próbaimportot nem véglegesítettük, az árlista első változata megmaradt.
+- 390 képpontos mobilnézet, vízszintes kilógás nélkül; 151 sikeres automatikus teszteredmény.
+
+A Járda építés öt általános sorát **a főnök az adott ajánlat készítésekor pontosítja**. Ehhez az ajánlatban kiválasztható a megfelelő Kategória → Típus; nem szükséges most előre véglegesíteni a teljes sablont. Hiányos sorral az ajánlat nem véglegesíthető.
+
+Az ellenőrzés nem hozott létre mentett próbaajánlatot, nem rögzített kiküldést vagy elfogadást, és nem indított kertépítést. A teljes üzleti folyamat éles végigpróbálása az első valódi ajánlattal következik; az állapotváltásokat és jogosultságokat elkülönített automatizált tesztek ellenőrzik. A felmérésből és MI-feldolgozásból indítás még a Felmérések modulhoz kapcsolódó fejlesztés.
+
+## Jelenlegi állapot – 2026. november 2.
+
+**A jelenlegi verzió 0.3.0:** az árajánlatok kézzel és sablonból szerkeszthetők, PDF-ként letölthetők, és a tényleges kézi kiküldés külön rögzíthető. A korábban elkészült munkakezelés is elérhető: az ügyfél kiválasztása után konkrét munkavégzési címhez rögzíthető kertépítési előkészítés és karbantartási igény. A karbantartást az iroda jóváhagyott munkanappal véglegesíti; utána adhatók hozzá megbízások. A kertépítés indítását az elfogadott árajánlat feltétele védi. Emellett az Ügyfelek menüben elérhető a Munkalap közös ügyfélnyilvántartása, két karaktertől ékezetfüggetlen lenyíló kereséssel, ABC-sorrendű találatokkal és összecsukható adatlapokkal. Az iroda új ügyfelet és címet vehet fel a közös listába, a külön engedélyezett új adatok mentésével. Meglévő forrásadatot nem írunk át. Ági és Tamás saját ERP-belépése és a D betűs ikon megmarad. A teljes ERP többi üzleti modulja még fejlesztés alatt áll.
 
 [Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · A webcímen az index.html jelenik meg, a műszaki dokumentáció itt, a GitHubon olvasható.
 
@@ -64,13 +76,13 @@ A PDF-ek a dokumentáció menthető pillanatképei. A továbbfejlesztéshez az a
 - Elérhetőségek: +36 70 634 9630; info@diszkertek.hu; www.diszkertek.hu.
 - Az új arculat és dokumentumsablonok kizárólag a jóváhagyott Díszkertek-megjelenést használják. A forrásfájlok régi készítői feliratait nem emeljük át.
 - A repositoryt és a deploymentet a megrendelő kezeli. Ellenőrzött fejlesztésekhez automatikus commit és push engedélyezett.
-- Az ERP a kap Supabase-projektben, saját erp és erp_private sémákkal működik. A KAP és Árajánlat tesztalkalmazások adatait és meglévő fiókjait nem használjuk fel. Az ERP saját ügyfélnyilvántartást kap; később külön, ellenőrzött adatimport készül.
+- Az ERP a kap Supabase-projektben, saját erp és erp_private sémákkal működik. A KAP és Árajánlat tesztalkalmazások adatait és meglévő fiókjait nem használjuk fel. Az ERP a Munkalap elsődleges közös ügyféllistáját olvassa, saját személy- és címmegfeleltetéssel. Új ügyfél és első címének közös mentése külön engedélyezett; meglévő forrásadat nem írható át.
 - Irodai hozzáférés: Ági és Tamás külön ERP-fiókja. Az info@diszkertek.hu a cég elérhetősége; nem ebből következtetünk más alkalmazások fiókjaira vagy jelszavaira.
 - Új előfizetés nem indítható. Használati díjas külső szolgáltatás sem aktiválható előzetes egyeztetés nélkül.
 
 ## A meglévő működés védelme
 
-A Kassza, Munkabér, Munkalap és Napi feladatok forráskódja és meglévő adatbázis-objektumai ebben a munkában nem módosulnak. A Munkalap és Napi feladatok adatai későbbi, külön ellenőrzött átvétel forrásai lehetnek. A jelenlegi lépés nem olvas vagy importál üzleti adatokat belőlük.
+A Kassza, Munkabér, Munkalap és Napi feladatok forráskódja és meglévő adatbázis-objektumai ebben a munkában nem módosulnak. A közös ügyfél- és címadatokat a Munkalap-forrásból olvassuk; az árajánlatmodul nem vesz át munkalapot vagy pénzügyi adatot. A külön engedélyezett új ügyfél és első cím mentése az ügyfélnyilvántartás dokumentált művelete.
 
 A Kassza és a Munkabér pénzügyi funkcióit nem integráljuk az ERP-be. Az ERP saját elszámolásokat, befizetés-visszaigazolásokat és jutalékanalitikát kezel. Az ügyféladatok későbbi átvételének módját külön, forrásazonosítókkal és ellenőrzésekkel dokumentáljuk.
 
@@ -78,7 +90,7 @@ A munkatársak közötti pénzátadás és pénzátvétel nem számít új cége
 
 ## Adatvédelem és GitHub
 
-A frontend kódja publikus tárhelyen is megjelenhet. Sem ügyféladat, sem belső árlista, hang, munkalap, PDF, eredeti Excel, adatmentés, API-titok vagy jelszó nem kerülhet a repositoryba. A tényleges árlista hitelesített, jogosultságokkal védett importtal kerül majd az adatbázisba.
+A frontend kódja publikus tárhelyen is megjelenhet. Sem ügyféladat, sem belső árlista, hang, munkalap, PDF, eredeti Excel, adatmentés, API-titok vagy jelszó nem kerülhet a repositoryba. A tényleges árlista hitelesített, jogosultságokkal védett importtal az ERP saját adatbázisába került; a későbbi változatok is csak irodai jogosultsággal menthetők.
 
 A forrásokból átvett számítási szabály és a belső adat két külön dolog. A matematikai logika tesztelhető kitalált tesztértékekkel; ilyen tesztadat a végfelhasználói felületen nem jelenhet meg.
 

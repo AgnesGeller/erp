@@ -207,3 +207,12 @@ A README a nem fejlesztő olvasónak is érthető belépési pont. A részletes 
 - A konkrét élesítési kérdésre a megrendelő kifejezetten igent mondott. Ezután a korábban elutasított migráció sikeresen lefutott; a 163/22/3 árlista forráslenyomattal visszaellenőrizve, saját gateway 10. verzió aktív. A napló saját olvasó RPC-je az irodai szerző nevét is megjeleníti. A korábbi elutasítást nem kerültük meg.
 - A helyi böngészős teszt igazolta az ügyféladatlapról induló ajánlatot, a hat soros füvesítési sablont és a járdasablon öt pontosítandó sorát. A tényleges XLSX-feltöltés az XML-ben tárolt lebegőpontos anyagszorzó miatt túl finom tizedesformátumot jelzett; az import csak a numerikus tárolási zajt normalizálja, valódi hat tizedesnél finomabb értéket nem kerekít el hallgatólagosan.
 - A megrendelő 8% maradék kreditnél kifejezetten azonnali push-t kért. A tesztelt változatot lezárjuk, a README és használati/élesítési leírás elkészült; újabb modulba ebben a lépésben nem kezdünk.
+
+## 2026. november 2. – 0.3.0 éles ellenőrzés lezárása
+
+- A 1739729 main commit felkerült; a GitHub Pages közzététel sikeres, az éles felület 0.3.0. A saját gateway legutóbbi telepített változata 11.
+- Éles böngészős próba: saját automatikus belépés, üres ajánlatlista, védett árlista 163/22/3 adatszámmal, többcímes ügyfélhez külön címválasztás. Mentés nélkül összeállított egyedi ajánlatból az éles kiszolgáló valódi, magyar ékezetes PDF-et állított elő; a fájl letöltését, számítását és megjelenését is ellenőriztük.
+- Az eredeti Excel beolvasása a korábbi numerikus tárolási zaj javítása után böngészőben is sikeres. Csak import-előkészítés történt, új árlistaváltozat mentése nem. A kizárólag ellenőrzéshez létrehozott nem mentett ajánlatot és import-előkészítést bezártuk.
+- 390 px mobilnézet vízszintes kilógás nélkül. Teljes regresszió ismét 151 sikeres eredmény. Az ellenőrzés végén a böngésző konzolhibát és figyelmeztetést nem jelzett.
+- A megrendelő pontosítása: a járdasablon öt nyitott sorát a főnök ajánlatkészítéskor választja ki. A README és a használati útmutató ezt rögzíti; a korábbi 0.2.0 állapotleírást és az elavult, jövő idejű árlistabetöltési szöveget javítottuk.
+- Alkalmazáskód-, adatbázis-, Auth- és más alkalmazást érintő változtatás nem kellett. Próbaajánlat, próbamunka, új árlistaváltozat vagy kiküldési tény nem mentődött. A valódi kiküldés/elfogadás/indítás üzleti ellenőrzése az első tényleges ajánlatnál következik. Új modul fejlesztését ez az ellenőrzés nem indította el.

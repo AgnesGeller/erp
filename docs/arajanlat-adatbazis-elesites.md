@@ -43,3 +43,8 @@ A telepítés új táblákat és üzleti állapotszabályt hoz létre. Ezért sz
 ## Jóváhagyás és végrehajtás
 
 A megrendelő válasza: „Igen, ezt az ERP-élesítést jóváhagyom”. Ezután ugyanaz a migráció sikeresen lefutott; az irodai árlista 1. változatába 163 típus, 22 kategória és három sablon került. Forráslenyomat: 0eee6b84fdedf83cf32a46b807a989e49ddba483e295addb10db727b4ba020ef. Az erp_quote_audit_display_names saját kiegészítés a napló emberi szerzőnevét adja vissza a már engedélyezett irodai fiók/személy kapcsolatból; más alkalmazás jogosultsága nem változik. A saját gateway 10. verziója aktív.
+
+
+## 2026. november 2. – közzététel ellenőrizve
+
+A saját gateway 11. változata aktív, a 1739729 main commit GitHub Pages közzététele sikeres, az éles felület 0.3.0. Az árlista, ajánlatlista, címválasztás és az éles kiszolgálóval készített PDF letöltése ellenőrizve. A próba nem mentett ajánlatot vagy új árlistaváltozatot. Részletes ellenőrzési eredmények: [Árajánlatmodul](arajanlatmodul.md).

@@ -32,7 +32,8 @@ export function validShares(input, allowed) {
 }
 function mediaRefs(input = []) { if (!Array.isArray(input) || input.length > 12)
     fail('Legfeljebb tizenkét kép kapcsolható egy eseményhez.'); const ids = new Set(); return input.map(m => { if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(m.id) || ids.has(m.id) || !['image/jpeg', 'image/png', 'image/webp'].includes(m.mime) || !Number.isSafeInteger(m.bytes) || m.bytes < 1 || m.bytes > 4 * 1024 * 1024 || !['team', 'client'].includes(m.visibility))
-    fail('Érvénytelen helyi képhivatkozás.'); ids.add(m.id); return { id: m.id, name: text(m.name, 180), mime: m.mime, bytes: m.bytes, visibility: m.visibility }; }); }
+    fail('Érvénytelen helyi képhivatkozás.'); ids.add(m.id); if (m.sha256 !== undefined && !/^[a-f0-9]{64}$/.test(m.sha256))
+    fail('Érvénytelen fotó-ellenőrzőösszeg.'); return { id: m.id, name: text(m.name, 180), mime: m.mime, bytes: m.bytes, visibility: m.visibility, ...(m.sha256 ? { sha256: m.sha256 } : {}) }; }); }
 export function transitionTask(original, command, ctx) {
     const task = structuredClone(original), rank = workRoleRank(ctx.role);
     if (!ctx.actor_id || !ctx.event_id || !Number.isFinite(Date.parse(ctx.at)))
@@ -81,7 +82,7 @@ export function transitionTask(original, command, ctx) {
         affected_actors.push(...unique(lower.map(a => a.actor_id)));
         affected_subjects.push(...unique(lower.flatMap(a => a.subjects)));
         const last = lower.at(-1);
-        recipient = command.recipient ?? last?.subjects[0] ?? ctx.repair_recipients[0] ?? null;
+        recipient = command.recipient ?? last?.subjects[0] ?? null;
         if (!recipient || !ctx.repair_recipients.includes(recipient))
             fail('Válassz jogosult javítási címzettet.');
         task.round++;
@@ -90,7 +91,7 @@ export function transitionTask(original, command, ctx) {
     else if (command.type === 'shares') {
         if (ctx.role === 'client' || rank < task.share_lock)
             fail('A megosztást csak a zárolási szintnek megfelelő vezető vagy iroda módosíthatja.');
-        const allowed = rank === 1 ? unique(task.approvals.filter(a => a.level === 0).flatMap(a => a.subjects)) : ctx.allowed_subjects[0];
+        const allowed = rank === 1 ? unique(task.approvals.filter(a => a.level === 0).flatMap(a => a.subjects)) : unique([...ctx.allowed_subjects[0], ...task.shares.map(s => s.person_id)]);
         if (rank === 1 && !allowed.includes(ctx.actor_id))
             fail('Csak olyan fázis megosztását szerkesztheted, amelyen részt vettél.');
         task.shares = validShares(command.shares ?? [], allowed);
@@ -155,7 +156,7 @@ export function validateTaskGraph(tasks) {
         fail('Ismételt munkafázis-azonosító.');
     const incoming = new Map(), followers = new Map();
     for (const t of tasks) {
-        if (!t.id || !text(t.title, 300).trim() || !text(t.section, 200).trim() || !Number.isSafeInteger(t.sort) || t.sort < 0)
+        if (!t.id || !text(t.title, 500).trim() || !text(t.section, 200).trim() || !Number.isSafeInteger(t.sort) || t.sort < 0)
             fail('Ellenőrizd a munkafázis nevét és sorrendjét.');
         decimalUnits(t.labor);
         decimalUnits(t.net);

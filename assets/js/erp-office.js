@@ -1,20 +1,25 @@
 const clientSetupParams = new URLSearchParams(location.hash.slice(1));
-let clientSetupToken = clientSetupParams.get('client_setup');
+const clientSetupKind = clientSetupParams.has('staff_setup') ? 'staff' : 'client';
+let clientSetupToken = clientSetupParams.get(clientSetupKind === 'staff' ? 'staff_setup' : 'client_setup');
 const clientSetupOpening = clientSetupToken !== null;
 if (clientSetupOpening)
     history.replaceState(null, '', location.pathname + location.search);
 const setupOpening = clientSetupOpening || new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.6.1', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.6.1', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.7.0', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.7.0', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
-const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.6.1', import.meta.url).href);
+const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.7.0', import.meta.url).href);
 const api = new ErpApi();
-const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.6.1', import.meta.url).href);
-const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.6.1', import.meta.url).href);
-const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.6.1', import.meta.url).href);
-const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.6.1', import.meta.url).href);
-const { ClientAdmin, ClientPortal } = await import(new URL('./erp-clients.js?v=0.6.1', import.meta.url).href);
+const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.7.0', import.meta.url).href);
+const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.7.0', import.meta.url).href);
+const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.7.0', import.meta.url).href);
+const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.7.0', import.meta.url).href);
+const { ClientAdmin, ClientPortal } = await import(new URL('./erp-clients.js?v=0.7.0', import.meta.url).href);
+const { StaffAdmin } = await import(new URL('./erp-staff.js?v=0.7.0', import.meta.url).href);
+const { WorkPlanDesk } = await import(new URL('./erp-workplans.js?v=0.7.0', import.meta.url).href);
+const staffAdmin = new StaffAdmin(api);
+const workplans = new WorkPlanDesk(api, showError);
 const clientAdmin = new ClientAdmin(api, error => { if (!api.signedIn)
     showError(error); });
 const clientPortal = new ClientPortal(api, showError);
@@ -81,6 +86,8 @@ function resetView() {
     get('office-status').textContent = '';
     get('login-feedback').textContent = '';
     generation++;
+    staffAdmin.reset();
+    workplans.reset();
     clientAdmin.reset();
     clientPortal.reset();
     customers.reset();
@@ -92,6 +99,7 @@ function resetView() {
     projects = [];
     dirty = false;
     workerRequest = undefined;
+    get('staff-workspace').hidden = true;
     get('office-app').hidden = true;
     get('client-login-area').hidden = true;
     get('client-setup-area').hidden = true;
@@ -223,6 +231,25 @@ async function loadWorkspace() {
             get('people-list').replaceChildren();
             workerForm.reset();
             dirty = false;
+        }
+        workplans.setOwner(current.person_id);
+        staffAdmin.setOrganization(current.is_office ? current.organization_id : undefined);
+        get('staff-workspace').hidden = true;
+        if (current.is_staff && !current.is_office) {
+            clientAdmin.setOrganization(undefined);
+            clientPortal.reset();
+            customers.reset();
+            works.reset();
+            quotes.reset();
+            surveys.reset();
+            get('office-app').hidden = true;
+            get('login-area').hidden = true;
+            get('client-login-area').hidden = true;
+            get('client-setup-area').hidden = true;
+            get('public-identity').hidden = true;
+            get('logout').hidden = false;
+            get('staff-workspace').hidden = false;
+            return;
         }
         if (current.is_client) {
             clientAdmin.setOrganization(undefined);
@@ -380,6 +407,8 @@ roleForm.addEventListener('submit', async (event) => {
     }
 });
 get('logout').addEventListener('click', async () => {
+    if (!workplans.leave() || !staffAdmin.leave())
+        return;
     if (mutations || loading || clientAdmin.busy || clientPortal.busy || customers.busy || works.busy || quotes.busy || surveys.busy) {
         message('Várd meg a folyamatban lévő művelet végét.');
         return;
@@ -405,26 +434,34 @@ get('organization-select').addEventListener('change', () => { if (!mutations)
 for (const form of [workerForm, roleForm])
     form.addEventListener('input', () => { dirty = true; });
 window.addEventListener('erp:before-update', event => {
-    if (mutations || loading || restoring || clientAdmin.busy || clientPortal.busy || customers.busy || works.busy || quotes.busy || surveys.busy) {
+    if (mutations || loading || restoring || workplans.busy || staffAdmin.busy || clientAdmin.busy || clientPortal.busy || customers.busy || works.busy || quotes.busy || surveys.busy) {
         event.preventDefault();
         message('Várd meg a folyamatban lévő művelet végét.');
     }
     else if ((dirty || clientAdmin.dirty || customers.dirty || works.dirty || quotes.dirty || surveys.dirty) && !confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))
         event.preventDefault();
 });
-window.addEventListener('focus', () => { if (Date.now() - lastWorkspaceRefresh >= 30000 && api.signedIn && !mutations && !dirty && !clientAdmin.dirty && !clientAdmin.busy && !clientPortal.busy && !customers.dirty && !works.dirty && !quotes.dirty && !surveys.dirty && !customers.busy && !works.busy && !quotes.busy && !surveys.busy)
+window.addEventListener('focus', () => { if (Date.now() - lastWorkspaceRefresh >= 30000 && api.signedIn && !workplans.busy && !workplans.dirty && !staffAdmin.busy && !mutations && !dirty && !clientAdmin.dirty && !clientAdmin.busy && !clientPortal.busy && !customers.dirty && !works.dirty && !quotes.dirty && !surveys.dirty && !customers.busy && !works.busy && !quotes.busy && !surveys.busy)
     loadWorkspace().catch(showError); });
 const clientForm = get('client-login-form'), clientSetupForm = get('client-setup-form');
 let clientAuthBusy = false;
 let clientSetupDirty = false;
+let loginKind = 'client';
 function clientFeedback(text, success = false) { const x = get(!get('client-setup-area').hidden ? 'client-setup-feedback' : 'client-login-feedback'); x.textContent = (success ? '✓ ' : '') + text; x.className = 'office-status ' + (success ? 'success' : 'error'); }
-get('show-client-login').addEventListener('click', () => { if (clientAuthBusy)
-    return; get('login-area').hidden = true; get('client-login-area').hidden = false; get('client-login-email').focus(); });
+function showPublicLogin(kind, force = false) { if (!force && (clientAuthBusy || loading || restoring))
+    return; loginKind = kind; get('login-area').hidden = true; get('client-login-area').hidden = false; get('client-login-description').textContent = kind === 'staff' ? 'Saját kertépítéseid és teendőid, a munkánként kiosztott szerepköröddel.' : 'Saját ajánlataid és munkáid követése, az iroda által kijelölt címekhez.'; get('client-login-title').textContent = kind === 'staff' ? 'Dolgozói belépés' : 'Megrendelői belépés'; get('switch-client-kind').textContent = kind === 'staff' ? 'Megrendelői belépés' : 'Dolgozói belépés'; get('client-login-feedback').textContent = ''; get('client-login-password').value = ''; get('client-login-email').focus(); }
+get('show-client-login').addEventListener('click', () => showPublicLogin('client'));
+get('show-staff-login').addEventListener('click', () => showPublicLogin('staff'));
+get('switch-client-kind').addEventListener('click', () => showPublicLogin(loginKind === 'staff' ? 'client' : 'staff'));
 get('show-office-login').addEventListener('click', () => { if (clientAuthBusy)
     return; get('client-login-area').hidden = true; get('login-area').hidden = false; get('client-login-password').value = ''; });
+clientForm.addEventListener('invalid', () => clientFeedback('Add meg az irodával egyeztetett e-mail-címet és a legalább 12 karakteres saját ERP-jelszót.'), true);
 clientForm.addEventListener('submit', async (e) => { e.preventDefault(); if (clientAuthBusy || loading)
     return; clientAuthBusy = true; formBusy(clientForm, true); const email = get('client-login-email').value.trim(), password = get('client-login-password').value; get('client-login-password').value = ''; const epoch = ++generation; clientFeedback('Belépés…'); try {
-    await api.loginClient(email, password);
+    if (loginKind === 'staff')
+        await api.loginStaff(email, password);
+    else
+        await api.loginClient(email, password);
     if (epoch !== generation)
         return;
     await loadWorkspace();
@@ -440,7 +477,7 @@ finally {
 get('client-forgot').addEventListener('click', async () => { if (clientAuthBusy)
     return; const email = get('client-login-email'); if (!email.reportValidity())
     return; clientAuthBusy = true; formBusy(clientForm, true); try {
-    const result = await api.clientPublic('client_recover', { email: email.value.trim() });
+    const result = loginKind === 'staff' ? await api.staffPublic('staff_recover', { email: email.value.trim() }) : await api.clientPublic('client_recover', { email: email.value.trim() });
     clientFeedback(result.message, true);
 }
 catch (error) {
@@ -456,12 +493,15 @@ clientSetupForm.addEventListener('submit', async (e) => { e.preventDefault(); if
     clientFeedback('A két jelszó nem egyezik.');
     return;
 } clientAuthBusy = true; formBusy(clientSetupForm, true); try {
-    await api.clientPublic('client_setup', { setup_token: clientSetupToken, password });
+    if (clientSetupKind === 'staff')
+        await api.staffPublic('staff_setup', { setup_token: clientSetupToken, password });
+    else
+        await api.clientPublic('client_setup', { setup_token: clientSetupToken, password });
     clientSetupToken = null;
     clientSetupDirty = false;
     clientSetupForm.reset();
     get('client-setup-area').hidden = true;
-    get('client-login-area').hidden = false;
+    showPublicLogin(clientSetupKind, true);
     get('client-login-feedback').textContent = '✓ A saját ERP-jelszavadat beállítottad. Most beléphetsz az irodával egyeztetett e-mail-címeddel.';
 }
 catch (error) {
@@ -482,6 +522,8 @@ window.addEventListener('beforeunload', e => { if (clientAuthBusy || clientSetup
     e.returnValue = '';
 } });
 if (clientSetupOpening) {
+    if (clientSetupKind === 'staff')
+        get('client-setup-title').textContent = 'Saját dolgozói jelszó beállítása';
     get('login-area').hidden = true;
     get('client-setup-area').hidden = false;
     if (!/^[a-f0-9]{64}$/.test(clientSetupToken ?? '')) {

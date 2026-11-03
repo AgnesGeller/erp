@@ -274,3 +274,14 @@ A felhasználó jóváhagyta a tíz saját ERP-táblát, a dolgozói saját bel�
 - Az ajánlati és PDF-formázó már elhagyta a záró tizedesnullákat; a felmérési méretmezők is ezt használják. Fókuszban az eredeti pontos érték szerkeszthető, puszta megtekintés nem módosít mentett adatot.
 - A megjelenítéshez célzott regressziós próbák; a belső szorzók, számítás, adatbázis és jogosultságok változatlanok.
 - Ellenőrzés: 36 célzott teszt, sikeres TypeScript-build és típusellenőrzés; helyi böngészőben 10 / 12,5 / 1,24, szerkesztéskor megőrzött 1.2357.
+
+## 2026. november 3. – 0.7.0, munkaterv és négyszintű átvétel
+
+- Jóváhagyott tíz új ERP-tábla; saját dolgozói belépés meglévő személyhez, kézi meghívó/visszaállítás. Az irodai PIN és az ügyfélbelépés változatlan. Kiemelt visszalépési gomb az irodai belépéshez.
+- Elfogadott ajánlatból védett fázisok; húzás/mobil rendezés, előfeltételek, dátumos idővonal, eredeti időkeret, helyi Undo/Redo és történeti terv új változatként.
+- Négy tényleges átvétel, súlyozott személyszínes sávok, 100%-os megosztás és zárolás; visszaküldési kör, értesítés és statisztika. A tényleges pipák és a magasabb átvételből számított teljesítés külön marad.
+- Fotó helyben, SHA-256 ellenőrzőadattal; szűrt ZIP-átvitel, hiányzó képek jelzése, import felülírás nélkül. Bizonytalan mentés személyhez kötött helyi újrapróbálással, stabil kérésazonosítóval.
+- Saját éles azonosítás és gateway helyi mentése, visszagörgetett telepítési próba, jóváhagyott ERP-migráció és gateway v17. Tulajdonosok/jogok/eredeti tagságok visszaellenőrizve; új éles tesztfiók és tesztmunka nem készült.
+- 271 sikeres helyi teszt; TypeScript/edge ellenőrzés; asztali/mobil szintetikus böngészőpróba. A mobilos rejtett azonosítómező kilógása javítva. Éles office ERP-hozzáférés megmaradt, nyilvános munkaterv-hozzáférés tiltott. Biztonsági advisor: az új ERP-objektumoknál nincs WARN/ERROR; INFO default-deny RLS jelzések a service-only tábláknál. Az új táblák kapcsolati indexei kiegészítve.
+- Napi feladatok: csak név/azonosító/szín olvasás, nyolc egyértelmű megfeleltetés az ERP saját színtáblájába. A forrásalkalmazásokhoz sem kód-, sem adatbázismódosítás nem történt.
+- Következő teljesítendő egység: nyolc bejegyzéstípus és kétoldalú változásjóváhagyás; saját munkalap/tényleges munkaidő, beszerzés és pénzügy továbbra is a teljes megbízás része.

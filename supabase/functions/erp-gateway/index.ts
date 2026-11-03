@@ -1,3 +1,5 @@
+import {createStaffAccess} from './staff.ts';
+import {createWorkPlans} from './workplans.ts';
 import {createClientAccess} from './clients.ts';
 import {createGateway} from './handler.ts';
 import {createCustomerDirectory} from './customers.ts';
@@ -9,4 +11,6 @@ const customers=createCustomerDirectory({url,key,sourceKey:Deno.env.get('KASSZA_
 const quotes=createQuotes({url,key,context:(organization_id,customer_id,token,actor,memberships)=>customers({action:'quote_context',organization_id,customer_id},token,actor,memberships),pdf:makeQuotePdf});
 const surveys=createSurveys({url,key,context:(organization_id,customer_id,token,actor,memberships)=>customers({action:'work_sites',organization_id,customer_id},token,actor,memberships)});
 const clients=createClientAccess({url,key,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',pdf:makeQuotePdf});
-Deno.serve(createGateway({clients:clients.handle,clientSession:clients.check,clientLogout:clients.close,url,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',serviceKey:key,emailFlowsEnabled:false,customers,quotes,surveys}));
+const staff=createStaffAccess({url,key,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??''});
+const plans=createWorkPlans({url,key});
+Deno.serve(createGateway({staff:staff.handle,plans,clients:clients.handle,clientSession:async token=>{await clients.check(token);await staff.check(token);},clientLogout:async(token,actor)=>{await clients.close(token,actor);await staff.close(token,actor);},url,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',serviceKey:key,emailFlowsEnabled:false,customers,quotes,surveys}));

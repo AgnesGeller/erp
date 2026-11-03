@@ -4,7 +4,7 @@ export type WorkRole='construction_worker'|'gardener'|'construction_lead'|'maint
 export type Level=0|1|2|3;
 export type Share={person_id:string;basis_points:number};
 export type Approval={id:string;level:Level;actor_id:string;role:WorkRole;subjects:string[];at:string;round:number};
-export type MediaRef={id:string;name:string;mime:string;bytes:number;visibility:'team'|'client'};
+export type MediaRef={id:string;name:string;mime:string;bytes:number;visibility:'team'|'client';sha256?:string};
 export interface TaskState{
  id:string;source_line_id:string|null;section:string;title:string;quantity:string;unit:string;
  labor:string;net:string;original_minutes:string|null;planned_minutes:string|null;
@@ -39,7 +39,7 @@ export function validShares(input:Share[],allowed:string[]):Share[]{
  const seen=new Set<string>();let sum=0;for(const s of input){if(!allowed.includes(s.person_id)||seen.has(s.person_id)||!Number.isInteger(s.basis_points)||s.basis_points<=0||s.basis_points>10000)fail('Hibás résztvevő vagy teljesítményarány.');seen.add(s.person_id);sum+=s.basis_points;}
  if(sum!==10000)fail('A teljesítménymegosztás összege pontosan 100% legyen.');return [...input].map(x=>({...x})).sort((a,b)=>a.person_id.localeCompare(b.person_id));
 }
-function mediaRefs(input:MediaRef[]=[]){if(!Array.isArray(input)||input.length>12)fail('Legfeljebb tizenkét kép kapcsolható egy eseményhez.');const ids=new Set<string>();return input.map(m=>{if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(m.id)||ids.has(m.id)||!['image/jpeg','image/png','image/webp'].includes(m.mime)||!Number.isSafeInteger(m.bytes)||m.bytes<1||m.bytes>4*1024*1024||!['team','client'].includes(m.visibility))fail('Érvénytelen helyi képhivatkozás.');ids.add(m.id);return {id:m.id,name:text(m.name,180),mime:m.mime,bytes:m.bytes,visibility:m.visibility};});}
+function mediaRefs(input:MediaRef[]=[]){if(!Array.isArray(input)||input.length>12)fail('Legfeljebb tizenkét kép kapcsolható egy eseményhez.');const ids=new Set<string>();return input.map(m=>{if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(m.id)||ids.has(m.id)||!['image/jpeg','image/png','image/webp'].includes(m.mime)||!Number.isSafeInteger(m.bytes)||m.bytes<1||m.bytes>4*1024*1024||!['team','client'].includes(m.visibility))fail('Érvénytelen helyi képhivatkozás.');ids.add(m.id);if(m.sha256!==undefined&&!/^[a-f0-9]{64}$/.test(m.sha256))fail('Érvénytelen fotó-ellenőrzőösszeg.');return {id:m.id,name:text(m.name,180),mime:m.mime,bytes:m.bytes,visibility:m.visibility,...(m.sha256?{sha256:m.sha256}:{})};});}
 export function transitionTask(original:TaskState,command:TaskCommand,ctx:TransitionContext):{task:TaskState;event:TaskEvent}{
  const task=structuredClone(original),rank=workRoleRank(ctx.role);if(!ctx.actor_id||!ctx.event_id||!Number.isFinite(Date.parse(ctx.at)))fail('Hiányzó eseményazonosító.');
  const before={approvals:structuredClone(task.approvals),shares:structuredClone(task.shares),share_lock:task.share_lock,planned_minutes:task.planned_minutes};
@@ -57,12 +57,12 @@ export function transitionTask(original:TaskState,command:TaskCommand,ctx:Transi
   level=ctx.role==='client'?3:ctx.role==='office'?2:rank===2?1:fail('A munkavégző javításra visszaküldést nem rögzíthet.');
   if(!reason)fail('Írd le a javításra visszaküldés okát.');
   const lower=task.approvals.filter(a=>a.level<level!);affected_actors.push(...unique(lower.map(a=>a.actor_id)));affected_subjects.push(...unique(lower.flatMap(a=>a.subjects)));
-  const last=lower.at(-1);recipient=command.recipient??last?.subjects[0]??ctx.repair_recipients[0]??null;
+  const last=lower.at(-1);recipient=command.recipient??last?.subjects[0]??null;
   if(!recipient||!ctx.repair_recipients.includes(recipient))fail('Válassz jogosult javítási címzettet.');
   task.round++;task.approvals=[];
  }else if(command.type==='shares'){
   if(ctx.role==='client'||rank<task.share_lock)fail('A megosztást csak a zárolási szintnek megfelelő vezető vagy iroda módosíthatja.');
-  const allowed=rank===1?unique(task.approvals.filter(a=>a.level===0).flatMap(a=>a.subjects)):ctx.allowed_subjects[0];
+  const allowed=rank===1?unique(task.approvals.filter(a=>a.level===0).flatMap(a=>a.subjects)):unique([...ctx.allowed_subjects[0],...task.shares.map(s=>s.person_id)]);
   if(rank===1&&!allowed.includes(ctx.actor_id))fail('Csak olyan fázis megosztását szerkesztheted, amelyen részt vettél.');
   task.shares=validShares(command.shares??[],allowed);task.share_lock=Math.max(rank,task.share_lock) as 1|2|3;
  }else if(command.type==='time'){
@@ -90,7 +90,7 @@ export function progressSummary(tasks:TaskState[]){
 export function validateTaskGraph(tasks:TaskState[]){
  if(!Array.isArray(tasks)||tasks.length>1000)fail('Egy terv legfeljebb ezer munkafázist tartalmazhat.');const map=new Map(tasks.map(t=>[t.id,t]));if(map.size!==tasks.length)fail('Ismételt munkafázis-azonosító.');
  const incoming=new Map<string,number>(),followers=new Map<string,string[]>();
- for(const t of tasks){if(!t.id||!text(t.title,300).trim()||!text(t.section,200).trim()||!Number.isSafeInteger(t.sort)||t.sort<0)fail('Ellenőrizd a munkafázis nevét és sorrendjét.');decimalUnits(t.labor);decimalUnits(t.net);if(t.planned_minutes!==null)decimalUnits(t.planned_minutes,6);
+ for(const t of tasks){if(!t.id||!text(t.title,500).trim()||!text(t.section,200).trim()||!Number.isSafeInteger(t.sort)||t.sort<0)fail('Ellenőrizd a munkafázis nevét és sorrendjét.');decimalUnits(t.labor);decimalUnits(t.net);if(t.planned_minutes!==null)decimalUnits(t.planned_minutes,6);
   for(const day of [t.start_date,t.end_date])if(day!==null&&(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(Date.parse(day+'T12:00:00Z'))||new Date(day+'T12:00:00Z').toISOString().slice(0,10)!==day))fail('Érvénytelen ütemezési nap.');if(t.start_date&&t.end_date&&t.end_date<t.start_date)fail('A befejezés nem lehet a kezdés előtt.');
   if(!Array.isArray(t.dependencies)||new Set(t.dependencies).size!==t.dependencies.length||t.dependencies.some(d=>d===t.id||!map.has(d)))fail('Érvénytelen előfeltétel.');incoming.set(t.id,t.dependencies.length);for(const d of t.dependencies){const xs=followers.get(d)??[];xs.push(t.id);followers.set(d,xs);}}
  const queue=tasks.filter(t=>!incoming.get(t.id)).sort((a,b)=>a.sort-b.sort||a.id.localeCompare(b.id)),ordered:TaskState[]=[],depth=new Map<string,number>();

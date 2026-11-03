@@ -1,35 +1,19 @@
-# Munkaterv és négyszintű átvétel – folytatási pont
+# Munkaterv és négyszintű átvétel – állapot
 
-2026. november 2. **Mentési pont, nem készre jelentés. Az élő alkalmazás továbbra is 0.6.0.**
+2026. november 3. **0.7.0 – a jóváhagyott munkatervi fejlesztés elkészült.** [Használati útmutató](munkaterv-es-atvetel.md).
 
-## Jóváhagyás és határok
+- Dolgozói saját belépés, kézi irodai meghívó/visszaállítás és érvényes munkaszerepek.
+- Elfogadott ajánlatból munkafázisok; húzás és mobil fel/le, előfeltételek, idővonal, helyi Visszavonás/Újra és előzményből új változat.
+- Négyszintű átvétel, tényleges pipák külön a számított teljesítménytől, személyszínek, 100%-os megosztás és vezetői/irodai zárolás.
+- Javítási körök, címzettek, Teendőim, személyes visszaküldési statisztika; helyi fotó és jogosultság szerint szűrt csomag.
+- Hálózati újrapróbálás ugyanazzal a kéréssel; helyi függő művelet személyhez kötve, token tárolása nélkül.
 
-A felhasználó jóváhagyta a [részletes tervet](munkaterv-atvetel-telepitesi-terv.md): tíz saját ERP-tábla, munkaterv/függőségek, négyszintű átvétel, megosztások, teendők, személyszínek és a meglévő dolgozóhoz kötött külön ERP-belépés, saját e-mail/jelszóval és kézi meghívással. Tesztek után saját ERP-élesítés, main commit/push engedélyezett. Más alkalmazás csak olvasható. Fotó továbbra is helyben/letölthető csomagban, nincs új Storage/SMTP/előfizetés.
+## Élesítés és ellenőrzés
 
-## Elkészült helyi alapok
+Saját ERP-sémák tíz új táblája, FORCE RLS; service_role részére fenntartott üzleti függvények, szerveroldali személy- és projektellenőrzés. A telepítés előtt visszagörgetett éles tranzakciós próba, saját kiszolgáló/azonosítás/jogok helyi mentése. A tulajdonosok, CREATE-jogok és eredeti szereptagságok változatlanok. Gateway v17; a Napi feladatok nyolc személyszíne csak olvasási forrásból, egyértelmű személymegfeleltetéssel átvéve.
 
-- `src/erp-workplan-model.ts`: pontos munkadíj-súlyozás; tényleges pipa és magasabb átvételből számított teljesítés külön; 100%-os megosztás és vezetői/irodai zárolás; új átvételi kör visszaküldéskor; eredeti tervidő védelme; körmentes függőségi gráf.
-- `database/proposals/erp-staff-access.sql`: négy saját dolgozói belépési tábla és végpontok. Meglévő személyhez kötés; irodai PIN-fiókot nem írhat felül; saját Auth-marker, egyszeri hivatkozás és munkamenet-visszavonás.
-- `database/proposals/erp-workplan.sql`: hat saját munkatervi tábla, elfogadott ajánlati alapadatok védelme, szerepenkénti projekt-hozzáférés, egyszeri kérésazonosító, gráf, átvétel/visszaküldés/megosztás/időterv, értesítések, statisztika, színek és lapozható előzmény.
-- `supabase/functions/erp-gateway/workplans.ts` és `staff.ts`: előkészített kiszolgálók. A `clients.ts` kipróbált jelszófolyamata kiszolgáló által választott, külön staff névtérrel újrahasznosítható; alapértelmezett ügyfélág változatlan.
-- Build frissíti a saját `workplan-model.ts` kiszolgálói másolatot. Generált JS helyi fordítással elkészült.
-- 13 modellteszt, 6 dolgozói adatbázisteszt és 10 munkaterv-adatbázisteszt sikeres. A 0.6.0 korábbi teljes regressziója 212 sikeres teszt volt; az új modullal bővített teljes regresszió még hátravan.
+271 helyi teszt sikeres; TypeScript és edge ellenőrzés. Böngészőben sorrend/visszavonás/mentés, dolgozói és ügyfélátvétel; mobilon nincs vízszintes kilógás. Éles irodai adatbázis-hozzáférés megmaradt; bejelentkezés nélküli munkaterv elutasítva. A valódi dolgozók meghívását és az első üzleti munkaterv felvitelét az iroda végzi; próbafiók vagy próbaprojekt nem készült élesben.
 
-## Pontos következő lépések
+## Következő fejlesztési egység
 
-1. Kiszolgáló- és adatvédelmi tesztek: staff névtér, hamis szerep, ügyfélből kizárt belső mezők, munkadíjak kizárása dolgozói nézetből, ismételt kérés/hálózati hiba, lejárt/visszavont megbízás. A backend új fájljai még nincsenek a gateway `index.ts`/`handler.ts` fájljaiba bekötve.
-2. Dolgozói belépés és irodai meghívófelület; munkánkénti szerepválasztás. `ErpApi` kiegészítése. Az irodai és ügyfélbelépés maradjon működőképes.
-3. Részletes munkaterv-felület: lenyílók, húzás és mobil fel/le gombok, előfeltételek/idővonal, négy színes sáv, tényleges pipák, 100%-os megosztás, javítási címzett, saját statisztika, Teendőim. Helyi Undo és korábbi terv új revízióként visszaállítása; nem törlünk elfogadott ajánlati munkafázist.
-4. Több helyi kép és jogosultság szerint szűrt ZIP-átadás/import. A szerver csak fájlazonosítót/metadatot kapjon; hiányzó helyi fájlra érthető jelzés szükséges. Ügyfél belső fotót vagy belső megjegyzést nem kaphat.
-5. Teljes regresszió, típusellenőrzés, mobil/asztali szintetikus felületpróba. Az új SQL-migrációk még NINCSENEK élesítve; valódi dolgozói vagy munkatervi tesztrekord nem készült.
-6. Telepítés előtt saját azonosítási függvények/tulajdonosok/jogok mentése; külön tranzakciós próba és visszagörgetés, majd jóváhagyott ERP-migrációk, gateway, ellenőrzés/advisor és frontend verzióemelés. README maradjon rövid, majd commit/push és Pages-ellenőrzés.
-
-## Fontos részletek a folytatáshoz
-
-- Supabase ERP: `cszsxjsiwaaibrocibyd`, saját erp/erp_private sémák; jelenlegi éles gateway v15. A Napi feladatok színforrása a másik projekt `public.napi_app_config.payload.workers` mezője; kizárólag a személyszín-adatokat olvastuk, munkákat nem.
-- Az élő Napi-színek eltérnek a kódban maradt seedektől. A helyi `.local/napi-worker-colors-20261102.json` csak színátvételi pillanatkép, nem kerül GitHubra. A színátvételhez az ERP meglévő személyazonosítóját kell egyértelműen megfeleltetni; azonos névből nem lehet személyösszevonás.
-- Postgresban az ERP-szerepek postgres tagságának eredeti grantora supabase_admin; INHERIT/SET false. Telepítéskor csak saját ideiglenes grant adható és vonható vissza, az eredeti maradjon meg. A CREATE-jogokat és függvénytulajdonosokat is meg kell őrizni.
-- A modell `shares` eseménye tényleges munkavégzőt írhat jóvá alsó pipa nélkül, ha már van magasabb átvétel: a sáv színe változik, az alsó pipa hiányzó marad. Ez a PDF kifejezett előírása.
-- Visszaküldés új kört nyit, a régi események nem törlődnek. A tényleges pipáló, a jóváírt résztvevő és a javítási címzett külön adat; ezek nem keverhetők össze.
-- Ügyfélnek ne kerüljön belső munkautasítás, részesedési/hibastatisztika, vagy más projekthez tartozó személyadat a JSON-ba sem. A `workplanView` szűrés további célzott tesztet igényel.
-- Az ötödik, tényleges munkaidős sáv és a beszerzési/pénzügyi modul nem készülhet kitalált nullaértékekkel. Ezek saját későbbi modulszakaszok, a teljes PDF részei maradnak.
+A PDF 13. fejezetének nyolc bejegyzéstípusa és kétoldalú változásjóváhagyása, majd a saját ERP-kertépítési munkalap és tényleges munkaidő ötödik sávja. A beszerzés, pénzügy és teljes üzleti lánc további feladatait a [specifikáció állapota](specifikacio-allapot.md) tartalmazza. Ezeket a mostani négy átvételi sáv nem helyettesíti.

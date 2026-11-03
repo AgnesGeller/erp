@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **Verzió: 0.6.1**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **Verzió: 0.7.0**
 
 ## Mi használható?
 
@@ -10,9 +10,10 @@
 - Közös ügyféllista, munkavégzési címek, munkák és munkatársi megbízások.
 - Helyszíni felmérés: kézi jegyzetek, méretek, helyi fotók/hangok, letölthető csomag és kézi ajánlatátadás.
 - Árajánlatkészítés: 163 árazott típus, 22 kategória, három sablon, frissülő PDF-előnézet, tételtörlés/visszavonás és választható kézi levelezés.
+- Részletes munkaterv, négyszintű átvétel, megosztás, javítási teendők és saját dolgozói belépés.
 - Telepítés és frissítés a felső menüből; mobilon is használható felület.
 
-A részletes munkaterv és négyszintű átvétel fejlesztés alatt áll; [folytatási pont](docs/munkaterv-folytatasi-pont.md).
+[Munkaterv és átvétel használata](docs/munkaterv-es-atvetel.md). Következik: kétoldalú változáskezelés és saját ERP-munkalap.
 
 A járdasablon pontosítandó sorait a főnök ajánlatkészítéskor választja ki. A teljes ERP fejlesztése még folyamatban van; a Groq MI-próbájához saját szerveroldali kulcs szükséges.
 
@@ -41,7 +42,7 @@ npm test
 npm run check:edge
 ```
 
-Legutóbbi célzott ellenőrzés: **2026. november 3., 36 sikeres teszt**, TypeScript-fordítás és helyi böngészőpróba. A teljes üzleti lánc átadási próbája a hátralévő modulok elkészülése után következik.
+Legutóbbi teljes ellenőrzés: **2026. november 3., 271 sikeres teszt**, TypeScript-fordítás és helyi böngészőpróba. A teljes üzleti lánc átadási próbája a hátralévő modulok elkészülése után következik.
 
 +36 70 634 9630 · [info@diszkertek.hu](mailto:info@diszkertek.hu) · [www.diszkertek.hu](https://www.diszkertek.hu/)
 

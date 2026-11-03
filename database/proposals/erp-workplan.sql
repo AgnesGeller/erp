@@ -246,4 +246,10 @@ create function public.erp_plan_history(p_actor uuid,p_session uuid,p_project uu
  return jsonb_build_object('events',coalesce(events,'[]'),'cursor',case when lastid is null then null else jsonb_build_object('time',lasttime,'id',lastid) end);end$$;
 do $$declare f record;begin for f in select p.oid::regprocedure as signature from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('erp_plan_projects','erp_plan_read','erp_plan_init','erp_plan_graph_save','erp_plan_task_context','erp_plan_task_save','erp_plan_notifications','erp_plan_color_save','erp_plan_statistics','erp_plan_history') loop
  execute format('revoke all on function %s from public,anon,authenticated',f.signature);execute format('grant execute on function %s to service_role',f.signature);end loop;end$$;
+create index if not exists task_dependency_owner_task on erp.task_dependencies(organization_id,plan_id,task_id);
+create index if not exists task_dependency_owner_required on erp.task_dependencies(organization_id,plan_id,requires_task);
+create index if not exists work_notification_project on erp.work_notifications(organization_id,project_id);
+create index if not exists work_notification_event on erp.work_notifications(organization_id,event_id);
+create index if not exists workplan_quote_version on erp.workplans(organization_id,quote_id,quote_version);
+create index if not exists workplan_project_lookup on erp.workplans(project_id);
 commit;

@@ -1,6 +1,6 @@
 const SESSION_KEY='diszkertek-erp-office-session-v1';
 const ENDPOINT='https://cszsxjsiwaaibrocibyd.supabase.co/functions/v1/erp-gateway';
-export interface OrganizationSession { organization_id:string; organization_name:string; person_id:string; is_office:boolean; is_client?:boolean; }
+export interface OrganizationSession { organization_id:string; organization_name:string; person_id:string; is_office:boolean; is_client?:boolean; is_staff?:boolean; }
 interface Tokens { access_token:string; refresh_token:string; expires_in:number; session:OrganizationSession[]; }
 export class ApiError extends Error { constructor(message:string,public status:number) {super(message);} }
 export class ErpApi {
@@ -65,8 +65,13 @@ export class ErpApi {
     this.accept(result);
   }
   async loginClient(email:string,password:string):Promise<void>{this.clear();const epoch=this.epoch;const value=await this.request<Tokens>({action:'client_login',email,password});if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);this.accept(value);}
+  async loginStaff(email:string,password:string):Promise<void>{this.clear();const epoch=this.epoch;const value=await this.request<Tokens>({action:'staff_login',email,password});if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);this.accept(value);}
+  async staffPublic<T>(action:'staff_setup'|'staff_recover',args:Record<string,unknown>):Promise<T>{return this.request<T>({action,...args});}
+  async staff<T>(action:'staff_admin_list'|'staff_manage'|'staff_issue',args:Record<string,unknown>):Promise<T>{return this.feature<T>(action,args);}
+  async plan<T>(action:string,args:Record<string,unknown>={}):Promise<T>{if(!/^plan_(projects|read|init|graph|task|notifications|history|statistics|color)$/.test(action))throw new ApiError('Ismeretlen munkatervművelet.',400);return this.feature<T>(action,args);}
+  private async feature<T>(action:string,args:Record<string,unknown>):Promise<T>{const epoch=this.epoch,token=await this.accessToken();if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);try{const result=await this.request<{data:T}>({...args,action},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}catch(e){if(epoch===this.epoch&&e instanceof ApiError&&e.status===401)this.clear();throw e;}}
   async clientPublic<T>(action:'client_setup'|'client_recover',args:Record<string,unknown>):Promise<T>{return this.request<T>({action,...args});}
-  async client<T>(action:'client_admin_list'|'client_manage'|'client_issue'|'client_portal'|'client_pdf',args:Record<string,unknown>={}):Promise<T>{const epoch=this.epoch,token=await this.accessToken();if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);try{const result=await this.request<{data:T}>({action,...args},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}catch(e){if(epoch===this.epoch&&e instanceof ApiError&&(e.status===401||(action==='client_portal'&&e.status===403)))this.clear();throw e;}}
+  async client<T>(action:'client_admin_list'|'client_manage'|'client_issue'|'client_portal'|'client_pdf',args:Record<string,unknown>={}):Promise<T>{const epoch=this.epoch,token=await this.accessToken();if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);try{const result=await this.request<{data:T}>({...args,action},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}catch(e){if(epoch===this.epoch&&e instanceof ApiError&&(e.status===401||(action==='client_portal'&&e.status===403)))this.clear();throw e;}}
   private async accessToken():Promise<string> {
     if (!this.tokens) throw new ApiError('Jelentkezz be a folytatáshoz.',401);
     if (this.expiresAt-Date.now()<60000) {
@@ -94,7 +99,7 @@ export class ErpApi {
   async customers<T>(action:'customers_list'|'customer_create'|'customer_resume'|'work_sites'|'work_create'|'work_confirm'|'quote_catalog'|'quote_list'|'quote_context'|'quote_get'|'quote_save'|'quote_catalog_save'|'quote_transition'|'quote_pdf'|'quote_manual_sent'|'survey_list'|'survey_get'|'survey_save',args:Record<string,unknown>):Promise<T> {
     const epoch=this.epoch;const token=await this.accessToken();
     if(epoch!==this.epoch||!this.tokens)throw new ApiError('A munkamenet megváltozott.',401);
-    try{const result=await this.request<{data:T}>({action,...args},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}
+    try{const result=await this.request<{data:T}>({...args,action},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}
     catch(error){if(epoch===this.epoch&&error instanceof ApiError&&error.status===401)this.clear();throw error;}
   }
   async surveyAi<T>(organizationId:string,input:Record<string,unknown>|FormData):Promise<T> {

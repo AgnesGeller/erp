@@ -1,6 +1,6 @@
 # Részletes munkaterv és négyszintű átvétel – telepítési terv
 
-2026. november 2. **A felhasználó jóváhagyta a terv szerinti megvalósítást és tesztek utáni ERP-élesítést. A telepítés még előkészítés alatt.** Alap: a teljes PDF 14–15. fejezete, a 22. fejezet invariánsai és a 25. fejezet 11., 14–17. és 28. átvételi próbája. A kiegészítés Építésvezető/Karbantartásvezető megnevezései és azonos Kertész/Kertépítő engedélyei érvényesek.
+2026. november 2. **A felhasználó jóváhagyta a terv szerinti megvalósítást és tesztek utáni ERP-élesítést. A jóváhagyott telepítés 2026. november 3-án megtörtént; használat: [Munkaterv és átvétel](munkaterv-es-atvetel.md).** Alap: a teljes PDF 14–15. fejezete, a 22. fejezet invariánsai és a 25. fejezet 11., 14–17. és 28. átvételi próbája. A kiegészítés Építésvezető/Karbantartásvezető megnevezései és azonos Kertész/Kertépítő engedélyei érvényesek.
 
 ## Az elkészítendő működés
 

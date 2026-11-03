@@ -123,10 +123,28 @@ export class ErpApi {
     }
     async loginClient(email, password) { this.clear(); const epoch = this.epoch; const value = await this.request({ action: 'client_login', email, password }); if (epoch !== this.epoch)
         throw new ApiError('A munkamenet megváltozott.', 401); this.accept(value); }
+    async loginStaff(email, password) { this.clear(); const epoch = this.epoch; const value = await this.request({ action: 'staff_login', email, password }); if (epoch !== this.epoch)
+        throw new ApiError('A munkamenet megváltozott.', 401); this.accept(value); }
+    async staffPublic(action, args) { return this.request({ action, ...args }); }
+    async staff(action, args) { return this.feature(action, args); }
+    async plan(action, args = {}) { if (!/^plan_(projects|read|init|graph|task|notifications|history|statistics|color)$/.test(action))
+        throw new ApiError('Ismeretlen munkatervművelet.', 400); return this.feature(action, args); }
+    async feature(action, args) { const epoch = this.epoch, token = await this.accessToken(); if (epoch !== this.epoch)
+        throw new ApiError('A munkamenet megváltozott.', 401); try {
+        const result = await this.request({ ...args, action }, token);
+        if (epoch !== this.epoch)
+            throw new ApiError('A munkamenet megváltozott.', 401);
+        return result.data;
+    }
+    catch (e) {
+        if (epoch === this.epoch && e instanceof ApiError && e.status === 401)
+            this.clear();
+        throw e;
+    } }
     async clientPublic(action, args) { return this.request({ action, ...args }); }
     async client(action, args = {}) { const epoch = this.epoch, token = await this.accessToken(); if (epoch !== this.epoch)
         throw new ApiError('A munkamenet megváltozott.', 401); try {
-        const result = await this.request({ action, ...args }, token);
+        const result = await this.request({ ...args, action }, token);
         if (epoch !== this.epoch)
             throw new ApiError('A munkamenet megváltozott.', 401);
         return result.data;
@@ -177,7 +195,7 @@ export class ErpApi {
         if (epoch !== this.epoch || !this.tokens)
             throw new ApiError('A munkamenet megváltozott.', 401);
         try {
-            const result = await this.request({ action, ...args }, token);
+            const result = await this.request({ ...args, action }, token);
             if (epoch !== this.epoch)
                 throw new ApiError('A munkamenet megváltozott.', 401);
             return result.data;

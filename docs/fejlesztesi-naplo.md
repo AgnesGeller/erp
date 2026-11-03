@@ -303,3 +303,16 @@ A felhasználó jóváhagyta a hat saját ERP-táblás változáskezelési terve
 ## 2026. november 3. – Bejegyzésfelület és fotócsomag fejlesztési mentése
 
 Elkészült az új, még be nem kapcsolt bejegyzésablak és a munkatervi csatlakozás előkészítése. Helyi piszkozat, Visszavonás/Újra, pontos árelőnézet, felső ×, hálózati újrapróba, verziók, hiba-/káradatok és saját helyi fotócsomag. A teljes regresszió 316/316 sikeres; az utána bővített lapozási és hozzáférési próbákkal a 26 érintett teszt is sikeres. A böngészőben az árazás, piszkozat-visszaállítás és javított áfaösszeg igazolt, a közzététel megerősítésénél az IAB vezérlés időtúllépést jelzett. **Élesítés nem történt.** A felület további ellenőrzései és pontos bekötése a [folytatási jegyzetben](bejegyzesek-fejlesztesi-allapot.md) szerepelnek.
+
+
+## 2026. november 3. – 0.8.0: bejegyzések és kétoldalú változásjóváhagyás
+
+A jóváhagyott hat saját ERP-tábla és a teljes bejegyzésfelület elkészült. Pontos ajánlatváltozathoz kötött irodai/megrendelői döntés, ellenajánlat, atomi egyszeri alkalmazás, régi ajánlatok és valódi átvételek megőrzése. Árváltozáskor pipa marad; munkatartalom, mennyiség, egység, beépített anyag vagy nyilvános munkaleírás változásakor új kör. Extra/törlés a jelenlegi munkatervet és számított anyagigényt frissíti. Megnyitott ajánlat és PDF frissül; másik mentetlen szerkesztés nem íródik felül.
+
+Nyolc típus, tényleges szerzőnév/szerep/időpont, címzett, csapatláthatóság, komment, javítás megrendelői lezárása/újranyitása, vitatott felelősség és opcionális tényleges kár. Felső ×, mentésvédelem, Visszavonás/Újra, személy/projekt/szerep szerinti helyi piszkozat, azonos kéréssel hálózati újrapróba, lapozott előzmények. Helyi fotócsomag bejegyzés-/szerep-/ellenőrzőösszeg-védelemmel; fájl Supabase-be nem kerül.
+
+**Végső teljes ellenőrzés: 327/327 sikeres teszt**, frontend-fordítás és edge TypeScript-ellenőrzés. Szintetikus asztali böngészőben irodai ajánlat → megrendelői elfogadás → alkalmazás igazolt; 390 px mobilnézetben nincs vízszintes kilógás, a felső × működik. A korábbi IAB-confirm probléma csak a tesztoldalon kezelt automatizált megerősítéssel lett megkerülve; a valódi alkalmazás megerősítései változatlanul megmaradtak.
+
+Saját helyi mentés után a visszagörgetett próba 6 új táblát adott, rollback után 0 maradt. Éles migráció: `erp_project_entries`, majd névmegjelenítés: `erp_entry_actor_labels`. Gateway v19 ACTIVE, 15 fájl. Hat új tábla RLS/FORCE RLS védett, közvetlen anon/authenticated elérés nincs; az új függvények is tiltottak e szerepeknek. Belépés nélküli éles végpont HTTP 401. Új modulnál advisor WARN/ERROR és hiányzó FK-index nincs; a várható alaptiltó-RLS/újindex INFO jelzések és a projekt korábbi háttérjelzései megmaradtak.
+
+A rövid README és a [használati útmutató](bejegyzesek.md) frissült. A meglévő négy alkalmazás, a KAP/teszt-árajánlat adatai és az Auth-beállítások nem változtak. Csomagtelepítés nem történt; csak az ERP saját csomagverziója emelkedett 0.8.0-ra. Következő egység a saját ERP-munkalap és tényleges munkaidő.

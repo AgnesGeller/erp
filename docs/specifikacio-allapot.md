@@ -1,6 +1,6 @@
 # A fejlesztői PDF teljesítési állapota
 
-Ellenőrzés: **2026. november 3. – ERP 0.7.0**. Alap: a 15 oldalas teljes fejlesztői specifikáció, a kiegészítés és az azóta jóváhagyott döntések. Ez állapotfelmérés, nem készre jelentés. A teljes megbízásból az alábbi hátralévő részek is megvalósítandók.
+Ellenőrzés: **2026. november 3. – ERP 0.8.0**. Alap: a 15 oldalas teljes fejlesztői specifikáció, a kiegészítés és az azóta jóváhagyott döntések. Ez állapotfelmérés, nem készre jelentés. A teljes megbízásból az alábbi hátralévő részek is megvalósítandók.
 
 | Terület / PDF-fejezet | Jelenlegi állapot | Mi hiányzik még? |
 | --- | --- | --- |
@@ -10,9 +10,9 @@ Ellenőrzés: **2026. november 3. – ERP 0.7.0**. Alap: a 15 oldalas teljes fej
 | Árlista, képletek, sablonok – 8–10. | Az Excel 163 típusa, 22 kategóriája, három sablon; pontos számítás, minimumdíjak, anyagjegyzék, szerkeszthető árlistaváltozatok | Tetszőleges beszállítói Excel oszlopmegfeleltetése; a teljes közös beszerzési anyagtörzs. A járdasablon rétegeit a főnök az adott ajánlatnál választja ki |
 | Ajánlatszerkesztés, PDF – 11. | Két PDF-mód, folyamatosan nyitva tartható/frissülő előnézet, hiányos munkaváltozat, kiemelt összesítők, két tizedes megjelenítés; törölhető sorok, Visszavonás/Újra az ajánlatban és árlistában | Valódi üzleti ajánlat közös átvételi próbája; MI-s kísérőlevél-javaslat |
 | Kézi levelezés – 11. | Választható levelező, másolás és PDF-mellékletes EML, kézi küldés tényének külön visszaigazolása | Automatikus küldőszolgáltatás nincs bekapcsolva, a felhasználó kifejezetten kézi küldést kért |
-| Ajánlat-életciklus – 12. | Piszkozat → elkészült → kézi kiküldés visszaigazolása → elfogadás/elutasítás; revízió, visszavonás, megőrzött pillanatképek; külön kertépítés-indítás | Saját ügyfélportál a kiküldött ajánlatok és munkastátuszok követésére kész; a négyszintű átvétel kész; a jóváhagyott pénzügyi változáskérelmek összekötése még hiányzik |
-| Nyolc bejegyzéstípus – 13. | Még nincs kész | Extra, módosítás, törlési kérelem, megjegyzés, kérés, panasz, hiba, káresemény; kétoldalú jóváhagyás és napló |
-| Kivitelezés – 14–15. | Vizuális munkaterv, függőségek és dátumos idővonal, négyszintű átvétel, négy személyszínes sáv, zárolt megosztás, javítás, teendők és statisztika kész | Tényleges munkaidő ötödik sávja a saját ERP-munkalapból; anyagelőrehaladás és jóváhagyott ajánlatváltozások összekötése |
+| Ajánlat-életciklus – 12. | Piszkozat → elkészült → kézi kiküldés visszaigazolása → elfogadás/elutasítás; revízió, visszavonás, megőrzött pillanatképek; külön kertépítés-indítás | Saját ügyfélportál a kiküldött ajánlatok és munkastátuszok követésére kész; a négyszintű átvétel kész; a kétoldalú változáskezelés 0.8.0-ban elkészült |
+| Nyolc bejegyzéstípus – 13. | Nyolc típus, kétoldalú pontos jóváhagyás, változatnapló, hiba/kár, munkatervi kapcsolat és helyi fotócsomag kész | Valódi üzleti munka közös átadási próbája |
+| Kivitelezés – 14–15. | Vizuális munkaterv, függőségek és dátumos idővonal, négyszintű átvétel, négy személyszínes sáv, zárolt megosztás, javítás, teendők és statisztika kész | Tényleges munkaidő ötödik sávja a saját ERP-munkalapból; tényleges anyagmozgások és anyagelőrehaladás |
 | Munkalap, beszerzés, pénzügy – 15–18. | Az ajánlatból tervezett munka-/anyagérték rendelkezésre áll | Saját ERP-munkalap, tényleges anyagmozgások, előleg/kifizetés/jóváhagyás, eredmény és éves jutalék; nincs kész pénzügyi könyvelés |
 | Kertkarbantartás – 19. | Címhez kötött igény és irodai elfogadás alapja kész | Teljes karbantartási munkalap és elszámolási folyamat |
 | Naptár, referenciák – 20. | Nem kész funkciók nem érhetők el | Irodai naptár és kapcsolók, referencia-szerkesztés, web/FB/Instagram-változatok, WordPress-piszkozat szinkron és külön publikálás |
@@ -27,4 +27,4 @@ Ellenőrzés: **2026. november 3. – ERP 0.7.0**. Alap: a 15 oldalas teljes fej
 - Legfeljebb két tizedes látható a szokásos számmezőkben és PDF-ben. A számítás és az apró belső anyagszorzók pontosak maradnak.
 - A visszavonás a jelenlegi szerkesztési munkamenetben működik. A régi mentett pillanatképek megmaradnak; kiküldött/elfogadott megállapodást nem írunk át egyszerű Undo művelettel.
 
-**Következő nagy fejlesztési egység:** a 13. fejezet nyolc bejegyzéstípusa és kétoldalú változáskezelés, majd saját ERP-munkalap és tényleges munkaidő. A munkaterv és négyszintű átvétel 0.7.0-ban elkészült; [használata](munkaterv-es-atvetel.md). Az ügyfélportálhoz az öt saját ERP-nyilvántartást és a kézi meghívót/visszaállítást a felhasználó jóváhagyta; saját migráció és gateway telepítve. [Ügyfélportál használata](ugyfelbelepes.md).
+**Következő nagy fejlesztési egység:** saját ERP-munkalap és tényleges munkaidő. A 13. fejezet bejegyzés- és változáskezelése 0.8.0-ban elkészült; [használata](bejegyzesek.md). A munkaterv és négyszintű átvétel 0.7.0-ban elkészült; [használata](munkaterv-es-atvetel.md). Az ügyfélportálhoz az öt saját ERP-nyilvántartást és a kézi meghívót/visszaállítást a felhasználó jóváhagyta; saját migráció és gateway telepítve. [Ügyfélportál használata](ugyfelbelepes.md).

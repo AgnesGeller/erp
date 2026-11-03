@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import {readFile} from 'node:fs/promises';
+import {readFile,readdir} from 'node:fs/promises';
+const releaseVersion=JSON.parse(await readFile(new URL('../version.json',import.meta.url),'utf8')).version;
 const source=(await readFile(new URL('../assets/js/main.js',import.meta.url),'utf8')).replace(/export \{\};?/, '');
 function harness({offline=false,standalone=false,userAgent='test',platform='test',maxTouchPoints=0,pendingRelease,serviceWorker}={}) {
  const nodes=new Map();
@@ -16,7 +17,7 @@ function harness({offline=false,standalone=false,userAgent='test',platform='test
   navigator:{userAgent,platform,maxTouchPoints,...(serviceWorker?{serviceWorker}: {})},
   sessionStorage:{getItem:k=>session.get(k),setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)},
   location:{reload(){context.reloaded=true;}},
-  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:'0.7.1'})};},
+  fetch:async()=>{if(offline)throw Error('offline');return {ok:true,json:async()=>({version:releaseVersion})};},
   AbortSignal,Date,Event,setTimeout,clearTimeout
  };
  vm.runInNewContext(source,context);
@@ -58,10 +59,10 @@ test('SW registration failure cannot claim successful update',async()=>{
 test('ERP worker never removes another app cache or handles API traffic',async()=>{
  const handlers={};const deleted=[];let claimed=false;
  const context={URL,self:{registration:{scope:'https://agnesgeller.github.io/erp/'},clients:{claim:async()=>{claimed=true;}},addEventListener:(t,f)=>handlers[t]=f},
- caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.7.1','munkalap-v2'],delete:async k=>deleted.push(k)}};
+ caches:{keys:async()=>['kassza-v1','diszkertek-erp-0.0.1','diszkertek-erp-0.7.1','diszkertek-erp-'+releaseVersion,'munkalap-v2'],delete:async k=>deleted.push(k)}};
  vm.runInNewContext(await readFile(new URL('../sw.js',import.meta.url),'utf8'),context);
  let pending;handlers.activate({waitUntil:p=>pending=p});await pending;
- assert.deepEqual(deleted,['diszkertek-erp-0.0.1']);assert.equal(claimed,true);
+ assert.deepEqual(deleted,['diszkertek-erp-0.0.1','diszkertek-erp-0.7.1']);assert.equal(claimed,true);
  for(const url of ['https://example.supabase.co/rest/v1/customers','https://agnesgeller.github.io/munkalap/','https://agnesgeller.github.io/erp/version.json']){
   handlers.fetch({request:{method:'GET',url},respondWith(){assert.fail('Unrelated request intercepted');}});
  }
@@ -99,7 +100,7 @@ test('Reloading a stale release cannot display successful update',()=>{
  assert.doesNotMatch(h.nodes.get('update-status').textContent,/Sikeres/);
 });
 test('Confirmed target release after reload displays success',()=>{
- const h=harness({pendingRelease:'0.7.1'});
+ const h=harness({pendingRelease:releaseVersion});
  assert.match(h.nodes.get('update-status').textContent,/✓ Sikeres frissítés/);
 });
 test('A native prompt takes priority over an enclosing standalone app window',async()=>{
@@ -120,3 +121,5 @@ test('Versioned ERP launch URL falls back to its own cached page offline',async(
  assert.equal(await answer,'offline-erp-page');assert.equal(cacheKey,'https://agnesgeller.github.io/erp/');
  handlers.fetch({request:{method:'GET',mode:'navigate',url:'https://agnesgeller.github.io/napi/'},respondWith(){assert.fail('Other app intercepted');}});
 });
+
+test('Minden statikusan importált saját frontendmodul rendelkezik offline gyorsítótári bejegyzéssel',async()=>{const scope='https://agnesgeller.github.io/erp/',c={URL,self:{registration:{scope},addEventListener(){}}};vm.runInNewContext((await readFile(new URL('../sw.js',import.meta.url),'utf8'))+'\nglobalThis.files=FILES;',c);const cached=new Set(c.files.map(x=>new URL(x,scope).href));for(const file of await readdir(new URL('../assets/js/',import.meta.url))){if(!file.endsWith('.js'))continue;const source=await readFile(new URL('../assets/js/'+file,import.meta.url),'utf8');for(const m of source.matchAll(/(?:import|export)[^;\n]*?from ['"](\.[^'"]+\.js(?:\?[^'"]*)?)['"]/g)){const dependency=new URL(m[1],scope+'assets/js/'+file).href;assert.ok(cached.has(dependency),'Hiányzó offline függőség: '+dependency);}}});

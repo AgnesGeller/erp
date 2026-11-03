@@ -31,6 +31,7 @@ export class EntryDesk {
     media = new WorkMedia();
     archive = false;
     transientDirty = false;
+    transientKinds = new Set();
     constructor(api, onError, onSaved) {
         this.api = api;
         this.onError = onError;
@@ -47,17 +48,19 @@ export class EntryDesk {
             e.preventDefault();
         else
             this.cancelRead(); });
-        window.addEventListener('beforeunload', e => { if (this.busy && !this.reading || this.pending) {
+        window.addEventListener('beforeunload', e => { if (this.busy && !this.reading || this.pending || this.transientDirty) {
             e.preventDefault();
             e.returnValue = '';
         } });
         window.addEventListener('erp:before-update', e => { if (this.dialog.open && !this.leave())
             e.preventDefault(); });
     }
+    get dirty() { return !!this.draft || !!this.pending || this.transientDirty; }
+    get saving() { return this.busy && !this.reading; }
     get open() { return this.dialog.open; }
     setOwner(owner) { if (this.owner === owner)
-        return; this.generation++; this.owner = owner; this.view = undefined; this.draft = undefined; this.pending = undefined; this.preview = undefined; this.transientDirty = false; this.busy = false; this.reading = false; this.body.replaceChildren(); this.dialog.close(); }
-    key() { return 'diszkertek-erp-entry/' + this.owner + '/' + this.scope.project_id; }
+        return; this.generation++; this.owner = owner; this.view = undefined; this.draft = undefined; this.pending = undefined; this.preview = undefined; this.transientDirty = false; this.transientKinds.clear(); this.busy = false; this.reading = false; this.body.replaceChildren(); this.dialog.close(); }
+    key() { return 'diszkertek-erp-entry/' + this.owner + '/' + this.scope.project_id + '/' + this.scope.role; }
     remember() { if (!this.owner)
         return; try {
         localStorage.setItem(this.key(), JSON.stringify({ draft: this.draft, pending: this.pending }));
@@ -74,12 +77,12 @@ export class EntryDesk {
     error(e) { this.message(e instanceof Error ? e.message : 'A bejegyzés nem tölthető be.'); if (e && typeof e === 'object' && 'status' in e && e.status === 401)
         this.onError(e); }
     async show(owner, scope, entry, target) { if (this.dialog.open && !this.leave())
-        return; this.setOwner(owner); this.scope = { ...scope }; this.draft = undefined; this.pending = undefined; this.preview = undefined; try {
+        return; this.cancelRead(); this.setOwner(owner); this.transientDirty = false; this.transientKinds.clear(); this.scope = { ...scope }; this.draft = undefined; this.pending = undefined; this.preview = undefined; try {
         const local = JSON.parse(localStorage.getItem(this.key()) ?? '{}');
         this.pending = local.pending;
     }
     catch { } if (!this.dialog.open)
-        this.dialog.showModal(); await this.load(entry); if (target && this.view && !this.pending)
+        this.dialog.showModal(); await this.load(entry); if (target && this.view && !this.pending && ['office', 'construction_lead', 'client'].includes(this.view.context.role))
         this.start('create', target); }
     async load(entry, version, cursor, eventCursor) { if (this.busy)
         return; const gen = ++this.generation, previous = this.view; this.body.replaceChildren(); this.busy = true; this.reading = true; this.message('Bejegyzések betöltése…'); try {
@@ -104,6 +107,9 @@ export class EntryDesk {
         if (gen === this.generation) {
             this.view = undefined;
             this.error(e);
+            btn(this.body, 'Betöltés újrapróbálása', () => { void this.load(entry, version, cursor, eventCursor); });
+            if (entry)
+                btn(this.body, 'Vissza a bejegyzéslistához', () => { void this.load(); });
         }
     }
     finally {
@@ -122,8 +128,8 @@ export class EntryDesk {
         this.message('Előbb ellenőrizd az előző mentés eredményét az Újrapróbálás gombbal.');
         return false;
     } if ((this.draft || this.transientDirty) && !confirm('Elveted a még nem közzétett szerkesztést?'))
-        return false; this.draft = undefined; this.preview = undefined; this.transientDirty = false; this.remember(); return true; }
-    start(operation, target) { const v = this.view; if (!v || this.busy || !this.discard())
+        return false; this.draft = undefined; this.preview = undefined; this.transientDirty = false; this.transientKinds.clear(); this.remember(); return true; }
+    start(operation, target) { const v = this.view; if (!v || this.busy || !['office', 'construction_lead', 'client'].includes(v.context.role) || !this.discard())
         return; const e = v.entry; this.draft = { operation, entry_id: operation === 'create' ? crypto.randomUUID() : e.id, revision: operation === 'create' ? 0 : e.revision, entry_version: operation === 'create' ? null : e.current_version, kind: operation === 'create' ? 'note' : e.kind, payload: operation === 'create' ? { body: '', visible_to_team: false, recipient_id: null, target_line_id: target ?? null, media: [], suggestion: { params: {} }, damage: {} } : structuredClone(e.version.payload), patch: operation === 'price' ? structuredClone(e.pricing_patch ?? { rows: [] }) : null }; if (target && operation === 'create')
         this.draft.kind = 'modify'; if (operation === 'price' && e.kind === 'modify' && !this.draft.patch.rows.length) {
         const sections = v.pricing_sections;
@@ -144,7 +150,7 @@ export class EntryDesk {
             void this.load(); });
         if (['office', 'construction_lead', 'client'].includes(v.context.role))
             btn(this.body, 'Új bejegyzés hozzáadása', () => this.start('create'));
-        if (!this.draft) {
+        if (!this.draft && ['office', 'construction_lead', 'client'].includes(v.context.role)) {
             try {
                 const local = JSON.parse(localStorage.getItem(this.key()) ?? '{}');
                 if (local.draft)
@@ -321,7 +327,7 @@ export class EntryDesk {
     renderEntry(parent) {
         const v = this.view, e = v.entry, role = v.context.role, current = e.version.version === e.current_version, terminal = ['applied', 'closed', 'liability_agreed', 'withdrawn', 'rejected'].includes(e.state), creator = ['office', 'construction_lead', 'client'].includes(role);
         const box = fold(parent, entryKinds[e.kind] + ' · ' + labels[e.state], true);
-        box.append(n('p', new Date(e.created_at).toLocaleString('hu-HU') + ' · ' + roles[e.author_role]), n('p', e.version.payload.body));
+        box.append(n('p', new Date(e.created_at).toLocaleString('hu-HU') + ' · ' + (e.author_name ?? roles[e.author_role]) + ' · ' + roles[e.author_role]), n('p', e.version.payload.body));
         select(box, 'Megőrzött változat', String(e.version.version), e.versions.map((x) => [String(x.version), x.version + '. változat · ' + new Date(x.created_at).toLocaleString('hu-HU')]), value => { if (this.discard())
             void this.load(e.id, Number(value)); });
         if (!current)
@@ -337,7 +343,7 @@ export class EntryDesk {
         }
         this.photoList(box, e.version.payload.media ?? []);
         for (const decision of e.decisions)
-            box.append(n('p', (decision.party === 'office' ? 'Iroda' : 'Megrendelő') + ': ' + (decision.accepted ? '✓ Elfogadta' : 'Elutasította') + ' · ' + new Date(decision.created_at).toLocaleString('hu-HU')));
+            box.append(n('p', (decision.party === 'office' ? 'Iroda' : 'Megrendelő') + (decision.actor_name ? ' · ' + decision.actor_name : '') + ': ' + (decision.accepted ? '✓ Elfogadta' : 'Elutasította') + ' · ' + new Date(decision.created_at).toLocaleString('hu-HU')));
         if (current && !e.archived) {
             if (creator && !terminal) {
                 if (role === 'office' && financialKinds.includes(e.kind))
@@ -357,7 +363,7 @@ export class EntryDesk {
             if (states.length) {
                 const status = fold(box, 'Állapot és javítási fotók');
                 let text = e.version.payload.body;
-                field(status, 'Leírás / elvégzett javítás', text, value => { text = value; this.transientDirty = true; }, 'textarea');
+                field(status, 'Leírás / elvégzett javítás', text, value => { text = value; this.markTransient('status'); }, 'textarea');
                 const photos = structuredClone(e.version.payload.media ?? []);
                 this.photos(status, photos, false);
                 for (const state of states)
@@ -370,7 +376,7 @@ export class EntryDesk {
             if (creator) {
                 const comment = fold(box, 'Megjegyzés hozzáadása');
                 let body = '';
-                field(comment, 'Megjegyzés', body, value => { body = value; this.transientDirty = true; }, 'textarea');
+                field(comment, 'Megjegyzés', body, value => { body = value; this.markTransient('comment'); }, 'textarea');
                 btn(comment, 'Megjegyzés mentése', () => { void this.write(this.command('comment', { payload: { body } })); });
             }
             if (role === 'office' && terminal)
@@ -383,7 +389,7 @@ export class EntryDesk {
         for (const event of e.events) {
             const row = n('div');
             row.className = 'plan-history-row';
-            row.append(n('strong', new Date(event.created_at).toLocaleString('hu-HU') + ' · ' + roles[event.active_role] + ' · ' + (events[event.kind] ?? 'Változás') + ' · ' + event.version + '. változat'));
+            row.append(n('strong', new Date(event.created_at).toLocaleString('hu-HU') + ' · ' + (event.actor_name ?? roles[event.active_role]) + ' · ' + roles[event.active_role] + ' · ' + (events[event.kind] ?? 'Változás') + ' · ' + event.version + '. változat'));
             if (event.data.body)
                 row.append(n('p', event.data.body));
             if (event.state)
@@ -406,10 +412,14 @@ export class EntryDesk {
     photoList(parent, photos) { for (const ref of photos)
         btn(parent, 'Fotó letöltése – ' + ref.name, () => { if (this.owner)
             void this.media.show(this.owner, this.scope.project_id, ref).catch(e => this.error(e)); }); }
-    photos(parent, photos, draft = true) { const box = fold(parent, 'Fotók (' + photos.length + ')'); box.append(n('p', 'A fotó helyben marad; a szöveg és azonosító eszközök között szinkronizálódik.')); this.photoList(box, photos); if (draft)
-        for (const ref of photos)
-            btn(box, 'Fotó kivétele – ' + ref.name, () => { photos.splice(photos.indexOf(ref), 1); this.touch(); this.render(); }); const upload = field(box, 'Fotó hozzáadása', '', () => { }, 'file'); upload.accept = 'image/jpeg,image/png,image/webp'; upload.multiple = true; upload.addEventListener('change', () => { void this.addPhotos(Array.from(upload.files ?? []), photos, draft); }); }
-    async addPhotos(files, photos, draft) { if (this.busy || !this.owner)
+    markTransient(kind) { this.transientDirty = true; this.transientKinds.add(kind); }
+    photos(parent, photos, draft = true) { const box = fold(parent, 'Fotók (' + photos.length + ')'); const render = () => { const opened = box.open; box.replaceChildren(n('summary', 'Fotók (' + photos.length + ')')); box.open = opened; box.append(n('p', 'A fotó helyben marad; a szöveg és azonosító eszközök között szinkronizálódik.')); this.photoList(box, photos); for (const ref of photos)
+        btn(box, 'Fotó kivétele – ' + ref.name, () => { if (this.busy)
+            return; photos.splice(photos.indexOf(ref), 1); if (draft)
+            this.touch();
+        else
+            this.markTransient('status'); render(); }); const upload = field(box, 'Fotó hozzáadása', '', () => { }, 'file'); upload.accept = 'image/jpeg,image/png,image/webp'; upload.multiple = true; upload.addEventListener('change', () => { void this.addPhotos(Array.from(upload.files ?? []), photos, draft, render); }); }; render(); }
+    async addPhotos(files, photos, draft, refresh = () => { }) { if (this.busy || !this.owner)
         return; if (photos.length + files.length > 12) {
         this.message('Legfeljebb tizenkét fotó adható meg.');
         return;
@@ -419,17 +429,17 @@ export class EntryDesk {
             if (gen !== this.generation)
                 return;
             photos.push(ref);
+            if (draft)
+                this.touch();
+            else
+                this.markTransient('status');
+            refresh();
         }
-        if (draft) {
-            this.touch();
-            this.render();
-        }
-        else
-            this.transientDirty = true;
         this.message('A fotók ezen az eszközön mentve vannak.', true);
     }
     catch (e) {
-        this.error(e);
+        if (gen === this.generation)
+            this.error(e);
     }
     finally {
         if (gen === this.generation)
@@ -449,10 +459,11 @@ export class EntryDesk {
         this.busy = false;
     } }
     async write(args, retry = false) { if (this.busy || !this.owner)
+        return; if (!retry && this.transientDirty && (!this.transientKinds.has(args.operation) || this.transientKinds.size > 1) && !confirm('A művelet után újratöltjük a bejegyzést. Elveted a másik, még nem mentett visszajelzést?'))
         return; if (this.pending && !retry) {
         this.message('Előbb próbáld újra az előző mentést.');
         return;
-    } this.pending = structuredClone(args); this.remember(); const gen = this.generation; this.busy = true; this.reading = false; this.message('Bejegyzés mentése…'); let success = false; const disabled = new Map(); for (const x of Array.from(this.body.querySelectorAll('input,textarea,button,select'))) {
+    } this.pending = structuredClone(args); this.remember(); const gen = this.generation, project = this.view?.context.project; this.busy = true; this.reading = false; this.message('Bejegyzés mentése…'); let success = false; const disabled = new Map(); for (const x of Array.from(this.body.querySelectorAll('input,textarea,button,select'))) {
         disabled.set(x, x.disabled);
         x.disabled = true;
     } try {
@@ -462,6 +473,7 @@ export class EntryDesk {
         this.pending = undefined;
         this.draft = undefined;
         this.transientDirty = false;
+        this.transientKinds.clear();
         this.remember();
         success = true;
     }
@@ -481,8 +493,9 @@ export class EntryDesk {
         }
     } if (success && gen === this.generation) {
         await this.load(args.entry_id);
-        this.message('A műveletet mentettük.', true);
-        this.onSaved();
+        if (this.view)
+            this.message('A műveletet mentettük.', true);
+        this.onSaved(project);
     }
     else if (gen === this.generation && this.pending)
         this.render(); }

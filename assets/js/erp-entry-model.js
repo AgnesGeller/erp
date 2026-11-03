@@ -115,7 +115,7 @@ else {
 } const calculation = calculateQuote(input); if (calculation.issues.length)
     throw Error(calculation.issues.join(' ')); return { input, calculation }; }
 export function changesScope(oldInput, newInput, oldCalc, newCalc, lineId) { const before = quoteLines(oldInput, oldCalc).find((r) => r.line.id === lineId), after = quoteLines(newInput, newCalc).find((r) => r.line.id === lineId); if (!before || !after)
-    return true; const physical = (r) => [decimal(r.result.quantity).toString(), r.result.unit, r.result.label, Object.fromEntries(Object.entries(publicParams(r.section, r.line, r.result)).map(([k, v]) => [k, v === '' ? '' : decimal(v).toString()])), (r.result.materials ?? []).map((m) => ({ name: m.name, unit: m.unit, installed: decimal(m.installed).toString() }))]; return canonical(physical(before)) !== canonical(physical(after)); }
+    return true; const physical = (r) => [decimal(r.result.quantity).toString(), r.result.unit, r.result.label, r.section.name, r.line.public_note ?? '', Object.fromEntries(Object.entries(publicParams(r.section, r.line, r.result)).map(([k, v]) => [k, v === '' ? '' : decimal(v).toString()])), (r.result.materials ?? []).map((m) => ({ name: m.name, unit: m.unit, installed: decimal(m.installed).toString() }))]; return canonical(physical(before)) !== canonical(physical(after)); }
 export function pricePatch(base, patch, kind, target, entryId, version) { const input = structuredClone(base); if (kind === 'remove')
     return customerChange(base, kind, { target_line_id: target }, entryId, version); if (!Array.isArray(patch?.rows) || patch.rows.length < 1 || patch.rows.length > 200 || kind === 'modify' && patch.rows.length !== 1)
     throw Error('Adj meg árazott költségvetési sort.'); if (kind === 'modify')

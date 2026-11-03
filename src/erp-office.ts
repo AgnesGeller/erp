@@ -1,20 +1,22 @@
 import type { OrganizationSession } from './erp-api.js';
 const clientSetupParams=new URLSearchParams(location.hash.slice(1));const clientSetupKind=clientSetupParams.has('staff_setup')?'staff':'client';let clientSetupToken=clientSetupParams.get(clientSetupKind==='staff'?'staff_setup':'client_setup');const clientSetupOpening=clientSetupToken!==null;if(clientSetupOpening)history.replaceState(null,'',location.pathname+location.search);
 const setupOpening=clientSetupOpening||new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
-const apiUrl=new URL('./erp-api.js?v=0.7.1',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.7.1',import.meta.url);
+const apiUrl=new URL('./erp-api.js?v=0.8.0',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.8.0',import.meta.url);
 const {ErpApi,ApiError}=await import(apiUrl.href) as typeof import('./erp-api.js');
 const {projectPeriod,todayBudapest,periodLabel}=await import(datesUrl.href) as typeof import('./erp-dates.js');
-const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.7.1',import.meta.url).href) as typeof import('./erp-project-roles.js');
+const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
 const api=new ErpApi();
-const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.7.1',import.meta.url).href) as typeof import('./erp-customers.js');
-const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.7.1',import.meta.url).href) as typeof import('./erp-site-works.js');
-const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.7.1',import.meta.url).href) as typeof import('./erp-quotes.js');
-const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.7.1',import.meta.url).href) as typeof import('./erp-surveys.js');
-const {ClientAdmin,ClientPortal}=await import(new URL('./erp-clients.js?v=0.7.1',import.meta.url).href) as typeof import('./erp-clients.js');
-const {StaffAdmin}=await import(new URL('./erp-staff.js?v=0.7.1',import.meta.url).href) as typeof import('./erp-staff.js');
-const {WorkPlanDesk}=await import(new URL('./erp-workplans.js?v=0.7.1',import.meta.url).href) as typeof import('./erp-workplans.js');
+const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-customers.js');
+const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-site-works.js');
+const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-quotes.js');
+const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-surveys.js');
+const {ClientAdmin,ClientPortal}=await import(new URL('./erp-clients.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-clients.js');
+const {StaffAdmin}=await import(new URL('./erp-staff.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-staff.js');
+const {WorkPlanDesk}=await import(new URL('./erp-workplans.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-workplans.js');
+const {EntryDesk}=await import(new URL('./erp-entries.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-entries.js');
 const staffAdmin=new StaffAdmin(api);const workplans=new WorkPlanDesk(api,showError);
+const entries=new EntryDesk(api,showError,project=>{void workplans.refreshAfterEntry();if(project?.quote_id)void quotes.refreshAfterContractChange(project.quote_id);});workplans.setEntryDesk(entries);
 const clientAdmin=new ClientAdmin(api,error=>{if(!api.signedIn)showError(error);});const clientPortal=new ClientPortal(api,showError);
 const customers=new CustomerDirectory(api,error=>{if(!api.signedIn)showError(error);},(id,name)=>{void works.selectCustomer(id,name);},(id,name)=>{void quotes.selectCustomer(id,name);},surveysEnabled?(id,name)=>{void surveys.selectCustomer(id,name);}:undefined,(id,name)=>{void clientAdmin.open(id,name);});
 const works=new SiteWorks(api,error=>{if(!api.signedIn)showError(error);},loadWorkspace,()=>{customers.open();get<HTMLInputElement>('customer-search').focus();});
@@ -199,10 +201,10 @@ projectSelect.addEventListener('change',()=>{loadAssignments().catch(showError);
 get('organization-select').addEventListener('change',()=>{if(!mutations)loadWorkspace().catch(showError);});
 for(const form of [workerForm,roleForm])form.addEventListener('input',()=>{dirty=true;});
 window.addEventListener('erp:before-update',event=>{
- if(mutations||loading||restoring||workplans.busy||staffAdmin.busy||clientAdmin.busy||clientPortal.busy||customers.busy||works.busy||quotes.busy||surveys.busy){event.preventDefault();message('Várd meg a folyamatban lévő művelet végét.');}
+ if(mutations||loading||restoring||workplans.busy||workplans.entryBusy||staffAdmin.busy||clientAdmin.busy||clientPortal.busy||customers.busy||works.busy||quotes.busy||surveys.busy){event.preventDefault();message('Várd meg a folyamatban lévő művelet végét.');}
  else if((dirty||clientAdmin.dirty||customers.dirty||works.dirty||quotes.dirty||surveys.dirty)&&!confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))event.preventDefault();
 });
-window.addEventListener('focus',()=>{if(Date.now()-lastWorkspaceRefresh>=30000&&api.signedIn&&!workplans.busy&&!workplans.dirty&&!staffAdmin.busy&&!mutations&&!dirty&&!clientAdmin.dirty&&!clientAdmin.busy&&!clientPortal.busy&&!customers.dirty&&!works.dirty&&!quotes.dirty&&!surveys.dirty&&!customers.busy&&!works.busy&&!quotes.busy&&!surveys.busy)loadWorkspace().catch(showError);});
+window.addEventListener('focus',()=>{if(Date.now()-lastWorkspaceRefresh>=30000&&api.signedIn&&!workplans.busy&&!workplans.entryBusy&&!workplans.dirty&&!staffAdmin.busy&&!mutations&&!dirty&&!clientAdmin.dirty&&!clientAdmin.busy&&!clientPortal.busy&&!customers.dirty&&!works.dirty&&!quotes.dirty&&!surveys.dirty&&!customers.busy&&!works.busy&&!quotes.busy&&!surveys.busy)loadWorkspace().catch(showError);});
 const clientForm=get<HTMLFormElement>('client-login-form'),clientSetupForm=get<HTMLFormElement>('client-setup-form');let clientAuthBusy=false;let clientSetupDirty=false;let loginKind:'client'|'staff'='client';
 function clientFeedback(text:string,success=false){const x=get(!get('client-setup-area').hidden?'client-setup-feedback':'client-login-feedback');x.textContent=(success?'✓ ':'')+text;x.className='office-status '+(success?'success':'error');}
 function showPublicLogin(kind:'client'|'staff',force=false){if(!force&&(clientAuthBusy||loading||restoring))return;loginKind=kind;get('login-area').hidden=true;get('client-login-area').hidden=false;get('client-login-description').textContent=kind==='staff'?'Saját kertépítéseid és teendőid, a munkánként kiosztott szerepköröddel.':'Saját ajánlataid és munkáid követése, az iroda által kijelölt címekhez.';get('client-login-title').textContent=kind==='staff'?'Dolgozói belépés':'Megrendelői belépés';get('switch-client-kind').textContent=kind==='staff'?'Megrendelői belépés':'Dolgozói belépés';get('client-login-feedback').textContent='';get<HTMLInputElement>('client-login-password').value='';get<HTMLInputElement>('client-login-email').focus();}

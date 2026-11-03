@@ -1,5 +1,5 @@
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.7.1', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.7.1', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.8.0', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.8.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
@@ -74,7 +74,8 @@ export class WorkPlanDesk {
         this.message('Előbb mentsd a munkaterv szerkesztését és az esetleges függő műveletet.');
         return;
     } void this.entries.show(this.owner, this.scope(), entry, target); }
-    get dirty() { return this.changed || !!this.pending || this.formChanged.size > 0; }
+    get entryBusy() { return this.entries?.saving === true; }
+    get dirty() { return this.entries?.dirty === true || this.changed || !!this.pending || this.formChanged.size > 0; }
     setOwner(owner) { if (this.owner !== owner) {
         this.reset();
         this.owner = owner;
@@ -98,7 +99,8 @@ export class WorkPlanDesk {
         this.reading = false;
         this.lock(false);
     } }
-    leave() { if (this.busy && !this.reading) {
+    leave() { if (this.entries?.open && !this.entries.leave())
+        return false; if (this.busy && !this.reading) {
         this.message('A mentés még folyamatban van. Várd meg a visszajelzést.');
         return false;
     } return (!this.dirty || confirm(this.pending ? 'A mentés eredménye még nem ismert. Megnézed újra az adatokat? Az eredeti kérés újrapróbálható marad.' : 'Elhagyod a még nem mentett munkatervi szerkesztést?')); }
@@ -371,6 +373,10 @@ export class WorkPlanDesk {
                 d.append(node('p', 'Aktuális ajánlati tartalom: ' + t.contract_label));
             if (v.context.role === 'office')
                 d.append(node('p', 'Ajánlati munkadíj: ' + quoteNumber(t.labor) + ' Ft'));
+            if (t.contract_note)
+                d.append(node('p', t.contract_note));
+            if (t.contract_info && t.contract_info !== t.internal_info)
+                d.append(node('p', 'Aktuális ajánlati munkautasítás: ' + t.contract_info));
             if (t.internal_info)
                 d.append(node('p', t.internal_info));
             if (v.context.can_edit)

@@ -1,6 +1,6 @@
 # Nyolc bejegyzéstípus és kétoldalú változáskezelés – jóváhagyott terv
 
-2026. november 3. Alap: a fejlesztői PDF 12–13., 14–15., 22. és 25. fejezete. A 0.7.0 kiadás változatlanul használható. A felhasználó a konkrét tervet és a tesztek utáni saját ERP-élesítést jóváhagyta. A megvalósítás folyamatban.
+2026. november 3. Alap: a fejlesztői PDF 12–13., 14–15., 22. és 25. fejezete. A 0.7.0 kiadás változatlanul használható. A felhasználó a konkrét tervet és a tesztek utáni saját ERP-élesítést jóváhagyta. A megvalósítás és saját ERP-élesítés 0.8.0-ban elkészült; [használat](bejegyzesek.md).
 
 ## A felhasználói működés
 

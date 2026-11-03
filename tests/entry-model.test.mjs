@@ -13,3 +13,5 @@ test('Üres tényleges kár megmarad üresnek; hibás felelősség és negatív 
 test('Paraméter nullái nem változtatnak munkatartalmat, eltérő anyag viszont igen',()=>{const b=base(),p={rows:[{section_index:0,line:structuredClone(b.sections[0].lines[0])}]};p.rows[0].line.params.q1='10.000000';let o=pricePatch(b,p,'modify','l1',id,1);assert.equal(changesScope(b,o.input,calculateQuote(b),o.calculation,'l1'),false);p.rows[0].line.pricing.materials[0].name='Más anyag';o=pricePatch(b,p,'modify','l1',id,1);assert.equal(changesScope(b,o.input,calculateQuote(b),o.calculation,'l1'),true);});
 
 test('Nyilvános változási ajánlat az áfa összegét őrzi meg, külön áfakulccsal',()=>{const b=base(),v=publicEntryQuote(b,calculateQuote(b));assert.equal(v.vat_mode,'27');assert.equal(v.vat,calculateQuote(b).vat);assert.notEqual(v.vat,'27');});
+
+test('A nyilvános munkatartalom szöveges változása is új átvételi kört igényel',()=>{const b=base(),p={rows:[{section_index:0,line:{...structuredClone(b.sections[0].lines[0]),public_note:'Más kivitelezési tartalom'}}]},o=pricePatch(b,p,'modify','l1',id,1);assert.equal(changesScope(b,o.input,calculateQuote(b),o.calculation,'l1'),true);});

@@ -1,0 +1,484 @@
+const { normalizeWorksheet, clockMinute, sheetUuid, worksheetCsv } = await import(new URL('./erp-worksheet-model.js?v=0.9.0', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.9.0', import.meta.url).href);
+const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.9.0', import.meta.url).href);
+const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.9.0', import.meta.url).href);
+const n = (tag, text = '') => { const el = document.createElement(tag); el.textContent = text; return el; };
+const hour = (v) => v == null ? '—' : quoteNumber(Number(v) / 60) + ' óra';
+const clock = (v) => String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0');
+const when = (v) => new Date(v).toLocaleString('hu-HU', { timeZone: 'Europe/Budapest' });
+const roleNames = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész' };
+function btn(parent, text, run) { const b = n('button', text); b.type = 'button'; b.className = 'quiet'; b.addEventListener('click', run); parent.append(b); return b; }
+function fold(parent, title, open = false) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.open = open; d.append(n('summary', title)); d.dataset.sheetFoldKey = title.replace(/\s*\(\d+\)$/, ''); parent.append(d); return d; }
+function field(parent, label, value, change, type = 'text') { const l = n('label', label), x = document.createElement(type === 'textarea' ? 'textarea' : 'input'); if (type !== 'textarea')
+    x.type = type; x.value = String(value ?? ''); x.addEventListener('input', () => change(x.value)); l.append(x); parent.append(l); return x; }
+function check(parent, label, value, change) { const l = n('label', label), x = document.createElement('input'); x.type = 'checkbox'; x.className = 'inline-check'; x.checked = value; x.addEventListener('change', () => change(x.checked)); l.prepend(x); parent.append(l); return x; }
+function select(parent, label, value, items, change) { const l = n('label', label), s = document.createElement('select'); s.append(...items.map(([v, t]) => new Option(t, v))); s.value = value; s.addEventListener('change', () => change(s.value)); l.append(s); parent.append(l); return s; }
+export class WorksheetDesk {
+    api;
+    onError;
+    onSaved;
+    dialog = document.createElement('dialog');
+    body = n('div');
+    feedback = n('p');
+    owner;
+    org;
+    scope = {};
+    mode = 'work';
+    generation = 0;
+    busy = false;
+    reading = false;
+    view;
+    draft;
+    pending;
+    preview;
+    acknowledged = false;
+    offline = false;
+    history = new EditHistory();
+    localSaved = true;
+    filters = { from: '', until: '', include_voided: false };
+    constructor(api, onError, onSaved) {
+        this.api = api;
+        this.onError = onError;
+        this.onSaved = onSaved;
+        this.dialog.id = 'worksheet-dialog';
+        this.dialog.className = 'worksheet-dialog';
+        this.dialog.setAttribute('aria-label', 'Kertépítési munkalap és munkaidő');
+        this.feedback.setAttribute('role', 'status');
+        this.dialog.append(n('h2', 'Munkalapok és tényleges munkaidő'), this.feedback, this.body);
+        document.body.append(this.dialog);
+        addDialogDismiss(this.dialog);
+        this.dialog.addEventListener('cancel', e => { if (!this.leave())
+            e.preventDefault();
+        else
+            this.cancelRead(); });
+        window.addEventListener('beforeunload', e => { if (this.saving || this.pending || this.draft && !this.localSaved) {
+            e.preventDefault();
+            e.returnValue = '';
+        } });
+        window.addEventListener('erp:before-update', e => { if (this.open && !this.leave())
+            e.preventDefault(); });
+    }
+    get open() { return this.dialog.open; }
+    get dirty() { return !!this.draft || !!this.pending; }
+    get saving() { return this.busy && !this.reading; }
+    setOwner(owner, org) { if (this.owner === owner && this.org === org)
+        return; this.generation++; this.owner = owner; this.org = org; this.busy = false; this.reading = false; this.view = undefined; this.draft = undefined; this.pending = undefined; this.preview = undefined; this.body.replaceChildren(); this.dialog.close(); }
+    leave() { if (this.saving) {
+        this.message('A mentés még folyamatban van. Várd meg a visszaigazolást.');
+        return false;
+    } return !this.dirty || confirm(this.pending ? (this.localSaved ? 'A mentés eredménye még nem ismert. Bezárod? Az eredeti kérés ezen az eszközön megmarad.' : 'A mentés eredménye nem ismert, és a helyi mentés sem sikerült. Bezáráskor az újrapróbálható kérés elveszhet. Folytatod?') : this.localSaved ? 'Bezárod a szerkesztést? A helyi piszkozat később folytatható.' : 'A piszkozatot nem sikerült az eszközre menteni. Bezáráskor a módosítások elvesznek.'); }
+    cancelRead() { this.generation++; this.busy = false; this.reading = false; }
+    key() { return 'diszkertek-erp-worksheet/' + this.owner + '/' + this.org + '/' + this.scope.project_id + '/' + this.scope.role; }
+    persist() { if (!this.owner || this.mode !== 'work')
+        return; try {
+        localStorage.setItem(this.key(), JSON.stringify({ draft: this.draft, pending: this.pending }));
+        this.localSaved = true;
+    }
+    catch {
+        this.localSaved = false;
+        this.message('A helyi mentés nem sikerült. Az ablak bezárása előtt másold ki a megjegyzéseket.');
+    } }
+    message(text, ok = false) { this.feedback.textContent = (ok ? '✓ ' : '') + text; this.feedback.className = 'office-status ' + (ok ? 'success' : ''); }
+    error(e) { this.message(e instanceof Error ? e.message : 'A munkalap nem tölthető be.'); if (e && typeof e === 'object' && 'status' in e && e.status === 401)
+        this.onError(e); }
+    async show(owner, org, scope) { if (this.open && !this.leave())
+        return; this.cancelRead(); this.setOwner(owner, org); this.mode = 'work'; this.scope = { ...scope }; this.draft = undefined; this.pending = undefined; this.preview = undefined; try {
+        const p = JSON.parse(localStorage.getItem(this.key()) ?? '{}').pending;
+        if (p && sheetUuid(p.request_id) && p.project_id === scope.project_id && p.role === scope.role)
+            this.pending = p;
+    }
+    catch { } if (!this.open)
+        this.dialog.showModal(); await this.load(); }
+    async showMine(owner, org) { if (this.open && !this.leave())
+        return; this.cancelRead(); this.setOwner(owner, org); this.mode = 'mine'; this.scope = {}; this.draft = undefined; this.pending = undefined; this.preview = undefined; if (!this.open)
+        this.dialog.showModal(); await this.loadMine(); }
+    readArgs() { return { ...this.scope, from: this.filters.from || null, until: this.filters.until || null, include_voided: this.filters.include_voided }; }
+    async load(sheet, version, cursor, eventCursor) { if (this.busy || !this.owner)
+        return; const gen = ++this.generation, previous = this.view; this.body.replaceChildren(); this.busy = true; this.reading = true; this.message('Munkalapok betöltése…'); try {
+        const data = await this.api.sheet('sheet_read', { ...this.readArgs(), sheet_id: sheet ?? null, version: version ?? null, cursor: cursor ?? null, event_cursor: eventCursor ?? null });
+        if (gen !== this.generation)
+            return;
+        if (cursor && previous) {
+            const ids = new Set(previous.sheets.map((x) => x.id));
+            data.sheets = [...previous.sheets, ...data.sheets.filter((x) => !ids.has(x.id))];
+        }
+        if (eventCursor && data.sheet?.id === previous?.sheet?.id) {
+            const ids = new Set(previous.sheet.events.map((x) => x.id));
+            data.sheet.events = [...previous.sheet.events, ...data.sheet.events.filter((x) => !ids.has(x.id))];
+        }
+        this.view = data;
+        this.offline = false;
+        this.draft = undefined;
+        this.preview = undefined;
+        try {
+            localStorage.setItem(this.key() + '/context', JSON.stringify({ owner: this.owner, org: this.org, scope: this.scope, at: new Date().toISOString(), context: data.context, people: data.people, tasks: data.tasks }));
+        }
+        catch { }
+        this.render();
+        this.message('A munkalapok naprakészek.', true);
+    }
+    catch (e) {
+        if (gen !== this.generation)
+            return;
+        this.view = undefined;
+        const status = e && typeof e === 'object' && 'status' in e ? Number(e.status) : 0;
+        let cached;
+        if ([0, 503].includes(status)) {
+            try {
+                const c = JSON.parse(localStorage.getItem(this.key() + '/context') ?? 'null');
+                if (c && c.owner === this.owner && c.org === this.org && c.context?.person_id === this.owner && c.scope.project_id === this.scope.project_id && c.scope.role === this.scope.role && Array.isArray(c.people) && Array.isArray(c.tasks))
+                    cached = c;
+            }
+            catch { }
+        }
+        if (cached) {
+            this.view = { ...cached, sheets: [], sheet: null, cursor: null, time: null };
+            this.offline = true;
+            this.render();
+            this.message('Korábban betöltött adatok. Helyi piszkozat készíthető; online ellenőrzés és mentés még nem történt.');
+        }
+        else {
+            this.error(e);
+            btn(this.body, 'Betöltés újrapróbálása', () => { void this.load(sheet, version, cursor, eventCursor); });
+        }
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            this.reading = false;
+        }
+    } }
+    async loadMine(cursor) { if (this.busy || !this.owner || !this.org)
+        return; const gen = ++this.generation, old = this.view; this.busy = true; this.reading = true; this.body.replaceChildren(); this.message('Saját munkaidő betöltése…'); try {
+        const data = await this.api.sheet('sheet_mine', { organization_id: this.org, from: this.filters.from || null, until: this.filters.until || null, cursor: cursor ?? null });
+        if (gen !== this.generation)
+            return;
+        if (cursor && old)
+            data.days = [...old.days, ...data.days];
+        this.view = data;
+        this.renderMine();
+        this.message('A saját összesítés naprakész.', true);
+    }
+    catch (e) {
+        if (gen === this.generation) {
+            this.view = undefined;
+            this.error(e);
+            btn(this.body, 'Betöltés újrapróbálása', () => { void this.loadMine(cursor); });
+        }
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            this.reading = false;
+        }
+    } }
+    discard() { if (this.pending) {
+        this.message('Előbb próbáld újra az előző, bizonytalan eredményű mentést.');
+        return false;
+    } if (this.draft && !confirm('Elveted a még nem mentett munkalapszerkesztést?'))
+        return false; this.draft = undefined; this.preview = undefined; this.acknowledged = false; this.persist(); return true; }
+    touch(group) { if (!this.draft)
+        return; this.preview = undefined; this.acknowledged = false; this.history.remember(this.draft, group); this.persist(); this.updateDurations(); const review = this.body.querySelector('[data-sheet-review]'); review?.replaceChildren(n('p', 'A módosított adatokhoz kérj friss előnézetet.')); this.buttons(); }
+    buttons() { const undo = this.body.querySelector('[data-sheet-undo]'), redo = this.body.querySelector('[data-sheet-redo]'), save = this.body.querySelector('[data-sheet-save]'); if (undo)
+        undo.disabled = !this.history.canUndo; if (redo)
+        redo.disabled = !this.history.canRedo; if (save)
+        save.disabled = !this.preview || this.preview.overlap?.count > 0 && !this.acknowledged; }
+    updateDurations() { if (!this.draft)
+        return; const d = this.draft.document; for (const p of d.people ?? []) {
+        const box = this.body.querySelector('[data-sheet-minutes="' + p.person_id + '"]');
+        if (!box)
+            continue;
+        try {
+            const a = clockMinute(p.override ? p.arrival : d.arrival), b = clockMinute(p.override ? p.departure : d.departure);
+            box.textContent = b > a ? hour(b - a) : 'Hibás időpár';
+        }
+        catch {
+            box.textContent = 'Időpár még nincs megadva';
+        }
+    } const total = this.body.querySelector('[data-sheet-total]'); if (total) {
+        try {
+            const data = normalizeWorksheet(d);
+            total.textContent = 'Összes rögzítendő idő: ' + hour(data.people.reduce((sum, p) => sum + p.minutes, 0));
+        }
+        catch {
+            total.textContent = 'Az összesítéshez ellenőrizd a dolgozókat és az időpárokat.';
+        }
+    } }
+    start(operation) { const v = this.view; if (!v?.context.can_write || this.busy || !this.discard())
+        return; const s = v.sheet; this.draft = { operation, sheet_id: operation === 'create' ? crypto.randomUUID() : s.id, revision: operation === 'create' ? 0 : s.revision, reason: '', document: operation === 'create' ? { work_date: todayBudapest(), arrival: '', departure: '', note: '', people: [] } : structuredClone(s.document) }; this.history.reset(this.draft); this.persist(); this.render(); }
+    restoreDraft() { try {
+        const draft = JSON.parse(localStorage.getItem(this.key()) ?? '{}').draft;
+        if (!draft || !sheetUuid(draft.sheet_id) || !Number.isSafeInteger(draft.revision) || !['create', 'revise', 'void', 'restore'].includes(draft.operation) || !draft.document || !Array.isArray(draft.document.people) || draft.document.people.length > 100 || draft.document.people.some((p) => !sheetUuid(p.person_id) || !Array.isArray(p.task_ids) || p.task_ids.some((id) => !sheetUuid(id))))
+            throw Error('A helyi piszkozat nem olvasható.');
+        this.draft = draft;
+        this.preview = undefined;
+        this.history.reset(draft);
+        this.render();
+        this.message('Helyi piszkozat. Mentés előtt új előnézet és jogosultságellenőrzés szükséges.');
+    }
+    catch (e) {
+        this.error(e);
+    } }
+    filtersBox(parent, mine = false) { const d = fold(parent, 'Időszak és szűrés'); field(d, 'Ettől a naptól', this.filters.from, value => { this.filters.from = value; }, 'date'); field(d, 'Eddig a napig', this.filters.until, value => { this.filters.until = value; }, 'date'); if (!mine)
+        check(d, 'Visszavont munkalapokkal együtt', this.filters.include_voided, value => { this.filters.include_voided = value; }); btn(d, 'Szűrés alkalmazása', () => { if (this.discard())
+        void (mine ? this.loadMine() : this.load()); }); }
+    render() {
+        const v = this.view;
+        if (!v)
+            return;
+        const folds = new Map(Array.from(this.body.querySelectorAll('details')).map(d => [d.dataset.sheetFoldKey, d.open]));
+        this.body.replaceChildren();
+        this.body.append(n('p', v.context.project.name + ' · ' + v.context.project.address));
+        if (this.pending) {
+            this.body.append(n('p', 'A mentés visszaigazolásra vár. Az eredeti kérés megmaradt ezen az eszközön.'));
+            btn(this.body, 'Az eredeti mentés újrapróbálása', () => { void this.write(this.pending, true); });
+            this.closeButton();
+            return;
+        }
+        btn(this.body, 'Munkalapok frissítése', () => { if (this.discard())
+            void this.load(); });
+        if (v.context.can_write)
+            btn(this.body, 'Új kertépítési munkalap', () => this.start('create'));
+        if (!this.draft && v.context.can_write) {
+            try {
+                if (JSON.parse(localStorage.getItem(this.key()) ?? '{}').draft)
+                    btn(this.body, 'Helyi piszkozat folytatása', () => this.restoreDraft());
+            }
+            catch { }
+        }
+        this.filtersBox(this.body);
+        if (v.time)
+            this.body.append(n('p', 'Tényleges idő: ' + hour(v.time.actual_minutes) + ' · Aktuális terv: ' + hour(v.time.planned_minutes) + ' · Hátralévő: ' + hour(v.time.remaining_minutes)));
+        const list = fold(this.body, 'Munkalapok (' + v.sheets.length + ')', !v.sheet && !this.draft);
+        for (const s of v.sheets)
+            btn(list, s.work_date + ' · ' + hour(s.minutes) + ' · ' + (s.state === 'voided' ? 'Visszavont' : 'Érvényes') + ' · ' + s.author_name, () => { if (this.discard())
+                void this.load(s.id); });
+        if (!v.sheets.length)
+            list.append(n('p', this.offline ? 'A munkalaplista online tölthető be.' : 'A kiválasztott időszakban nincs megjeleníthető munkalap.'));
+        if (v.cursor)
+            btn(list, 'Korábbi munkalapok betöltése', () => { if (this.discard())
+                void this.load(undefined, undefined, v.cursor); });
+        if (this.draft)
+            this.renderDraft();
+        else if (v.sheet)
+            this.renderSheet();
+        this.closeButton();
+        for (const d of Array.from(this.body.querySelectorAll('details'))) {
+            if (folds.has(d.dataset.sheetFoldKey))
+                d.open = folds.get(d.dataset.sheetFoldKey);
+        }
+    }
+    closeButton() { btn(this.body, 'Bezárás', () => { if (this.leave()) {
+        this.cancelRead();
+        this.dialog.close();
+    } }); }
+    renderDraft() {
+        const draft = this.draft, doc = draft.document, v = this.view, editing = ['create', 'revise'].includes(draft.operation), box = fold(this.body, draft.operation === 'void' ? 'Munkalap visszavonása' : draft.operation === 'restore' ? 'Munkalap visszaállítása' : 'Munkalap szerkesztése', true);
+        if (editing) {
+            field(box, 'Munkanap', doc.work_date, value => { doc.work_date = value; this.touch('date'); }, 'date');
+            field(box, 'Közös érkezés', doc.arrival, value => { doc.arrival = value; this.touch('arrival'); }, 'time');
+            field(box, 'Közös távozás', doc.departure, value => { doc.departure = value; this.touch('departure'); }, 'time');
+            field(box, 'Közös munkaleírás / megjegyzés', doc.note, value => { doc.note = value; this.touch('note'); }, 'textarea').maxLength = 12000;
+            const people = new Map((v.people ?? []).map((p) => [p.id, p]));
+            for (const p of doc.people)
+                if (!people.has(p.person_id))
+                    people.set(p.person_id, { id: p.person_id, name: p.name ?? 'Korábbi munkatárs', active: false });
+            const crew = fold(box, 'Dolgozók kijelölése (' + doc.people.length + ')');
+            crew.append(n('p', 'A hiányzó munkatársat az iroda a Munkatársak és megbízások felületen rendelheti a kertépítéshez.'));
+            for (const person of [...people.values()].sort((a, b) => a.name.localeCompare(b.name, 'hu'))) {
+                const selected = doc.people.some((p) => p.person_id === person.id);
+                check(crew, person.name + (person.active ? '' : ' · Korábbi résztvevő'), selected, value => { if (value)
+                    doc.people.push({ person_id: person.id, name: person.name, override: false, arrival: doc.arrival, departure: doc.departure, note: '', task_ids: [] });
+                else
+                    doc.people = doc.people.filter((p) => p.person_id !== person.id); this.touch(); this.render(); }).disabled = !person.active && !selected;
+            }
+            for (const person of [...doc.people].sort((a, b) => (people.get(a.person_id)?.name ?? '').localeCompare(people.get(b.person_id)?.name ?? '', 'hu'))) {
+                const p = fold(box, people.get(person.person_id)?.name ?? 'Korábbi munkatárs', person.override === true);
+                p.dataset.sheetFoldKey = 'person-' + person.person_id;
+                const duration = n('strong');
+                duration.dataset.sheetMinutes = person.person_id;
+                p.append(duration);
+                check(p, 'Személyenként eltérő érkezés / távozás', person.override === true, value => { person.override = value; if (value) {
+                    person.arrival ||= doc.arrival;
+                    person.departure ||= doc.departure;
+                } this.touch(); this.render(); });
+                if (person.override) {
+                    field(p, 'Egyéni érkezés', person.arrival, value => { person.arrival = value; this.touch(person.person_id + 'arrival'); }, 'time');
+                    field(p, 'Egyéni távozás', person.departure, value => { person.departure = value; this.touch(person.person_id + 'departure'); }, 'time');
+                }
+                field(p, 'Egyéni magyarázat (opcionális)', person.note, value => { person.note = value; this.touch(person.person_id + 'note'); }, 'textarea').maxLength = 2000;
+                const phases = fold(p, 'Munkafázisok (' + person.task_ids.length + ')');
+                phases.dataset.sheetFoldKey = 'phases-' + person.person_id;
+                phases.append(n('p', 'A fázisok kijelölése nem osztja fel és nem többszörözi a dolgozó teljes idejét.'));
+                for (const task of v.tasks.filter((t) => t.active || person.task_ids.includes(t.id)))
+                    check(phases, task.section + ' · ' + task.title + (task.active ? '' : ' · Korábbi fázis'), person.task_ids.includes(task.id), value => { person.task_ids = value ? [...person.task_ids, task.id] : person.task_ids.filter((id) => id !== task.id); phases.querySelector('summary').textContent = 'Munkafázisok (' + person.task_ids.length + ')'; this.touch(); });
+            }
+        }
+        else
+            this.renderDocument(box, doc);
+        if (draft.operation !== 'create')
+            field(box, draft.operation === 'void' ? 'Visszavonás indoka (kötelező)' : 'Módosítás indoka (opcionális)', draft.reason, value => { draft.reason = value; this.touch('reason'); }, 'textarea').maxLength = 4000;
+        const total = n('strong');
+        total.dataset.sheetTotal = 'true';
+        box.append(total);
+        const actions = n('div');
+        actions.className = 'sheet-actions';
+        const undo = btn(actions, 'Visszavonás', () => { const d = this.history.undo(); if (d) {
+            this.draft = d;
+            this.preview = undefined;
+            this.persist();
+            this.render();
+        } });
+        undo.dataset.sheetUndo = 'true';
+        const redo = btn(actions, 'Újra', () => { const d = this.history.redo(); if (d) {
+            this.draft = d;
+            this.preview = undefined;
+            this.persist();
+            this.render();
+        } });
+        redo.dataset.sheetRedo = 'true';
+        btn(actions, 'Szerkesztés elvetése', () => { if (this.discard())
+            this.render(); });
+        box.append(actions);
+        const review = n('div');
+        review.dataset.sheetReview = 'true';
+        box.append(review);
+        if (this.preview)
+            this.renderReview(review);
+        btn(box, 'Mentési előnézet ellenőrzése', () => { void this.review(); });
+        const save = btn(box, draft.operation === 'void' ? 'Visszavonom a munkalapot' : draft.operation === 'restore' ? 'Visszaállítom a munkalapot' : 'Munkalap mentése', () => this.save());
+        save.dataset.sheetSave = 'true';
+        this.updateDurations();
+        this.buttons();
+    }
+    renderDocument(parent, doc) { parent.append(n('p', 'Munkanap: ' + doc.work_date)); if (doc.arrival && doc.departure)
+        parent.append(n('p', 'Közös alapidő: ' + doc.arrival + ' – ' + doc.departure)); if (doc.note)
+        parent.append(n('p', doc.note)); const table = document.createElement('table'); table.className = 'sheet-table'; const head = document.createElement('thead'), hr = document.createElement('tr'); for (const title of ['Dolgozó', 'Érkezés', 'Távozás', 'Munkaidő', 'Megjegyzés / munkafázis'])
+        hr.append(n('th', title)); head.append(hr); const tbody = document.createElement('tbody'); for (const p of doc.people ?? []) {
+        const row = document.createElement('tr');
+        const values = [p.name ?? 'Korábbi munkatárs', p.arrival, p.departure, hour(p.minutes), (p.note ?? '') + ((p.tasks ?? []).length ? ' · ' + p.tasks.map((t) => t.section + ' / ' + t.title).join('; ') : '')];
+        values.forEach((value, index) => { const cell = n('td', String(value ?? '')); cell.dataset.label = ['Dolgozó', 'Érkezés', 'Távozás', 'Munkaidő', 'Megjegyzés / munkafázis'][index]; row.append(cell); });
+        tbody.append(row);
+    } table.append(head, tbody); parent.append(table); if (!(doc.people ?? []).length)
+        parent.append(n('p', 'Ebben a változatban nincs saját dolgozói sor. A korábbi saját változatok külön megnyithatók.')); parent.append(n('strong', 'Megjelenített dolgozói idő összesen: ' + hour((doc.people ?? []).reduce((sum, p) => sum + Number(p.minutes), 0)))); }
+    renderReview(parent) { const p = this.preview; this.renderDocument(parent, p.document); if (this.draft?.operation === 'void')
+        parent.append(n('strong', 'Visszavonás után ez az idő nem számít bele az aktuális összesítésbe. Az előzmény megmarad.')); if (p.overlap.count) {
+        parent.append(n('strong', 'Átfedő időadat: ' + p.overlap.count + ' dolgozói sor.'));
+        for (const row of p.overlap.rows)
+            parent.append(n('p', row.name + ' · ' + clock(row.start_minute) + ' – ' + clock(row.end_minute) + ' · ' + (row.project_name ?? (row.own_project ? 'Ugyanezen a kertépítésen' : 'Másik munkán'))));
+        check(parent, 'Az átfedéseket ellenőriztem, ennek ellenére rögzítem', this.acknowledged, value => { this.acknowledged = value; this.buttons(); });
+    }
+    else
+        parent.append(n('p', 'Az ellenőrzés nem talált átfedő személyes időt.')); }
+    args() { const d = this.draft; return { ...this.scope, sheet_id: d.sheet_id, revision: d.revision, operation: d.operation, document: structuredClone(d.document), reason: d.reason ?? '' }; }
+    async review() { if (this.busy || !this.draft)
+        return; if (!navigator.onLine) {
+        this.message('Az előnézethez és az átfedések ellenőrzéséhez internetkapcsolat kell. A helyi piszkozat megmaradt.');
+        return;
+    } const gen = this.generation, snapshot = JSON.stringify(this.draft), args = this.args(); this.busy = true; this.reading = true; this.message('Időpárok és átfedések ellenőrzése…'); try {
+        let data;
+        if (args.operation === 'void') {
+            if (!args.reason.trim())
+                throw Error('Írd le a visszavonás indokát.');
+            const current = await this.api.sheet('sheet_read', { ...this.scope, sheet_id: args.sheet_id });
+            if (!current.context.can_write)
+                throw Object.assign(Error('Ez a munkalap jelenleg nem módosítható.'), { status: 403 });
+            if (current.sheet.revision !== args.revision)
+                throw Object.assign(Error('Időközben módosult a munkalap. Töltsd be újra.'), { status: 409 });
+            data = { document: current.sheet.document, minutes: current.sheet.document.people.reduce((sum, p) => sum + p.minutes, 0), overlap: { count: 0, rows: [], signature: null } };
+        }
+        else
+            data = await this.api.sheet('sheet_preview', args);
+        if (gen !== this.generation || snapshot !== JSON.stringify(this.draft))
+            return;
+        this.preview = data;
+        this.acknowledged = false;
+        this.render();
+        this.message(data.overlap.count ? 'Átfedés található. Ellenőrizd az időadatokat a megerősítés előtt.' : 'A munkalap ellenőrzése sikeres.', !data.overlap.count);
+    }
+    catch (e) {
+        if (gen === this.generation)
+            this.error(e);
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            this.reading = false;
+        }
+    } }
+    save() { if (this.busy || !this.draft || !this.preview) {
+        this.message('Előbb ellenőrizd a mentési előnézetet.');
+        return;
+    } if (this.preview.overlap.count && !this.acknowledged) {
+        this.message('Az átfedő időket külön meg kell erősíteni.');
+        return;
+    } void this.write({ ...this.args(), overlap_signature: this.preview.overlap.signature, confirmed: true, request_id: crypto.randomUUID() }); }
+    async write(args, retry = false) { if (this.busy || !this.owner)
+        return; if (this.pending && !retry) {
+        this.message('Előbb próbáld újra az előző mentést.');
+        return;
+    } this.pending = structuredClone(args); this.persist(); const gen = this.generation, owner = this.owner, scope = { ...this.scope }; this.busy = true; this.reading = false; this.message('Munkalap mentése…'); const disabled = new Map(); for (const x of Array.from(this.body.querySelectorAll('input,textarea,select,button'))) {
+        disabled.set(x, x.disabled);
+        x.disabled = true;
+    } let saved = false; try {
+        await this.api.sheet('sheet_write', args);
+        if (gen !== this.generation)
+            return;
+        this.pending = undefined;
+        this.draft = undefined;
+        this.preview = undefined;
+        this.persist();
+        saved = true;
+    }
+    catch (e) {
+        if (gen === this.generation) {
+            if (e && typeof e === 'object' && 'status' in e && [400, 401, 403, 409, 422].includes(Number(e.status)))
+                this.pending = undefined;
+            this.persist();
+            this.error(e);
+        }
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            for (const [x, state] of disabled)
+                x.disabled = state;
+        }
+    } if (saved && gen === this.generation) {
+        await this.load(args.sheet_id);
+        if (this.owner === owner && this.scope.project_id === scope.project_id) {
+            if (this.view)
+                this.message('A munkalap mentve, a tényleges munkaidő frissült.', true);
+            this.onSaved(scope);
+        }
+    }
+    else if (gen === this.generation && this.pending)
+        this.render(); }
+    renderSheet() { const s = this.view.sheet, v = this.view, current = s.version === s.current_version, box = fold(this.body, s.document.work_date + ' · ' + (s.version_state === 'voided' ? 'Visszavont munkalap' : 'Érvényes munkalap'), true); box.append(n('p', s.version + '. változat · ' + (s.actor_name ?? roleNames[s.actor_role]) + ' · ' + (roleNames[s.actor_role] ?? 'Résztvevő') + ' · ' + when(s.created_at))); select(box, 'Megőrzött változat', String(s.version), s.versions.map((x) => [String(x.version), x.version + '. változat · ' + when(x.created_at)]), value => { void this.load(s.id, Number(value)); }); if (!current)
+        box.append(n('strong', 'Korábbi változat; az aktuális összesítés ettől nem változik.')); this.renderDocument(box, s.document); if (v.context.can_write) {
+        if (s.state === 'active') {
+            btn(box, current ? 'Munkalap javítása' : 'Korábbi változatból javítás', () => this.start('revise'));
+            if (current)
+                btn(box, 'Munkalap visszavonása', () => this.start('void'));
+        }
+        else if (current)
+            btn(box, 'Munkalap visszaállítása', () => this.start('restore'));
+    } btn(box, 'Letöltés táblázatként (CSV)', () => this.download(false)); btn(box, 'Munkalap letöltése (JSON)', () => this.download(true)); btn(box, 'Nyomtatás / mentés PDF-ként', () => this.print()); const events = fold(this.body, 'Változatelőzmények'); const names = { create: 'Létrehozva', revise: 'Javítva', void: 'Visszavonva', restore: 'Visszaállítva' }; for (const e of s.events) {
+        const row = n('div');
+        row.className = 'plan-history-row';
+        row.append(n('strong', when(e.created_at) + ' · ' + e.actor_name + ' · ' + (roleNames[e.active_role] ?? 'Résztvevő') + ' · ' + names[e.operation] + ' · ' + e.version + '. változat'));
+        if (e.reason)
+            row.append(n('p', e.reason));
+        events.append(row);
+    } if (s.event_cursor)
+        btn(events, 'Korábbi események betöltése', () => { void this.load(s.id, s.version, undefined, s.event_cursor); }); }
+    renderMine() { const v = this.view; this.body.replaceChildren(); this.body.append(n('h3', 'Saját rögzített munkaidő'), n('p', 'Csak a saját, érvényes munkalapokon szereplő időd. A projektről kilépés nem törli ezt az összesítést.')); this.filtersBox(this.body, true); this.body.append(n('strong', 'Összesen: ' + hour(v.total_minutes)), n('p', quoteNumber(Number(v.total_minutes) / 420) + ' munkanap · ' + quoteNumber(Number(v.total_minutes) / 2100) + ' munkahét (7 óra/nap, 5 nap/hét)')); const days = fold(this.body, 'Napi bontás', true); for (const day of v.days)
+        days.append(n('p', day.work_date + ' · ' + hour(day.minutes) + ' · ' + day.worksheets + ' munkalap')); if (!v.days.length)
+        days.append(n('p', 'Ebben az időszakban nincs saját rögzített munkaidő.')); if (v.cursor)
+        btn(days, 'Korábbi napok betöltése', () => { void this.loadMine(v.cursor); }); btn(this.body, 'Összesítés frissítése', () => { void this.loadMine(); }); this.closeButton(); }
+    download(json) { const v = this.view, s = v.sheet; if (!s)
+        return; const blob = json ? new Blob([JSON.stringify({ format: 'diszkertek-construction-worksheet-1', project: v.context.project, sheet: s }, null, 2)], { type: 'application/json' }) : new Blob([worksheetCsv({ project: v.context.project, document: s.document })], { type: 'text/csv;charset=utf-8' }); const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = 'Diszkertek_munkalap_' + s.document.work_date + '_' + s.id + '_v' + s.version + (json ? '.json' : '.csv'); a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); this.message('A kiválasztott munkalapváltozat letöltése elindult.', true); }
+    print() { const v = this.view, s = v.sheet; if (!s)
+        return; const frame = document.createElement('iframe'); frame.title = 'Munkalap nyomtatása'; frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:900px;height:800px'; frame.srcdoc = '<!doctype html><html lang="hu"><meta charset="utf-8"><title>Díszkertek munkalap</title><style>@page{size:A4;margin:15mm}body{font:11pt Arial;color:#203c2e}h1{font-size:20pt}p{white-space:pre-wrap}table{border-collapse:collapse;width:100%;font-size:9pt}td,th{border:1px solid #aab8ad;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}tr{break-inside:avoid}strong{display:block;margin:12px 0}</style><body></body></html>'; frame.onload = () => { const doc = frame.contentDocument; if (!doc)
+        return; doc.body.append(n('h1', 'DÍSZKERTEK – kertépítési munkalap'), n('p', v.context.project.name + ' · ' + v.context.project.address), n('strong', s.version_state === 'voided' ? 'VISSZAVONT MUNKALAP' : s.version === s.current_version ? 'Aktuális munkalapváltozat' : 'Korábbi munkalapváltozat'), n('p', s.version + '. változat · ' + s.actor_name + ' · ' + when(s.created_at))); this.renderDocument(doc.body, s.document); doc.body.append(n('p', '+36 70 634 9630 · info@diszkertek.hu · www.diszkertek.hu')); frame.contentWindow.onafterprint = () => frame.remove(); frame.contentWindow?.focus(); frame.contentWindow?.print(); }; document.body.append(frame); }
+}

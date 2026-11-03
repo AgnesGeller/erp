@@ -316,3 +316,18 @@ Nyolc típus, tényleges szerzőnév/szerep/időpont, címzett, csapatláthatós
 Saját helyi mentés után a visszagörgetett próba 6 új táblát adott, rollback után 0 maradt. Éles migráció: `erp_project_entries`, majd névmegjelenítés: `erp_entry_actor_labels`. Gateway v19 ACTIVE, 15 fájl. Hat új tábla RLS/FORCE RLS védett, közvetlen anon/authenticated elérés nincs; az új függvények is tiltottak e szerepeknek. Belépés nélküli éles végpont HTTP 401. Új modulnál advisor WARN/ERROR és hiányzó FK-index nincs; a várható alaptiltó-RLS/újindex INFO jelzések és a projekt korábbi háttérjelzései megmaradtak.
 
 A rövid README és a [használati útmutató](bejegyzesek.md) frissült. A meglévő négy alkalmazás, a KAP/teszt-árajánlat adatai és az Auth-beállítások nem változtak. Csomagtelepítés nem történt; csak az ERP saját csomagverziója emelkedett 0.8.0-ra. Következő egység a saját ERP-munkalap és tényleges munkaidő.
+
+## 2026. november 3. – Saját kertépítési munkalap és munkaidő, 0.9.0
+
+- A felhasználó a [konkrét öt-táblás tervet](munkalap-munkaido-terv.md) és tesztek utáni saját ERP-élesítését jóváhagyta.
+- Saját napi munkalap, közös és egyéni érkezés/távozás; egyszeri személyes percszámítás, pipálható fázisok, opcionális magyarázat, átfedés-előnézet és külön megerősítés.
+- Változatok és események megőrzése; javítás, indokolt visszavonás, visszaállítás; revízióvédelem, személyenként rendezett zárak, azonos kérés újrapróbálása.
+- Szerepkörönként szűrt kiszolgálás: iroda/Építésvezető rögzít, dolgozó saját sorokat olvas, megrendelő csak projektidő-összesítést kap. Saját korábbi idő a megbízás megszűnése után is elérhető.
+- Tényleges munkaidő ötödik sávja; 100% fölötti érték és negatív maradék. Az eredeti terv, ügyfélár és a négy valódi átvételi sáv változatlan.
+- Helyi piszkozat/függő kérés elkülönítve; offline nincs színlelt mentés. CSV/JSON és helyi nyomtatás/PDF, új fájltároló vagy szolgáltatás nélkül.
+- 367 automatikus teszt, TypeScript- és edge-ellenőrzés; helyi szintetikus böngészőpróba: 13 órás PDF-példa mentése, visszavonása és visszaállítása, dolgozói szűrés, ügyfél-összesítés, 390 px mobilnézet. Száz sor feletti lapozás és korábbi saját változat is ellenőrizve.
+- Az élesítés előtt a saját gateway 19-es verziója és a módosított saját munkaterv-olvasó függvény helyi mentést kapott; az új DDL visszagörgetett próbája sikeres. Más apphoz, Auth-hoz, forrásügyfelekhez és függőségtelepítéshez nem nyúltunk.
+
+[Használati útmutató](munkalap-munkaido.md). A teljes üzleti lánc közös átadási próbája a hátralévő anyag- és pénzügyi modulok után szükséges.
+
+Élesítés: az öt saját ERP-tábla és a saját munkaterv-olvasó bővítése telepítve; az `erp-gateway` 20-as verziója aktív. Az élesítés nem hozott létre próbamunkalapot. A Supabase biztonsági ellenőrzés saját tábláknál jelzett RLS/policy információja szándékos alapértelmezett tiltás: a hozzáférés a szerepet ellenőrző RPC-n keresztül történik.

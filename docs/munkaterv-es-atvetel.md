@@ -38,4 +38,6 @@ A fotók az eszközön maradnak, a Supabase csak azonosítókat és ellenőrzőa
 
 Bizonytalan mentési eredménynél az **Előző mentés újrapróbálása** ugyanazt a kérést küldi újra; nem készít második átvételt. Ha az eszköz engedi a helyi tárolást, a függő kérés a saját ERP-személyhez kötve újranyitáskor is visszatölthető. A még nem mentett mezőkre bezáráskor figyelmeztetünk.
 
-Az ötödik, tényleges munkaidős sáv a későbbi saját ERP-munkalapból kap majd adatot. A jelenlegi négy átvételi sáv ezt nem helyettesíti, és nem mutat kitalált tényleges munkaidőt.
+## Tényleges munkaidő
+
+A 0.9.0-s verzióban a munkatervnél **Munkalapok és munkaidő** nyitható. Az ötödik sáv az érvényes ERP-munkalapok tényleges személyes idejét mutatja, a négy átvételi sáv módosítása nélkül. [Rögzítés, javítás és hozzáférés](munkalap-munkaido.md).

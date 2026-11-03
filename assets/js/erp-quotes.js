@@ -1,5 +1,5 @@
-const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await import(new URL('./erp-quote-tools.js?v=0.8.0', import.meta.url).href);
-const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.8.0', import.meta.url).href);
+const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await import(new URL('./erp-quote-tools.js?v=0.9.0', import.meta.url).href);
+const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.9.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const labels = { draft: 'Piszkozat', ready: 'Elkészült, kiküldésre vár', sent: 'Kiküldött', accepted: 'Elfogadott', rejected: 'Elutasított', withdrawn: 'Visszavont' };
 const eventNames = { entry_change_accepted: 'Kétoldalúan jóváhagyott változás', save: 'Mentés', ready: 'Elkészültnek jelölve', draft: 'Visszaállítva szerkesztésre', revise: 'Revízió indítva', accept: 'Árajánlat elfogadva', reject: 'Ajánlat elutasítva', withdraw: 'Ajánlat visszavonva', start: 'Kertépítés elindítva', mail_processing: 'Kiküldési rögzítés', mail_sent: 'Kiküldés visszaigazolva', manual_send_confirmed: 'Kézi kiküldés irodai visszaigazolása' };
@@ -660,7 +660,7 @@ export class QuoteDesk {
         return;
     } if (this.catalogChanged && !confirm('A még nem mentett árlista-módosításokat felváltja az import. Folytatod?'))
         return; const epoch = this.epoch; this.loading = true; try {
-        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.8.0', import.meta.url).href);
+        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.9.0', import.meta.url).href);
         const imported = await readCalculator(file);
         if (epoch !== this.epoch)
             return;

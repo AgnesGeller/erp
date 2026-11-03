@@ -5,25 +5,28 @@ const clientSetupOpening = clientSetupToken !== null;
 if (clientSetupOpening)
     history.replaceState(null, '', location.pathname + location.search);
 const setupOpening = clientSetupOpening || new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.8.0', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.8.0', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.9.0', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.9.0', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
-const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.8.0', import.meta.url).href);
+const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.9.0', import.meta.url).href);
 const api = new ErpApi();
-const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.8.0', import.meta.url).href);
-const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.8.0', import.meta.url).href);
-const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.8.0', import.meta.url).href);
-const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.8.0', import.meta.url).href);
-const { ClientAdmin, ClientPortal } = await import(new URL('./erp-clients.js?v=0.8.0', import.meta.url).href);
-const { StaffAdmin } = await import(new URL('./erp-staff.js?v=0.8.0', import.meta.url).href);
-const { WorkPlanDesk } = await import(new URL('./erp-workplans.js?v=0.8.0', import.meta.url).href);
-const { EntryDesk } = await import(new URL('./erp-entries.js?v=0.8.0', import.meta.url).href);
+const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.9.0', import.meta.url).href);
+const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.9.0', import.meta.url).href);
+const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.9.0', import.meta.url).href);
+const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.9.0', import.meta.url).href);
+const { ClientAdmin, ClientPortal } = await import(new URL('./erp-clients.js?v=0.9.0', import.meta.url).href);
+const { StaffAdmin } = await import(new URL('./erp-staff.js?v=0.9.0', import.meta.url).href);
+const { WorkPlanDesk } = await import(new URL('./erp-workplans.js?v=0.9.0', import.meta.url).href);
+const { WorksheetDesk } = await import(new URL('./erp-worksheets.js?v=0.9.0', import.meta.url).href);
+const { EntryDesk } = await import(new URL('./erp-entries.js?v=0.9.0', import.meta.url).href);
 const staffAdmin = new StaffAdmin(api);
 const workplans = new WorkPlanDesk(api, showError);
 const entries = new EntryDesk(api, showError, project => { void workplans.refreshAfterEntry(); if (project?.quote_id)
     void quotes.refreshAfterContractChange(project.quote_id); });
 workplans.setEntryDesk(entries);
+const worksheets = new WorksheetDesk(api, showError, () => { void workplans.refreshAfterEntry(); });
+workplans.setWorksheetDesk(worksheets);
 const clientAdmin = new ClientAdmin(api, error => { if (!api.signedIn)
     showError(error); });
 const clientPortal = new ClientPortal(api, showError);
@@ -236,7 +239,7 @@ async function loadWorkspace() {
             workerForm.reset();
             dirty = false;
         }
-        workplans.setOwner(current.person_id);
+        workplans.setOwner(current.person_id, current.organization_id, current.is_client === true && !current.is_office);
         staffAdmin.setOrganization(current.is_office ? current.organization_id : undefined);
         get('staff-workspace').hidden = true;
         if (current.is_staff && !current.is_office) {

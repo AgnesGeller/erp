@@ -1,3 +1,4 @@
+import {actualTimeView} from './worksheet-model.ts';
 import {verifiedSession} from './clients.ts';
 import {transitionTask,progressSummary,effectiveAcceptance,validateTaskGraph,type TaskState,type TaskCommand,type WorkRole} from './workplan-model.ts';
 type Obj=Record<string,any>;type Options={url:string;key:string;fetchImpl?:typeof fetch};
@@ -14,7 +15,7 @@ function eventView(e:Obj,role:string){
 export function workplanView(raw:Obj){
  const ctx=raw.context,role=ctx.role,client=role==='client';const people=ctx.people??[];const byId=new Map<string,Obj>(people.map((p:Obj)=>[p.id,p]));
  const bands=progressSummary(raw.tasks as TaskState[]).map(b=>({level:b.level,percent:b.percent,completed_minutes:b.completed_minutes,remaining_minutes:b.remaining_minutes,zero_done:b.zero_done,zero_total:b.zero_total,segments:b.people.map((p,index)=>({id:client?String(index):p.person_id,name:client?'Résztvevő':byId.get(p.person_id)?.name??'Korábbi résztvevő',color:byId.get(p.person_id)?.color??'#287b83',percent:p.percent})),...(role==='office'?{completed_labor:b.completed_labor,total_labor:b.total_labor}:{})}));
- return {context:{person_id:ctx.person_id,role,roles:ctx.roles,can_edit:ctx.can_edit,can_act:ctx.can_act,project:ctx.project},plan:raw.plan,bands,layout:validateTaskGraph(raw.tasks),
+ return {context:{person_id:ctx.person_id,role,roles:ctx.roles,can_edit:ctx.can_edit,can_act:ctx.can_act,project:ctx.project},plan:raw.plan,bands,time:actualTimeView(raw.time,role,ctx.person_id),layout:validateTaskGraph(raw.tasks),
  people:client?[]:people,
  repair_recipients:people.filter((p:Obj)=>ctx.subjects['0'].includes(p.id)&&p.active).map((p:Obj)=>({id:p.id,name:p.name})),
  subjects:client?{'3':[ctx.person_id]}:ctx.subjects,

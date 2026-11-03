@@ -1,22 +1,24 @@
 import type { OrganizationSession } from './erp-api.js';
 const clientSetupParams=new URLSearchParams(location.hash.slice(1));const clientSetupKind=clientSetupParams.has('staff_setup')?'staff':'client';let clientSetupToken=clientSetupParams.get(clientSetupKind==='staff'?'staff_setup':'client_setup');const clientSetupOpening=clientSetupToken!==null;if(clientSetupOpening)history.replaceState(null,'',location.pathname+location.search);
 const setupOpening=clientSetupOpening||new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
-const apiUrl=new URL('./erp-api.js?v=0.8.0',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.8.0',import.meta.url);
+const apiUrl=new URL('./erp-api.js?v=0.9.0',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.9.0',import.meta.url);
 const {ErpApi,ApiError}=await import(apiUrl.href) as typeof import('./erp-api.js');
 const {projectPeriod,todayBudapest,periodLabel}=await import(datesUrl.href) as typeof import('./erp-dates.js');
-const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
+const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
 const api=new ErpApi();
-const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-customers.js');
-const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-site-works.js');
-const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-quotes.js');
-const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-surveys.js');
-const {ClientAdmin,ClientPortal}=await import(new URL('./erp-clients.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-clients.js');
-const {StaffAdmin}=await import(new URL('./erp-staff.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-staff.js');
-const {WorkPlanDesk}=await import(new URL('./erp-workplans.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-workplans.js');
-const {EntryDesk}=await import(new URL('./erp-entries.js?v=0.8.0',import.meta.url).href) as typeof import('./erp-entries.js');
+const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-customers.js');
+const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-site-works.js');
+const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-quotes.js');
+const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-surveys.js');
+const {ClientAdmin,ClientPortal}=await import(new URL('./erp-clients.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-clients.js');
+const {StaffAdmin}=await import(new URL('./erp-staff.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-staff.js');
+const {WorkPlanDesk}=await import(new URL('./erp-workplans.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-workplans.js');
+const {WorksheetDesk}=await import(new URL('./erp-worksheets.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-worksheets.js');
+const {EntryDesk}=await import(new URL('./erp-entries.js?v=0.9.0',import.meta.url).href) as typeof import('./erp-entries.js');
 const staffAdmin=new StaffAdmin(api);const workplans=new WorkPlanDesk(api,showError);
 const entries=new EntryDesk(api,showError,project=>{void workplans.refreshAfterEntry();if(project?.quote_id)void quotes.refreshAfterContractChange(project.quote_id);});workplans.setEntryDesk(entries);
+const worksheets=new WorksheetDesk(api,showError,()=>{void workplans.refreshAfterEntry();});workplans.setWorksheetDesk(worksheets);
 const clientAdmin=new ClientAdmin(api,error=>{if(!api.signedIn)showError(error);});const clientPortal=new ClientPortal(api,showError);
 const customers=new CustomerDirectory(api,error=>{if(!api.signedIn)showError(error);},(id,name)=>{void works.selectCustomer(id,name);},(id,name)=>{void quotes.selectCustomer(id,name);},surveysEnabled?(id,name)=>{void surveys.selectCustomer(id,name);}:undefined,(id,name)=>{void clientAdmin.open(id,name);});
 const works=new SiteWorks(api,error=>{if(!api.signedIn)showError(error);},loadWorkspace,()=>{customers.open();get<HTMLInputElement>('customer-search').focus();});
@@ -126,7 +128,7 @@ async function loadWorkspace():Promise<void> {
   get('workspace-role').textContent=current.is_office?'Irodai munkatér':'Saját munkák';
   get('people-section').hidden=!current.is_office;
   if(!current.is_office){people=[];get('people-list').replaceChildren();workerForm.reset();dirty=false;}
-  workplans.setOwner(current.person_id);staffAdmin.setOrganization(current.is_office?current.organization_id:undefined);get('staff-workspace').hidden=true;
+  workplans.setOwner(current.person_id,current.organization_id,current.is_client===true&&!current.is_office);staffAdmin.setOrganization(current.is_office?current.organization_id:undefined);get('staff-workspace').hidden=true;
   if(current.is_staff&&!current.is_office){clientAdmin.setOrganization(undefined);clientPortal.reset();customers.reset();works.reset();quotes.reset();surveys.reset();get('office-app').hidden=true;get('login-area').hidden=true;get('client-login-area').hidden=true;get('client-setup-area').hidden=true;get('public-identity').hidden=true;get('logout').hidden=false;get('staff-workspace').hidden=false;return;}
   if(current.is_client){clientAdmin.setOrganization(undefined);customers.reset();works.reset();quotes.reset();surveys.reset();get('office-app').hidden=true;get('login-area').hidden=true;get('client-login-area').hidden=true;get('client-setup-area').hidden=true;get('public-identity').hidden=true;get('logout').hidden=false;await clientPortal.open(current.person_id);return;}
   clientPortal.reset();clientAdmin.setOrganization(current.is_office?current.organization_id:undefined);get('client-login-area').hidden=true;

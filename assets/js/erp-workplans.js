@@ -1,5 +1,5 @@
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.8.0', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.8.0', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.9.0', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.9.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
@@ -14,6 +14,9 @@ function field(parent, label, value, change, type = 'text') { const l = node('la
 export class WorkPlanDesk {
     api;
     onError;
+    sheets;
+    organization;
+    isClient = false;
     entries;
     epoch = 0;
     request = 0;
@@ -55,7 +58,7 @@ export class WorkPlanDesk {
             el('plan-role').value = this.view?.context.role ?? ''; });
         el('plan-refresh').addEventListener('click', () => { if (this.leave())
             void this.load(); });
-        setInterval(() => { if (el('plan-dialog').open && !document.hidden && navigator.onLine && !this.busy && !this.dirty && !this.entries?.open)
+        setInterval(() => { if (el('plan-dialog').open && !document.hidden && navigator.onLine && !this.busy && !this.dirty && !this.entries?.open && !this.sheets?.open)
             void this.load(); }, 60000);
         el('plan-retry').addEventListener('click', () => { if (this.pending)
             void this.send(this.pending.action, this.pending.args, true); });
@@ -66,6 +69,12 @@ export class WorkPlanDesk {
         window.addEventListener('erp:before-update', e => { if (this.busy || (this.dirty && !confirm('Frissíted az alkalmazást? A még nem mentett munkatervi módosítások elvésznek.')))
             e.preventDefault(); });
     }
+    setWorksheetDesk(desk) { this.sheets = desk; desk.setOwner(this.owner, this.organization); }
+    openSheets() { if (!this.owner || !this.organization || !this.view || !this.sheets || this.busy)
+        return; if (this.dirty) {
+        this.message('Előbb fejezd be vagy mentsd a jelenlegi szerkesztést.');
+        return;
+    } void this.sheets.show(this.owner, this.organization, this.scope()); }
     setEntryDesk(desk) { this.entries = desk; desk.setOwner(this.owner); }
     async refreshAfterEntry() { if (this.owner && !this.busy && !this.dirty)
         await this.load(); }
@@ -74,9 +83,9 @@ export class WorkPlanDesk {
         this.message('Előbb mentsd a munkaterv szerkesztését és az esetleges függő műveletet.');
         return;
     } void this.entries.show(this.owner, this.scope(), entry, target); }
-    get entryBusy() { return this.entries?.saving === true; }
-    get dirty() { return this.entries?.dirty === true || this.changed || !!this.pending || this.formChanged.size > 0; }
-    setOwner(owner) { if (this.owner !== owner) {
+    get entryBusy() { return this.entries?.saving === true || this.sheets?.saving === true; }
+    get dirty() { return this.sheets?.open === true && this.sheets?.dirty === true || this.entries?.dirty === true || this.changed || !!this.pending || this.formChanged.size > 0; }
+    setOwner(owner, organization, isClient = false) { if (this.owner !== owner || this.organization !== organization) {
         this.reset();
         this.owner = owner;
         if (owner) {
@@ -90,8 +99,8 @@ export class WorkPlanDesk {
             }
             catch { /* A hálózati újrapróbálás ebben a munkamenetben továbbra is elérhető. */ }
         }
-    } this.entries?.setOwner(owner); el('show-workplan').hidden = !owner; }
-    reset() { this.entries?.setOwner(undefined); this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
+    } this.organization = organization; this.isClient = isClient; this.sheets?.setOwner(owner, organization); this.entries?.setOwner(owner); el('show-workplan').hidden = !owner; }
+    reset() { this.sheets?.setOwner(undefined); this.organization = undefined; this.isClient = false; this.entries?.setOwner(undefined); this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
     cancelRead() { if (this.reading) {
         this.epoch++;
         this.request++;
@@ -99,7 +108,8 @@ export class WorkPlanDesk {
         this.reading = false;
         this.lock(false);
     } }
-    leave() { if (this.entries?.open && !this.entries.leave())
+    leave() { if (this.sheets?.open && !this.sheets.leave())
+        return false; if (this.entries?.open && !this.entries.leave())
         return false; if (this.busy && !this.reading) {
         this.message('A mentés még folyamatban van. Várd meg a visszajelzést.');
         return false;
@@ -144,7 +154,11 @@ export class WorkPlanDesk {
             this.lock(false);
         }
     } if (epoch === this.epoch && this.projects.length)
-        await this.selectProject(); }
+        await this.selectProject();
+    else if (epoch === this.epoch) {
+        this.view = undefined;
+        el('plan-view').replaceChildren();
+    } }
     async selectProject() { const p = this.projects.find(p => p.id === el('plan-project').value), select = el('plan-role'); const wanted = this.view?.context.role; select.replaceChildren(...(p?.roles ?? []).map((r) => new Option(names[r] ?? r, r))); if (p?.roles.includes(wanted))
         select.value = wanted; await this.load(); }
     async load() { if (!this.owner || this.busy)
@@ -226,7 +240,9 @@ export class WorkPlanDesk {
         if (epoch === this.epoch)
             this.message('A műveletet mentettük.', true);
     } }
-    renderNotes(notes) { const box = el('plan-notifications'); box.replaceChildren(); const d = fold(box, 'Teendőim és értesítéseim (' + notes.filter(n => !n.completed_at).length + ')'); for (const n of notes) {
+    renderNotes(notes) { const box = el('plan-notifications'); box.replaceChildren(); if (this.sheets && this.owner && this.organization && !this.isClient)
+        button(box, 'Saját rögzített munkaidő', () => { if (!this.busy && this.owner && this.organization)
+            void this.sheets.showMine(this.owner, this.organization); }); const d = fold(box, 'Teendőim és értesítéseim (' + notes.filter(n => !n.completed_at).length + ')'); for (const n of notes) {
         const p = this.projects.find(p => p.id === n.project_id);
         const row = node('div');
         row.className = 'plan-note';
@@ -284,7 +300,10 @@ export class WorkPlanDesk {
         root.append(node('h2', v.context.project.name), node('p', v.context.project.address));
         if (this.entries)
             button(root, 'Bejegyzések és változások', () => this.openEntries());
+        if (this.sheets && v.context.role !== 'client')
+            button(root, 'Munkalapok és munkaidő', () => this.openSheets());
         if (!v.plan) {
+            this.renderTime(root);
             root.append(node('p', 'A részletes munkaterv még nincs összeállítva.'));
             if (v.context.can_edit)
                 button(root, 'Munkaterv létrehozása az elfogadott ajánlatból', () => { void this.send('plan_init', { ...this.scope(), request_id: crypto.randomUUID() }); });
@@ -314,6 +333,7 @@ export class WorkPlanDesk {
             bands.append(row);
         }
         root.append(bands);
+        this.renderTime(root);
         if (v.context.role !== 'client') {
             const people = fold(root, 'Személyenkénti teljesítés és színek');
             for (const b of v.bands)
@@ -396,6 +416,34 @@ export class WorkPlanDesk {
         upload.addEventListener('change', () => { if (upload.files?.[0])
             void this.transfer(upload.files[0]); });
     }
+    renderTime(parent) { const t = this.view?.time; if (!t)
+        return; const box = node('section'); box.className = 'sheet-time-band'; box.append(node('strong', 'Tényleges munkaidő · ' + (t.percent === null ? 'Nincs megadott, pozitív tervidő' : quoteNumber(t.percent) + '%'))); if (t.percent !== null) {
+        const pct = Number(t.percent), scale = Math.max(100, Math.ceil(pct / 100) * 100), track = node('div');
+        track.className = 'plan-track sheet-time-track';
+        track.setAttribute('role', 'meter');
+        track.setAttribute('aria-label', 'Tényleges munkaidő felhasználása');
+        track.setAttribute('aria-valuemin', '0');
+        track.setAttribute('aria-valuemax', String(scale));
+        track.setAttribute('aria-valuenow', String(pct));
+        track.setAttribute('aria-valuetext', quoteNumber(t.percent) + ' százalék');
+        for (const segment of t.segments) {
+            const span = node('span');
+            span.style.width = (Number(t.planned_minutes) > 0 ? Number(segment.minutes) / Number(t.planned_minutes) * 100 / scale * 100 : 0) + '%';
+            span.style.backgroundColor = segment.color;
+            span.title = segment.name + ' · ' + hours(segment.minutes);
+            track.append(span);
+        }
+        const target = node('i');
+        target.className = 'sheet-time-marker';
+        target.style.left = (100 / scale * 100) + '%';
+        target.title = 'Tervezett idő: 100%';
+        track.append(target);
+        box.append(track, node('small', '0% → ' + quoteNumber(scale) + '% · jelölő: 100%'));
+    } box.append(node('p', 'Felhasznált: ' + hours(t.actual_minutes) + ' · Aktuális terv: ' + hours(t.planned_minutes) + ' · Fennmaradó: ' + hours(t.remaining_minutes)), node('small', '7 óra = 1 munkanap · 5 munkanap = 1 munkahét')); if (this.view.context.role !== 'client') {
+        const details = fold(box, 'Munkaidő részletezése');
+        for (const p of t.segments)
+            details.append(node('p', p.name + ' · ' + hours(p.minutes)));
+    } parent.append(box); }
     calendar(parent) { const dated = this.draft.filter(t => t.start_date && t.end_date); if (!dated.length)
         return; const day = (s) => Date.parse(s + 'T12:00:00Z') / 86400000, min = Math.min(...dated.map(t => day(t.start_date))), max = Math.max(...dated.map(t => day(t.end_date))), span = Math.max(1, max - min + 1); parent.append(node('p', new Date(min * 86400000).toISOString().slice(0, 10) + ' → ' + new Date(max * 86400000).toISOString().slice(0, 10))); for (const t of dated) {
         const row = node('div');

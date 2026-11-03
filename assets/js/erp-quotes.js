@@ -2,7 +2,7 @@ const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await im
 const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.7.1', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const labels = { draft: 'Piszkozat', ready: 'Elkészült, kiküldésre vár', sent: 'Kiküldött', accepted: 'Elfogadott', rejected: 'Elutasított', withdrawn: 'Visszavont' };
-const eventNames = { save: 'Mentés', ready: 'Elkészültnek jelölve', draft: 'Visszaállítva szerkesztésre', revise: 'Revízió indítva', accept: 'Árajánlat elfogadva', reject: 'Ajánlat elutasítva', withdraw: 'Ajánlat visszavonva', start: 'Kertépítés elindítva', mail_processing: 'Kiküldési rögzítés', mail_sent: 'Kiküldés visszaigazolva', manual_send_confirmed: 'Kézi kiküldés irodai visszaigazolása' };
+const eventNames = { entry_change_accepted: 'Kétoldalúan jóváhagyott változás', save: 'Mentés', ready: 'Elkészültnek jelölve', draft: 'Visszaállítva szerkesztésre', revise: 'Revízió indítva', accept: 'Árajánlat elfogadva', reject: 'Ajánlat elutasítva', withdraw: 'Ajánlat visszavonva', start: 'Kertépítés elindítva', mail_processing: 'Kiküldési rögzítés', mail_sent: 'Kiküldés visszaigazolva', manual_send_confirmed: 'Kézi kiküldés irodai visszaigazolása' };
 const modes = { excel: 'Excel: mennyiség × második mennyiség', area: 'Terület: hossz × szélesség', volume: 'Térfogat: hossz × szélesség × cm / 100', density: 'Növény: terület × db/m², felfelé kerekítve', layered: 'Réteges: terület × (alapár + cm-felár)', custom: 'Egyedi paraméterek és matematikai képlet' };
 const uuid = () => crypto.randomUUID();
 const money = (v) => v === null || v === undefined ? 'Nem számítható' : Number(v).toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' Ft';
@@ -484,7 +484,7 @@ export class QuoteDesk {
         box.append(n('p', new Date(e.created_at).toLocaleString('hu-HU') + ' · ' + (e.actor_name ?? 'Irodai felhasználó') + ' · ' + (eventNames[e.event] ?? 'Ajánlati esemény'))); for (const c of this.current?.changes ?? []) {
         const d = fold(box, c.from + '. → ' + c.to + '. változat · ' + new Date(c.date).toLocaleString('hu-HU') + ' · ' + (c.actor ?? 'Irodai felhasználó'));
         for (const row of c.rows)
-            d.append(n('p', row.kind === 'metadata' ? row.line + ' · ' + row.before + ' → ' + row.after : row.line + ' · Mennyiség: ' + quoteNumber(row.before?.params?.q1) + ' → ' + quoteNumber(row.after?.params?.q1) + ' · Anyag egységára: ' + money(row.before?.pricing?.main) + ' → ' + money(row.after?.pricing?.main) + ' · Munka egységára: ' + money(row.before?.pricing?.labor) + ' → ' + money(row.after?.pricing?.labor)));
+            d.append(n('p', row.kind === 'metadata' ? row.line + ' · ' + row.before + ' → ' + row.after : row.line + ' · Mennyiség: ' + quoteNumber(row.calculated_before?.quantity ?? row.before?.params?.q1) + ' → ' + quoteNumber(row.calculated_after?.quantity ?? row.after?.params?.q1) + ' · Anyag egységára: ' + money(row.calculated_before?.material_unit ?? row.before?.pricing?.main) + ' → ' + money(row.calculated_after?.material_unit ?? row.after?.pricing?.main) + ' · Munka egységára: ' + money(row.calculated_before?.labor_unit ?? row.before?.pricing?.labor) + ' → ' + money(row.calculated_after?.labor_unit ?? row.after?.pricing?.labor)));
     } }
     historyButtons() { for (const [id, available] of [['quote-undo', this.history.canUndo], ['quote-redo', this.history.canRedo]])
         el(id).disabled = !available || !this.editable || this.busy || !!this.pending; }

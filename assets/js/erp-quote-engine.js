@@ -209,7 +209,7 @@ export function calculateQuote(input) {
                     laborUnit += mul(decimal(t.labor_cm ?? '0'), thickness);
                 }
                 const vars = { quantity, area, volume, length, count: countQty, ...customVars, main: decimal(t.main), auxiliary: decimal(t.auxiliary ?? '0'), transport: decimal(t.transport ?? '0'), labor: decimal(t.labor) };
-                const rawMaterial = t.material_formula ? formula(t.material_formula, vars) : mul(quantity, materialUnit), rawLabor = t.labor_formula ? formula(t.labor_formula, vars) : mul(quantity, laborUnit);
+                let rawMaterial = t.material_formula ? formula(t.material_formula, vars) : mul(quantity, materialUnit), rawLabor = t.labor_formula ? formula(t.labor_formula, vars) : mul(quantity, laborUnit);
                 if (t.material_formula)
                     materialUnit = div(rawMaterial, quantity);
                 if (t.labor_formula)
@@ -227,6 +227,22 @@ export function calculateQuote(input) {
                 const materials = t.materials.map((m) => { const basis = { quantity, area, volume, length, count: countQty }[m.basis]; if ((basis === undefined || basis <= 0n) && !m.quantity_formula)
                     throw Error('Az anyagképlethez hiányzik a(z) ' + m.basis + ' mennyiség: ' + m.name); const installed = m.quantity_formula ? formula(m.quantity_formula, vars) : mul(basis, decimal(m.factor)); let purchase = mul(installed, SCALE + div(decimal(m.waste ?? '0'), 100n * SCALE)); const pack = decimal(m.pack ?? '0'); if (pack > 0n)
                     purchase = ((purchase + pack - 1n) / pack) * pack; const capacity = decimal(m.capacity ?? '0'); return { ...m, installed: formatted(installed), purchase: formatted(purchase), purchase_cost: money(mul(purchase, decimal(m.unit_price ?? '0'))), trips: capacity > 0n ? ((purchase + capacity - 1n) / capacity).toString() : null }; });
+                if (line.agreement) {
+                    const a = line.agreement;
+                    if (typeof a.entry_id !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(a.entry_id) || !Number.isSafeInteger(a.version) || a.version < 1)
+                        throw Error('Érvénytelen jóváhagyott árváltozat.');
+                    const units = displayQuantity ?? quantity;
+                    if (a.material_unit !== undefined) {
+                        materialUnit = decimal(a.material_unit, 'Megállapodott anyag egységár');
+                        mat = mul(units, materialUnit);
+                        rawMaterial = mat;
+                    }
+                    if (a.labor_unit !== undefined) {
+                        laborUnit = decimal(a.labor_unit, 'Megállapodott munka egységár');
+                        lab = mul(units, laborUnit);
+                        rawLabor = lab;
+                    }
+                }
                 // Minden sor két tizedesre kerekedik; az ÁFA a teljes vetítési alapból számolódik.
                 const minimumApplied = mat + lab - rawMaterial - rawLabor;
                 mat = decimal(money(mat));
@@ -235,7 +251,7 @@ export function calculateQuote(input) {
                 labor += lab;
                 const rate = input.hourly_rate ? decimal(input.hourly_rate, 'Ügyfélnek számlázott óradíj') : 0n;
                 const minutes = rate > 0n ? formatted(div(mul(lab, 60n * SCALE), rate)) : null;
-                return { id: line.id, label: cleanName(t.category) + ' – ' + cleanName(t.name), quantity: formatted(displayQuantity ?? quantity), unit: t.unit, parameter_note: second > 0n ? 'Második mennyiség: ' + money(second).replace(/\.?0+$/, '') + ' ' + t.unit2 : '', material_unit: money(second > 0n ? mul(materialUnit, second) : materialUnit), labor_unit: money(second > 0n ? mul(laborUnit, second) : laborUnit), material: money(mat), labor: money(lab), net: money(mat + lab), minimum_adjustment: money(minimumApplied), public_note: text(line.public_note ?? '', 4000, 'Egyéb megjegyzés'), materials, planned_minutes: minutes, internal_info: t.internal_info, trace: { raw_material: money(rawMaterial), raw_labor: money(rawLabor), area: formatted(area), volume: formatted(volume), thickness_cm: formatted(thickness) } };
+                return { id: line.id, label: cleanName(t.category) + ' – ' + cleanName(t.name), quantity: formatted(displayQuantity ?? quantity), unit: t.unit, parameter_note: second > 0n ? 'Második mennyiség: ' + money(second).replace(/\.?0+$/, '') + ' ' + t.unit2 : '', material_unit: money(line.agreement?.material_unit !== undefined ? materialUnit : second > 0n ? mul(materialUnit, second) : materialUnit), labor_unit: money(line.agreement?.labor_unit !== undefined ? laborUnit : second > 0n ? mul(laborUnit, second) : laborUnit), material: money(mat), labor: money(lab), net: money(mat + lab), minimum_adjustment: money(minimumApplied), public_note: text(line.public_note ?? '', 4000, 'Egyéb megjegyzés'), materials, planned_minutes: minutes, internal_info: t.internal_info, trace: { raw_material: money(rawMaterial), raw_labor: money(rawLabor), area: formatted(area), volume: formatted(volume), thickness_cm: formatted(thickness) } };
             }
             catch (error) {
                 issues.push((si + 1) + '. főtétel, ' + (li + 1) + '. sor: ' + (error instanceof Error ? error.message : 'Hibás tétel.'));
@@ -262,7 +278,7 @@ export function customerQuote(output, draft = false) {
     const totals = Object.fromEntries(moneyKeys.map(k => [k, output[k]]));
     return { engine_version: output.engine_version, ...totals, draft_preview: draft, vat_mode: output.vat_mode, information: output.information, sections: output.sections.map((s) => { const incomplete = !s.name || !s.lines.length || s.lines.some((l) => l.incomplete); return { name: s.name || 'Megnevezés nélkül', material: incomplete ? null : s.material, labor: incomplete ? null : s.labor, net: incomplete ? null : s.net, lines: s.lines.map((l) => l.incomplete ? { label: l.label, incomplete: true, quantity: null, unit: '', material_unit: null, labor_unit: null, material: null, labor: null, net: null, minimum_adjustment: null, materials: [] } : { label: l.label, quantity: l.quantity, unit: l.unit, parameter_note: l.parameter_note, material_unit: l.material_unit, labor_unit: l.labor_unit, material: l.material, labor: l.labor, net: l.net, minimum_adjustment: l.minimum_adjustment, public_note: l.public_note, materials: l.materials.map((m) => ({ name: m.name, unit: m.unit, installed: m.installed })) }) }; }) };
 }
-export function quoteChanges(before, after) { const old = new Map(); for (const section of before.sections ?? [])
+export function quoteChanges(before, after) { const calculated = (input) => new Map(calculateQuote(input).sections.flatMap((s) => s.lines).map((l) => [l.id, l])); const oldCalc = calculated(before), newCalc = calculated(after); const old = new Map(); for (const section of before.sections ?? [])
     for (const l of section.lines ?? [])
         old.set(l.id, l); const changes = []; for (const [key, label] of Object.entries({ title: 'Ajánlat megnevezése', vat: 'ÁFA-beállítás', hourly_rate: 'Belső tervezési óradíj', information: 'Ajánlati információk' })) {
     if (before[key] !== after[key])
@@ -271,7 +287,7 @@ export function quoteChanges(before, after) { const old = new Map(); for (const 
     for (const l of section.lines ?? []) {
         const prior = old.get(l.id);
         if (JSON.stringify(prior) !== JSON.stringify(l))
-            changes.push({ line: section.name + ' / ' + String(l.pricing?.name ?? l.unresolved ?? ''), before: prior ?? null, after: l });
+            changes.push({ line: section.name + ' / ' + String(l.pricing?.name ?? l.unresolved ?? ''), before: prior ?? null, after: l, calculated_before: oldCalc.get(l.id) ?? null, calculated_after: newCalc.get(l.id) ?? null });
         old.delete(l.id);
     } for (const l of old.values())
-    changes.push({ line: String(l.pricing?.name ?? l.unresolved ?? ''), before: l, after: null }); return changes; }
+    changes.push({ line: String(l.pricing?.name ?? l.unresolved ?? ''), before: l, after: null, calculated_before: oldCalc.get(l.id) ?? null, calculated_after: null }); return changes; }

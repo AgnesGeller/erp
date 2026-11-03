@@ -18,7 +18,7 @@ export function workplanView(raw:Obj){
  people:client?[]:people,
  repair_recipients:people.filter((p:Obj)=>ctx.subjects['0'].includes(p.id)&&p.active).map((p:Obj)=>({id:p.id,name:p.name})),
  subjects:client?{'3':[ctx.person_id]}:ctx.subjects,
- tasks:raw.tasks.map((t:TaskState)=>({id:t.id,title:t.title,section:t.section,quantity:t.quantity,unit:t.unit,sort:t.sort,start_date:t.start_date,end_date:t.end_date,dependencies:t.dependencies,original_minutes:t.original_minutes,planned_minutes:t.planned_minutes,revision:t.revision,round:t.round,
+ tasks:raw.tasks.map((t:TaskState)=>({id:t.id,source_line_id:(t as any).source_line_id,contract_label:(t as any).contract_label,title:t.title,section:t.section,quantity:t.quantity,unit:t.unit,sort:t.sort,start_date:t.start_date,end_date:t.end_date,dependencies:t.dependencies,original_minutes:t.original_minutes,planned_minutes:t.planned_minutes,revision:t.revision,round:t.round,
  acceptance:([0,1,2,3] as const).map(level=>{const s=effectiveAcceptance(t,level);return {level,accepted:s.accepted,explicit:s.explicit,own:t.approvals.some(a=>a.level===level&&a.actor_id===ctx.person_id),...(client?{}:{actors:t.approvals.filter(a=>a.level===level).map(a=>({actor_id:a.actor_id,subjects:a.subjects,at:a.at,role:a.role}))})};}),
  ...(client?{labor:t.labor,net:t.net}:{shares:t.shares,share_lock:t.share_lock,internal_info:t.internal_info,...(role==='office'?{labor:t.labor,net:t.net}:{})})})),events:raw.events.map((e:Obj)=>eventView(e,role)).filter(Boolean)};
 }
@@ -50,6 +50,7 @@ export function createWorkPlans(options:Options){const request=options.fetchImpl
   if(input.action==='plan_task'){
    const command=input.command as TaskCommand;if(!uuid(input.task_id)||!command||typeof command!=='object'||Array.isArray(command)||Object.keys(command).some(k=>!['type','level','subjects','shares','minutes','reason','recipient','visibility','media'].includes(k)))throw new PlanError(422,'Érvénytelen munkafázis-művelet.');
    const raw=await rpc('erp_plan_task_context',{...common,p_task:input.task_id,p_request:input.request_id,p_command:command});if(raw.replayed)return {data:raw};
+   if(input.revision!==raw.task.revision||input.quote_version!==raw.context.project.quote_version)throw new PlanError(409,'A munkafázis vagy az ajánlat megváltozott. Frissítsd, majd ellenőrizd újra az átvételt.');
    const ctx=raw.context;const result=transitionTask(raw.task,command,{actor_id:ctx.person_id,role:input.role as WorkRole,at:ctx.at,event_id:input.request_id,allowed_subjects:ctx.subjects,repair_recipients:ctx.subjects['0']});
    return {data:await rpc('erp_plan_task_save',{...common,p_task:input.task_id,p_request:input.request_id,p_revision:raw.task.revision,p_command:command,p_state:{round:result.task.round,approvals:result.task.approvals,shares:result.task.shares,share_lock:result.task.share_lock},p_event:result.event,p_minutes:result.task.planned_minutes})};
   }

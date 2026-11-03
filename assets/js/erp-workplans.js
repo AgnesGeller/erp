@@ -4,7 +4,7 @@ const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
 const levels = ['Kertész / Kertépítő', 'Építésvezető', 'Iroda', 'Megrendelő'];
-const eventNames = { init: 'Munkaterv létrehozva', graph: 'Munkasorrend vagy ütemezés módosítva', accept: 'Átvétel', reject: 'Javításra visszaküldve', shares: 'Teljesítménymegosztás módosítva', time: 'Munkaidőterv módosítva', color: 'Személyszín módosítva' };
+const eventNames = { init: 'Munkaterv létrehozva', graph: 'Munkasorrend vagy ütemezés módosítva', accept: 'Átvétel', reject: 'Javításra visszaküldve', shares: 'Teljesítménymegosztás módosítva', time: 'Munkaidőterv módosítva', color: 'Személyszín módosítva', contract: 'Jóváhagyott ajánlati változás' };
 const rank = (role) => role === 'client' ? 4 : role === 'office' ? 3 : role === 'construction_lead' ? 2 : 1;
 const hours = (v) => v === null || v === undefined ? 'Nincs megadva' : quoteNumber(Number(v) / 60) + ' emberóra';
 function button(parent, text, run) { const b = node('button', text); b.type = 'button'; b.className = 'quiet'; b.addEventListener('click', run); parent.append(b); return b; }
@@ -483,7 +483,7 @@ export class WorkPlanDesk {
         const command = (type, extra = {}) => { if (this.changed) {
             this.message('Előbb mentsd a munkaterv szerkesztését.');
             return;
-        } void this.send('plan_task', { ...this.scope(), task_id: t.id, request_id: crypto.randomUUID(), command: { type, reason: reason.value, visibility: visibility.checked ? 'client' : 'team', media: photos.map(m => ({ ...m, visibility: visibility.checked ? 'client' : 'team' })), ...extra } }); };
+        } void this.send('plan_task', { ...this.scope(), task_id: t.id, revision: t.revision, quote_version: v.context.project.quote_version, request_id: crypto.randomUUID(), command: { type, reason: reason.value, visibility: visibility.checked ? 'client' : 'team', media: photos.map(m => ({ ...m, visibility: visibility.checked ? 'client' : 'team' })), ...extra } }); };
         button(form, role === 'client' ? 'Munkafázis átvétele' : 'Átvétel rögzítése', () => { const selected = Array.from(subjects.querySelectorAll('input:checked')).map(x => x.value); if (!selected.length) {
             this.message('Válaszd ki az átvételhez tartozó személyt.');
             return;

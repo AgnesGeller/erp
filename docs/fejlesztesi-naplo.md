@@ -293,3 +293,8 @@ A felhasználó jóváhagyta a tíz saját ERP-táblát, a dolgozói saját bel�
 - Dolgozói hozzáférések és munkaterv olvasásakor is megszakítható a várakozás. A levelezőablak nem mentett szövegét külön megerősítés védi. A bezárás nem ügyfél-, munka- vagy fájltörlés.
 - A nyolcféle bejegyzés és kétoldalú változáskezelés helyi fejlesztése közben előrevett javítás. A bejegyzésmodul még nincs élesítve; ehhez a javításhoz adatbázis/Edge módosítás nem szükséges.
 - Ellenőrzés: a teljes korábbi futás 275/276 próbája sikeres volt; a hiányzó késői-válasz állapotvédelmet javítva mind a 34 érintett próba sikeres. TypeScript-build kész, böngészőben a felső × ténylegesen bezárja a jelszókérő ablakot.
+
+
+## 2026. november 3. – Bejegyzések: ellenőrzött fejlesztési mentés
+
+A felhasználó jóváhagyta a hat saját ERP-táblás változáskezelési tervet és a tesztek utáni élesítést. Elkészült a helyi adatbázis- és kiszolgálóréteg, kétoldalú és pontos változathoz kötött atomi alkalmazással, történetvédelemmel és adatszűréssel. A teljes regresszió 300/300 sikeres; az utána hozzáadott négy próbával a 21 érintett modell-/adatbázispróba is sikeres. Fordítás és edge típusellenőrzés sikeres. **Ez még nem éles funkció:** felület, böngészőpróba és saját ERP-telepítés hátravan. [Folytatás és pontos határok](bejegyzesek-fejlesztesi-allapot.md). Másik app és éles adatbázis nem módosult; függőséget nem telepítettünk.

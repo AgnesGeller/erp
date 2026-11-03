@@ -24,3 +24,5 @@
 
 .plan-calendar-row{display:grid;grid-template-columns:minmax(100px,1fr) 2fr;gap:12px;align-items:center;margin:12px 0}.plan-calendar-track{height:16px;background:#e2e7d8;border:1px solid #a8b6a3}.plan-calendar-track span{display:block;height:100%;background:#59764c;min-width:2px}
 .login-area .sr-only{width:1px;min-height:1px;height:1px;padding:0}
+
+dialog{max-height:calc(100svh - 24px);overflow-y:auto;overscroll-behavior:contain}.dialog-dismiss-bar{position:sticky;top:0;height:44px;margin-bottom:8px;background:inherit;z-index:12}.dialog-dismiss{position:absolute;right:0;top:0;min-width:44px;min-height:44px;padding:4px;font-size:28px;line-height:1;background:#f5f4ef;color:#214a35;border:1px solid #a8b6a3}.dialog-dismiss:hover{background:#e6eadd}dialog>h2,dialog>.workspace-heading{padding-right:0}#quote-pdf-dialog>.dialog-dismiss{position:sticky;top:0;float:right;z-index:3}

@@ -1,5 +1,5 @@
-const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await import(new URL('./erp-quote-tools.js?v=0.7.0', import.meta.url).href);
-const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.7.0', import.meta.url).href);
+const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await import(new URL('./erp-quote-tools.js?v=0.7.1', import.meta.url).href);
+const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.7.1', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const labels = { draft: 'Piszkozat', ready: 'Elkészült, kiküldésre vár', sent: 'Kiküldött', accepted: 'Elfogadott', rejected: 'Elutasított', withdrawn: 'Visszavont' };
 const eventNames = { save: 'Mentés', ready: 'Elkészültnek jelölve', draft: 'Visszaállítva szerkesztésre', revise: 'Revízió indítva', accept: 'Árajánlat elfogadva', reject: 'Ajánlat elutasítva', withdraw: 'Ajánlat visszavonva', start: 'Kertépítés elindítva', mail_processing: 'Kiküldési rögzítés', mail_sent: 'Kiküldés visszaigazolva', manual_send_confirmed: 'Kézi kiküldés irodai visszaigazolása' };
@@ -50,6 +50,7 @@ export class QuoteDesk {
     mailRequest;
     typeId = '';
     templateId = '';
+    mailDirty = false;
     constructor(api, authError, chooseCustomer, completed, viewSurveyMedia) {
         this.api = api;
         this.authError = authError;
@@ -92,8 +93,10 @@ export class QuoteDesk {
         el('quote-mail-copy').addEventListener('click', () => { void this.copyMail(); });
         el('quote-mail-eml').addEventListener('click', () => { void this.downloadEmail(); });
         el('quote-mail').addEventListener('click', () => this.mail());
-        el('quote-mail-close').addEventListener('click', () => { if (!this.busy)
-            el('quote-mail-dialog').close(); });
+        el('quote-mail-close').addEventListener('click', () => this.closeMail());
+        el('quote-mail-dialog').addEventListener('cancel', e => { if (!this.closeMail())
+            e.preventDefault(); });
+        el('quote-mail-form').addEventListener('input', () => { this.mailDirty = true; });
         el('quote-mail-form').addEventListener('submit', e => { e.preventDefault(); void this.manualSent(); });
         for (const id of ['quote-mail-to', 'quote-mail-subject', 'quote-mail-body'])
             el(id).addEventListener('input', () => this.mailLink());
@@ -522,10 +525,15 @@ export class QuoteDesk {
             this.error(e);
         }
     } }
+    closeMail() { if (this.saving) {
+        this.message('A küldés visszaigazolásának mentése folyamatban van. Várd meg az eredményt.');
+        return false;
+    } if (this.mailDirty && !confirm('Bezárod a levelet? A még nem mentett levélszöveg elvész.'))
+        return false; this.mailDirty = false; el('quote-mail-dialog').close(); return true; }
     mail() { if (!this.current || this.current.quote.status !== 'ready' || this.dirty) {
         this.message('Előbb mentsd és jelöld elkészültnek az ajánlatot.');
         return;
-    } const v = this.current.versions.find((v) => v.version === this.current.quote.current_version); el('quote-mail-to').value = v.customer.email ?? ''; el('quote-mail-subject').value = 'DÍSZKERTEK – ' + this.current.quote.number + ' – ' + this.current.quote.title; el('quote-mail-body').value = 'Kedves ' + v.customer.name + '!\n\nCsatolva küldjük a megbeszélt munkákra vonatkozó árajánlatunkat. Kérdés esetén örömmel állunk rendelkezésedre.\n\nÜdvözlettel:\nDíszkertek\n+36 70 634 9630'; el('quote-mail-confirm').checked = false; this.mailRequest = undefined; this.mailLink(); el('quote-mail-dialog').showModal(); }
+    } const v = this.current.versions.find((v) => v.version === this.current.quote.current_version); el('quote-mail-to').value = v.customer.email ?? ''; el('quote-mail-subject').value = 'DÍSZKERTEK – ' + this.current.quote.number + ' – ' + this.current.quote.title; el('quote-mail-body').value = 'Kedves ' + v.customer.name + '!\n\nCsatolva küldjük a megbeszélt munkákra vonatkozó árajánlatunkat. Kérdés esetén örömmel állunk rendelkezésedre.\n\nÜdvözlettel:\nDíszkertek\n+36 70 634 9630'; el('quote-mail-confirm').checked = false; this.mailRequest = undefined; this.mailDirty = false; this.mailLink(); el('quote-mail-dialog').showModal(); }
     mailFields() { return { to: el('quote-mail-to').value, subject: el('quote-mail-subject').value, body: el('quote-mail-body').value }; }
     mailLink() { const links = mailLinks(this.mailFields()); const provider = el('quote-mail-provider').value; el('quote-mail-open').href = links[provider] ?? links.default; }
     async copyMail() { try {
@@ -647,7 +655,7 @@ export class QuoteDesk {
         return;
     } if (this.catalogChanged && !confirm('A még nem mentett árlista-módosításokat felváltja az import. Folytatod?'))
         return; const epoch = this.epoch; this.loading = true; try {
-        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.7.0', import.meta.url).href);
+        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.7.1', import.meta.url).href);
         const imported = await readCalculator(file);
         if (epoch !== this.epoch)
             return;

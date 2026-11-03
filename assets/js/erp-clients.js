@@ -2,7 +2,7 @@ const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const button = (text, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'quiet'; b.textContent = text; b.addEventListener('click', run); return b; };
 const statuses = { waiting_start: 'Indításra vár', running: 'Kertépítés folyamatban', requested: 'Időpontigény beérkezett', confirmed: 'Visszaigazolt munka', cancelled: 'Visszavont munka', sent: 'Kiküldött ajánlat', accepted: 'Elfogadott ajánlat', rejected: 'Elutasított ajánlat', withdrawn: 'Visszavont ajánlat' };
-const { quoteNumber } = await import(new URL('./erp-quote-tools.js?v=0.7.0', import.meta.url).href);
+const { quoteNumber } = await import(new URL('./erp-quote-tools.js?v=0.7.1', import.meta.url).href);
 const money = (v) => quoteNumber(v) + ' Ft';
 export class ClientAdmin {
     api;
@@ -16,6 +16,7 @@ export class ClientAdmin {
     selected;
     busy = false;
     dirty = false;
+    reading = false;
     constructor(api, onError) {
         this.api = api;
         this.onError = onError;
@@ -26,24 +27,21 @@ export class ClientAdmin {
         el('client-access-form').addEventListener('input', e => { if (e.target.id === 'client-account')
             return; this.dirty = true; this.clearLink(); this.lock(false); });
         el('client-access-form').addEventListener('submit', e => { e.preventDefault(); void this.save(); });
-        el('client-access-close').addEventListener('click', () => { if (!this.busy && (!this.dirty || confirm('Bezárod a hozzáférés szerkesztését? A még nem mentett mezők elvesznek.'))) {
-            this.dirty = false;
-            this.clearLink();
-            el('client-access-dialog').close();
-        } });
-        el('client-access-dialog').addEventListener('cancel', e => { if (this.busy || (this.dirty && !confirm('Bezárod? A nem mentett hozzáférési mezők elvesznek.')))
-            e.preventDefault();
-        else {
-            this.dirty = false;
-            this.clearLink();
-        } });
+        el('client-access-close').addEventListener('click', () => this.close());
+        el('client-access-dialog').addEventListener('cancel', e => { if (!this.close())
+            e.preventDefault(); });
         el('client-recovery-requests').addEventListener('click', () => { void this.openRequests(); });
         el('client-issue').addEventListener('click', () => { void this.issue(); });
         el('client-link-copy').addEventListener('click', () => { void this.copyLink(); });
     }
     message(text, success = false) { const x = el('client-access-feedback'); x.textContent = (success ? '✓ ' : '') + text; x.className = 'office-status ' + (success ? 'success' : 'error'); }
     clearLink() { el('client-link-panel').hidden = true; el('client-link').value = ''; el('client-link-email').removeAttribute('href'); }
-    reset() { this.epoch++; this.org = undefined; this.accounts = []; this.sites = []; this.selected = undefined; this.context = undefined; this.busy = false; this.dirty = false; this.clearLink(); el('client-access-dialog').close(); el('client-site-options').replaceChildren(); }
+    close() { if (this.busy && !this.reading) {
+        this.message('A mentés még folyamatban van. Várd meg a visszajelzést.');
+        return false;
+    } if (this.dirty && !confirm('Bezárod? A még nem mentett hozzáférési mezők elvesznek.'))
+        return false; this.epoch++; this.busy = false; this.reading = false; this.dirty = false; this.clearLink(); this.lock(false); el('client-access-dialog').close(); return true; }
+    reset() { this.epoch++; this.org = undefined; this.accounts = []; this.sites = []; this.selected = undefined; this.context = undefined; this.reading = false; this.busy = false; this.dirty = false; this.clearLink(); el('client-access-dialog').close(); el('client-site-options').replaceChildren(); }
     setOrganization(org) { if (this.org !== org) {
         this.reset();
         this.org = org;
@@ -53,6 +51,7 @@ export class ClientAdmin {
             return;
         const epoch = ++this.epoch;
         this.busy = true;
+        this.reading = true;
         this.clearLink();
         this.context = { customer_id: customer, customer_name: name };
         el('client-access-title').textContent = 'Ügyfél-hozzáférés · ' + name;
@@ -84,6 +83,7 @@ export class ClientAdmin {
         finally {
             if (epoch === this.epoch) {
                 this.busy = false;
+                this.reading = false;
                 this.lock(false);
             }
         }
@@ -98,10 +98,11 @@ export class ClientAdmin {
     }
     catch { /* A jelzés hibája nem akadályozza a már működő irodai munkát. */ } }
     async openRequests() { if (!this.org || this.busy)
-        return; const epoch = ++this.epoch; this.busy = true; this.dirty = false; this.clearLink(); this.context = { sites: [] }; el('client-access-title').textContent = 'Ügyfél-jelszó-visszaállítási kérések'; el('client-access-dialog').showModal(); this.lock(true); try {
-        this.accounts = await this.api.client('client_admin_list', { organization_id: this.org });
+        return; const epoch = ++this.epoch; this.busy = true; this.reading = true; this.dirty = false; this.clearLink(); this.context = { sites: [] }; el('client-access-title').textContent = 'Ügyfél-jelszó-visszaállítási kérések'; el('client-access-dialog').showModal(); this.lock(true); try {
+        const loadedAccounts = await this.api.client('client_admin_list', { organization_id: this.org });
         if (epoch !== this.epoch)
             return;
+        this.accounts = loadedAccounts;
         const requested = this.accounts.filter(a => a.recovery_requested);
         const select = el('client-account');
         select.replaceChildren(new Option('Válassz ügyfélfiókot', ''), ...this.accounts.map(a => new Option(a.name + ' · ' + a.email + (a.recovery_requested ? ' · Visszaállítást kér' : ''), a.id)));
@@ -116,6 +117,7 @@ export class ClientAdmin {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } }
@@ -167,9 +169,10 @@ export class ClientAdmin {
             await this.api.client('client_manage', { organization_id: this.org, account_id: account, revision: this.selected?.revision ?? 0, name: el('client-person-name').value.trim(), email: el('client-email').value.trim(), sites: this.sites.filter(s => chosen.has(s.location_id)).map(s => ({ customer_id: s.customer_id, location_id: s.location_id })), active });
             if (epoch !== this.epoch)
                 return;
-            this.accounts = await this.api.client('client_admin_list', { organization_id: this.org });
+            const loadedAccounts = await this.api.client('client_admin_list', { organization_id: this.org });
             if (epoch !== this.epoch)
                 return;
+            this.accounts = loadedAccounts;
             const choose = el('client-account');
             choose.replaceChildren(new Option('Új, saját ERP-ügyfélfiók', ''), ...this.accounts.map(a => new Option(a.name + ' · ' + a.email, a.id)));
             choose.value = account;
@@ -185,6 +188,7 @@ export class ClientAdmin {
         finally {
             if (epoch === this.epoch) {
                 this.busy = false;
+                this.reading = false;
                 this.lock(false);
             }
         }
@@ -208,6 +212,7 @@ export class ClientAdmin {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } }

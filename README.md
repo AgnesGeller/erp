@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **Verzió: 0.7.0**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **Verzió: 0.7.1**
 
 ## Mi használható?
 
@@ -47,3 +47,5 @@ Legutóbbi teljes ellenőrzés: **2026. november 3., 271 sikeres teszt**, TypeSc
 +36 70 634 9630 · [info@diszkertek.hu](mailto:info@diszkertek.hu) · [www.diszkertek.hu](https://www.diszkertek.hu/)
 
 Számok: fölösleges tizedesnullák nélkül, legfeljebb két tizedessel; a belső számítás pontos marad.
+
+A felugró ablakok jobb felső × gombbal bezárhatók; a jelszókérések betöltése is megszakítható.

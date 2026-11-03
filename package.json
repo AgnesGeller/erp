@@ -1,12 +1,12 @@
 {
   "name": "diszkertek-erp",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node tools/build.mjs",
     "check": "node node_modules/typescript/bin/tsc --noEmit",
-    "test": "node --test tests/pwa.test.mjs tests/database.test.mjs tests/gateway.test.mjs tests/erp-api.test.mjs tests/office-login.test.mjs tests/customers-database.test.mjs tests/customers-gateway.test.mjs tests/customers-ui.test.mjs tests/project-roles.test.mjs tests/project-roles-ui.test.mjs tests/site-works-database.test.mjs tests/site-works-gateway.test.mjs tests/site-works-ui.test.mjs tests/quote-engine.test.mjs tests/quotes-database.test.mjs tests/quotes-gateway.test.mjs tests/quotes-ui.test.mjs tests/quote-tools.test.mjs tests/survey-model.test.mjs tests/survey-archive.test.mjs tests/survey-ai.test.mjs tests/surveys-database.test.mjs tests/office-focus.test.mjs tests/client-portal-database.test.mjs tests/clients-gateway.test.mjs tests/clients-ui.test.mjs tests/survey-dimensions-ui.test.mjs tests/workplan-model.test.mjs tests/workplan-database.test.mjs tests/staff-access-database.test.mjs tests/workplan-gateway.test.mjs tests/workplans-ui.test.mjs tests/workplan-media.test.mjs tests/office-view-switch.test.mjs",
+    "test": "node --test tests/pwa.test.mjs tests/database.test.mjs tests/gateway.test.mjs tests/erp-api.test.mjs tests/office-login.test.mjs tests/customers-database.test.mjs tests/customers-gateway.test.mjs tests/customers-ui.test.mjs tests/project-roles.test.mjs tests/project-roles-ui.test.mjs tests/site-works-database.test.mjs tests/site-works-gateway.test.mjs tests/site-works-ui.test.mjs tests/quote-engine.test.mjs tests/quotes-database.test.mjs tests/quotes-gateway.test.mjs tests/quotes-ui.test.mjs tests/quote-tools.test.mjs tests/survey-model.test.mjs tests/survey-archive.test.mjs tests/survey-ai.test.mjs tests/surveys-database.test.mjs tests/office-focus.test.mjs tests/client-portal-database.test.mjs tests/clients-gateway.test.mjs tests/clients-ui.test.mjs tests/survey-dimensions-ui.test.mjs tests/workplan-model.test.mjs tests/workplan-database.test.mjs tests/staff-access-database.test.mjs tests/workplan-gateway.test.mjs tests/workplans-ui.test.mjs tests/workplan-media.test.mjs tests/office-view-switch.test.mjs tests/dialogs.test.mjs",
     "check:edge": "node node_modules/typescript/bin/tsc --noEmit --strict --allowImportingTsExtensions --target ES2022 --module ES2022 --lib ES2022,DOM supabase/functions/erp-gateway/handler.ts supabase/functions/erp-gateway/staff.ts supabase/functions/erp-gateway/workplans.ts supabase/functions/erp-gateway/customers.ts supabase/functions/erp-gateway/quotes.ts supabase/functions/erp-gateway/clients.ts supabase/functions/erp-gateway/surveys.ts supabase/functions/erp-survey-ai/handler.ts"
   },
   "devDependencies": {

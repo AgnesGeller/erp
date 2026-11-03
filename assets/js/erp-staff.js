@@ -7,11 +7,13 @@ export class StaffAdmin {
     requestId = '';
     dirty = false;
     personChoice = '';
+    reading = false;
     busy = false;
     constructor(api) {
         this.api = api;
         el('staff-admin-open').addEventListener('click', () => { void this.open(); });
         el('staff-admin-close').addEventListener('click', () => { if (this.leave()) {
+            this.cancelRead();
             this.dirty = false;
             this.clearLink();
             el('staff-admin-dialog').close();
@@ -19,6 +21,7 @@ export class StaffAdmin {
         el('staff-admin-dialog').addEventListener('cancel', e => { if (!this.leave())
             e.preventDefault();
         else {
+            this.cancelRead();
             this.dirty = false;
             this.clearLink();
         } });
@@ -46,15 +49,24 @@ export class StaffAdmin {
         this.reset();
         this.org = org;
     } el('staff-admin-open').hidden = !org; }
-    reset() { this.epoch++; this.org = undefined; this.accounts = []; this.dirty = false; this.busy = false; this.clearLink(); el('staff-admin-dialog').close(); }
-    leave() { return !this.busy && (!this.dirty || confirm('Bezárod a dolgozói hozzáférést a még nem mentett változtatások nélkül?')); }
+    reset() { this.epoch++; this.org = undefined; this.accounts = []; this.dirty = false; this.busy = false; this.reading = false; this.clearLink(); el('staff-admin-dialog').close(); }
+    cancelRead() { if (this.reading) {
+        this.epoch++;
+        this.busy = false;
+        this.reading = false;
+        this.lock(false);
+    } }
+    leave() { if (this.busy && !this.reading) {
+        this.message('A mentés még folyamatban van. Várd meg a visszajelzést.');
+        return false;
+    } return (!this.dirty || confirm('Bezárod a dolgozói hozzáférést a még nem mentett változtatások nélkül?')); }
     message(text, ok = false) { el('staff-admin-status').textContent = (ok ? '✓ ' : '') + text; }
     clearLink() { el('staff-link-panel').hidden = true; el('staff-link').value = ''; el('staff-link-mail').removeAttribute('href'); }
     lock(value) { el('staff-admin-fields').disabled = value; el('staff-issue').disabled = value || this.dirty || !this.selected; }
     get selected() { return this.accounts.find(a => a.person_id === el('staff-account-person').value); }
     select() { this.personChoice = el('staff-account-person').value; const a = this.selected; this.requestId = crypto.randomUUID(); this.dirty = false; el('staff-account-email').value = a?.email ?? ''; el('staff-account-email').disabled = !!a; el('staff-account-active').checked = a?.active ?? true; this.clearLink(); this.lock(this.busy); this.message(a?.recovery_requested ? 'Ez a munkatárs új jelszóbeállító hivatkozást kért.' : 'A meghívót az iroda kézzel küldi el.'); }
     async open() { if (!this.org || this.busy)
-        return; const epoch = this.epoch; this.busy = true; el('staff-admin-dialog').showModal(); this.lock(true); try {
+        return; const epoch = this.epoch; this.busy = true; this.reading = true; el('staff-admin-dialog').showModal(); this.lock(true); try {
         const r = await this.api.staff('staff_admin_list', { organization_id: this.org });
         if (epoch !== this.epoch)
             return;
@@ -70,6 +82,7 @@ export class StaffAdmin {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } }
@@ -94,6 +107,7 @@ export class StaffAdmin {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } }
@@ -114,6 +128,7 @@ export class StaffAdmin {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } }

@@ -1,5 +1,5 @@
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.7.0', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.7.0', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.7.1', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.7.1', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
@@ -30,15 +30,20 @@ export class WorkPlanDesk {
     locked = new Map();
     cursor = null;
     allHistory = false;
+    reading = false;
     busy = false;
     constructor(api, onError) {
         this.api = api;
         this.onError = onError;
         el('show-workplan').addEventListener('click', () => { void this.open(); });
-        el('plan-close').addEventListener('click', () => { if (this.leave())
-            el('plan-dialog').close(); });
+        el('plan-close').addEventListener('click', () => { if (this.leave()) {
+            this.cancelRead();
+            el('plan-dialog').close();
+        } });
         el('plan-dialog').addEventListener('cancel', e => { if (!this.leave())
-            e.preventDefault(); });
+            e.preventDefault();
+        else
+            this.cancelRead(); });
         el('plan-project').addEventListener('change', () => { if (this.leave())
             void this.selectProject();
         else
@@ -76,11 +81,23 @@ export class WorkPlanDesk {
             catch { /* A hálózati újrapróbálás ebben a munkamenetben továbbra is elérhető. */ }
         }
     } el('show-workplan').hidden = !owner; }
-    reset() { this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
-    leave() { return !this.busy && (!this.dirty || confirm(this.pending ? 'A mentés eredménye még nem ismert. Megnézed újra az adatokat? Az eredeti kérés újrapróbálható marad.' : 'Elhagyod a még nem mentett munkatervi szerkesztést?')); }
+    reset() { this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
+    cancelRead() { if (this.reading) {
+        this.epoch++;
+        this.request++;
+        this.busy = false;
+        this.reading = false;
+        this.lock(false);
+    } }
+    leave() { if (this.busy && !this.reading) {
+        this.message('A mentés még folyamatban van. Várd meg a visszajelzést.');
+        return false;
+    } return (!this.dirty || confirm(this.pending ? 'A mentés eredménye még nem ismert. Megnézed újra az adatokat? Az eredeti kérés újrapróbálható marad.' : 'Elhagyod a még nem mentett munkatervi szerkesztést?')); }
     message(text, ok = false) { el('plan-feedback').textContent = (ok ? '✓ ' : '') + text; el('plan-feedback').className = 'office-status ' + (ok ? 'success' : ''); el('plan-retry').hidden = !this.pending; }
     lock(value) { if (value) {
         for (const x of Array.from(el('plan-dialog').querySelectorAll('input,textarea,button,select'))) {
+            if (x.id === 'plan-close' || x.hasAttribute('data-erp-dismiss'))
+                continue;
             if (!this.locked.has(x))
                 this.locked.set(x, x.disabled);
             x.disabled = true;
@@ -94,7 +111,7 @@ export class WorkPlanDesk {
     scope() { return { project_id: el('plan-project').value, role: el('plan-role').value }; }
     async open() { if (!this.owner || this.busy)
         return; const dialog = el('plan-dialog'); if (!dialog.open)
-        dialog.showModal(); const epoch = this.epoch; this.busy = true; this.lock(true); this.message('Kertépítések és teendők betöltése…'); try {
+        dialog.showModal(); const epoch = this.epoch; this.busy = true; this.reading = true; this.lock(true); this.message('Kertépítések és teendők betöltése…'); try {
         const [projects, notes] = await Promise.all([this.api.plan('plan_projects'), this.api.plan('plan_notifications')]);
         if (epoch !== this.epoch)
             return;
@@ -112,6 +129,7 @@ export class WorkPlanDesk {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } if (epoch === this.epoch && this.projects.length)
@@ -122,7 +140,7 @@ export class WorkPlanDesk {
         return; const scope = this.scope(); if (!scope.project_id || !scope.role) {
         el('plan-view').replaceChildren();
         return;
-    } const epoch = this.epoch, request = ++this.request; this.busy = true; this.lock(true); try {
+    } const epoch = this.epoch, request = ++this.request; this.busy = true; this.reading = true; this.lock(true); try {
         const view = await this.api.plan('plan_read', scope);
         if (epoch !== this.epoch || request !== this.request)
             return;
@@ -147,6 +165,7 @@ export class WorkPlanDesk {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } }
@@ -167,7 +186,7 @@ export class WorkPlanDesk {
         return; if (this.pending && !retry) {
         this.message('Előbb próbáld újra az előző mentést, hogy ne legyen kettős rögzítés.');
         return;
-    } const epoch = this.epoch; this.pending = { action, args: structuredClone(args) }; this.rememberPending(); this.busy = true; this.lock(true); this.message('Mentés…'); let success = false; try {
+    } const epoch = this.epoch; this.pending = { action, args: structuredClone(args) }; this.rememberPending(); this.reading = false; this.busy = true; this.lock(true); this.message('Mentés…'); let success = false; try {
         await this.api.plan(action, args);
         if (epoch !== this.epoch)
             return;
@@ -188,6 +207,7 @@ export class WorkPlanDesk {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } if (success && epoch === this.epoch) {
@@ -455,6 +475,7 @@ export class WorkPlanDesk {
         finally {
             if (epoch === this.epoch) {
                 this.busy = false;
+                this.reading = false;
                 this.lock(false);
                 photo.value = '';
             }
@@ -537,7 +558,7 @@ export class WorkPlanDesk {
     } if (!this.allHistory)
         button(history, 'Korábbi előzmények betöltése', () => { void this.moreHistory(); }); }
     async moreHistory() { if (!this.view || this.busy)
-        return; const epoch = this.epoch; this.busy = true; this.lock(true); try {
+        return; const epoch = this.epoch; this.busy = true; this.reading = true; this.lock(true); try {
         const r = await this.api.plan('plan_history', { ...this.scope(), cursor: this.cursor });
         if (epoch !== this.epoch)
             return;
@@ -554,6 +575,7 @@ export class WorkPlanDesk {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } }
@@ -565,7 +587,7 @@ export class WorkPlanDesk {
         date.setUTCMonth(0);
         date.setUTCDate(1);
     } from.value = date.toISOString().slice(0, 10); }); button(d, 'Statisztika lekérése', () => { void (async () => { if (this.busy)
-        return; const epoch = this.epoch; this.busy = true; this.lock(true); try {
+        return; const epoch = this.epoch; this.busy = true; this.reading = true; this.lock(true); try {
         const rows = await this.api.plan('plan_statistics', { ...this.scope(), from: from.value || null, until: until.value || null });
         if (epoch !== this.epoch)
             return;
@@ -587,6 +609,7 @@ export class WorkPlanDesk {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } })(); }); d.append(output); }
@@ -603,6 +626,7 @@ export class WorkPlanDesk {
     finally {
         if (epoch === this.epoch) {
             this.busy = false;
+            this.reading = false;
             this.lock(false);
         }
     } }

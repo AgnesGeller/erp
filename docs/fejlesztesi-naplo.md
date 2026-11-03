@@ -285,3 +285,11 @@ A felhasználó jóváhagyta a tíz saját ERP-táblát, a dolgozói saját bel�
 - 271 sikeres helyi teszt; TypeScript/edge ellenőrzés; asztali/mobil szintetikus böngészőpróba. A mobilos rejtett azonosítómező kilógása javítva. Éles office ERP-hozzáférés megmaradt, nyilvános munkaterv-hozzáférés tiltott. Biztonsági advisor: az új ERP-objektumoknál nincs WARN/ERROR; INFO default-deny RLS jelzések a service-only tábláknál. Az új táblák kapcsolati indexei kiegészítve.
 - Napi feladatok: csak név/azonosító/szín olvasás, nyolc egyértelmű megfeleltetés az ERP saját színtáblájába. A forrásalkalmazásokhoz sem kód-, sem adatbázismódosítás nem történt.
 - Következő teljesítendő egység: nyolc bejegyzéstípus és kétoldalú változásjóváhagyás; saját munkalap/tényleges munkaidő, beszerzés és pénzügy továbbra is a teljes megbízás része.
+
+## 2026. november 3. – 0.7.1, ablakok bezárása
+
+- A felhasználó jelzése alapján az ügyfél-jelszókérési ablak olvasási betöltése azonnal bezárható. A későn érkező válasz nem nyithatja vissza és nem állíthatja vissza a régi adatot.
+- Minden natív párbeszédablakra felső × gomb került; a PDF-előnézet is külön × gombot kapott. A bezárás a saját mentésvédelmi eseményt használja, a nem mentett adat eldobására megerősítés kell; folyamatban lévő tényleges mentést nem állítunk le látszólag.
+- Dolgozói hozzáférések és munkaterv olvasásakor is megszakítható a várakozás. A levelezőablak nem mentett szövegét külön megerősítés védi. A bezárás nem ügyfél-, munka- vagy fájltörlés.
+- A nyolcféle bejegyzés és kétoldalú változáskezelés helyi fejlesztése közben előrevett javítás. A bejegyzésmodul még nincs élesítve; ehhez a javításhoz adatbázis/Edge módosítás nem szükséges.
+- Ellenőrzés: a teljes korábbi futás 275/276 próbája sikeres volt; a hiányzó késői-válasz állapotvédelmet javítva mind a 34 érintett próba sikeres. TypeScript-build kész, böngészőben a felső × ténylegesen bezárja a jelszókérő ablakot.

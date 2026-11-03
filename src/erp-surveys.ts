@@ -1,15 +1,24 @@
 import type {ErpApi} from './erp-api.js';
 import type {SurveyDocument,SurveySection,SurveyMedia} from './erp-survey-model.js';
 import type {LocalSurvey} from './erp-survey-store.js';
-const {validateSurvey,surveyToQuote,surveyMime}=await import(new URL('./erp-survey-model.js?v=0.6.0',import.meta.url).href) as typeof import('./erp-survey-model.js');
-const {SurveyStore}=await import(new URL('./erp-survey-store.js?v=0.6.0',import.meta.url).href) as typeof import('./erp-survey-store.js');
-const {surveyHash,downloadSurveyFile,exportSurvey,importSurvey}=await import(new URL('./erp-survey-archive.js?v=0.6.0',import.meta.url).href) as typeof import('./erp-survey-archive.js');
+const {validateSurvey,surveyToQuote,surveyMime}=await import(new URL('./erp-survey-model.js?v=0.6.1',import.meta.url).href) as typeof import('./erp-survey-model.js');
+const {SurveyStore}=await import(new URL('./erp-survey-store.js?v=0.6.1',import.meta.url).href) as typeof import('./erp-survey-store.js');
+const {surveyHash,downloadSurveyFile,exportSurvey,importSurvey}=await import(new URL('./erp-survey-archive.js?v=0.6.1',import.meta.url).href) as typeof import('./erp-survey-archive.js');
+const {quoteNumber}=await import(new URL('./erp-quote-tools.js?v=0.6.1',import.meta.url).href) as typeof import('./erp-quote-tools.js');
 export const surveysEnabled=true;
 type Obj=Record<string,any>;
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const n=(tag:string,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 function btn(text:string,action:()=>void){const b=n('button',text) as HTMLButtonElement;b.type='button';b.className='quiet';b.addEventListener('click',action);return b;}
 function field(parent:HTMLElement,label:string,value:string,change:(v:string)=>void,area=false){const l=n('label',label),x=document.createElement(area?'textarea':'input') as HTMLInputElement|HTMLTextAreaElement;x.value=value;x.maxLength=area?20000:200;if(area)(x as HTMLTextAreaElement).rows=4;x.addEventListener('input',()=>change(x.value));l.append(x);parent.append(l);return x;}
+function dimensionField(parent:HTMLElement,label:string,read:()=>string,change:(value:string)=>void){
+ const display=(value:string)=>/^\d+(?:[.,]\d+)?$/.test(value.trim())?quoteNumber(value.trim()):value;
+ const x=field(parent,label,display(read()),change);
+ x.inputMode='decimal';
+ x.addEventListener('focus',()=>{const value=read();x.value=/^\d+(?:[.,]\d+)?$/.test(value.trim())?value.trim().replace(/([.,]\d*?)0+$/,'$1').replace(/[.,]$/,''):value;});
+ x.addEventListener('blur',()=>{x.value=display(read());});
+ return x;
+}
 function fold(parent:HTMLElement,title:string,open=false){const d=document.createElement('details');d.className='erp-disclosure';d.open=open;d.append(n('summary',title));parent.append(d);return d;}
 export class SurveyDesk{
  private aiEnabled=false;private aiProposal:Obj|undefined;
@@ -56,7 +65,7 @@ export class SurveyDesk{
  }catch(e){if(epoch===this.epoch)this.error(e);}finally{if(epoch===this.epoch)this.loading=false;}}
  private async load(id:string){if(!this.owner||!this.org||!await this.leave())return;const epoch=this.epoch,owner=this.owner;this.loading=true;try{let row=(await this.store.list(owner)).find(r=>r.id===id);if(!row||(!row.dirty&&navigator.onLine)){const remote=await this.api.customers<Obj>('survey_get',{organization_id:this.org,survey_id:id});if(epoch!==this.epoch)return;const version=row?.localVersion??0;row={...remote,owner,localVersion:version,dirty:false} as LocalSurvey;row.localVersion=await this.store.put(row,version);}if(epoch!==this.epoch)return;this.row=row;this.changed=false;this.saveFailed=false;const select=el<HTMLSelectElement>('survey-location');select.replaceChildren(new Option(row.site_address,row.document.location_id));this.render();this.message(row.dirty?'Helyi változat; még nincs szinkronizálva.':'A felmérés betöltve. A mellékletek az eredeti eszközön vagy letöltött csomagban vannak.');}catch(e){if(epoch===this.epoch)this.error(e);}finally{if(epoch===this.epoch)this.loading=false;}}
  private render(){if(!this.row)return;el('survey-editor').hidden=false;el('survey-editor-name').textContent=this.row.customer_name;el<HTMLInputElement>('survey-title').value=this.row.document.title;el<HTMLTextAreaElement>('survey-wishes').value=this.row.document.wishes;el<HTMLSelectElement>('survey-work-type').value=this.row.document.work_type;el<HTMLSelectElement>('survey-location').value=this.row.document.location_id;el<HTMLSelectElement>('survey-location').disabled=this.row.revision>0;this.renderSections();}
- private renderSections(){this.releaseUrls();const parent=el('survey-sections');parent.replaceChildren();if(!this.row)return;for(const [index,s]of this.row.document.sections.entries()){const d=fold(parent,s.name||'Új főtétel',this.row.document.sections.length===1);field(d,'Főtétel megnevezése',s.name,v=>{s.name=v;d.querySelector('summary')!.textContent=v||'Új főtétel';this.touch();});const sizes=fold(d,'Méretek – nem kötelező');for(const [key,label]of [['length','Hossz (m)'],['width','Szélesség (m)'],['area','Terület (m²)']]){const x=field(sizes,label,s[key as 'length'],v=>{s[key as 'length']=v;this.touch();});x.inputMode='decimal';}
+ private renderSections(){this.releaseUrls();const parent=el('survey-sections');parent.replaceChildren();if(!this.row)return;for(const [index,s]of this.row.document.sections.entries()){const d=fold(parent,s.name||'Új főtétel',this.row.document.sections.length===1);field(d,'Főtétel megnevezése',s.name,v=>{s.name=v;d.querySelector('summary')!.textContent=v||'Új főtétel';this.touch();});const sizes=fold(d,'Méretek – nem kötelező');for(const [key,label]of [['length','Hossz (m)'],['width','Szélesség (m)'],['area','Terület (m²)']]){dimensionField(sizes,label,()=>s[key as 'length'],v=>{s[key as 'length']=v;this.touch();});}
  field(d,'Helyszíni jegyzet',s.notes,v=>{s.notes=v;this.touch();},true);
  const attachments=fold(d,'Fotók és hangjegyzetek ('+s.media.length+')');attachments.append(n('p','A fájlok ezen az eszközön maradnak. Biztonsági másolathoz töltsd le a felmérési csomagot.'));
  for(const m of s.media){const r=n('div');r.className='survey-media-row';r.append(n('span',m.kind==='photo'?'Fotó':'Hangjegyzet'),btn('Megnyitás',()=>{void this.media(m,false);}),btn('Letöltés',()=>{void this.media(m,true);}),btn('Kivétel a felmérésből',()=>{if(this.busy||!confirm('Kiveszed ezt a mellékletet a felmérésből? A helyi fájlpéldány megmarad.'))return;s.media=s.media.filter(x=>x.id!==m.id);this.touch();this.renderSections();}));if(m.kind==='audio'&&this.aiEnabled)r.append(btn('Magyar hangátirat készítése',()=>{void this.transcribe(s,m);}));attachments.append(r);}

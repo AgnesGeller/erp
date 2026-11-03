@@ -1,12 +1,21 @@
-const { validateSurvey, surveyToQuote, surveyMime } = await import(new URL('./erp-survey-model.js?v=0.6.0', import.meta.url).href);
-const { SurveyStore } = await import(new URL('./erp-survey-store.js?v=0.6.0', import.meta.url).href);
-const { surveyHash, downloadSurveyFile, exportSurvey, importSurvey } = await import(new URL('./erp-survey-archive.js?v=0.6.0', import.meta.url).href);
+const { validateSurvey, surveyToQuote, surveyMime } = await import(new URL('./erp-survey-model.js?v=0.6.1', import.meta.url).href);
+const { SurveyStore } = await import(new URL('./erp-survey-store.js?v=0.6.1', import.meta.url).href);
+const { surveyHash, downloadSurveyFile, exportSurvey, importSurvey } = await import(new URL('./erp-survey-archive.js?v=0.6.1', import.meta.url).href);
+const { quoteNumber } = await import(new URL('./erp-quote-tools.js?v=0.6.1', import.meta.url).href);
 export const surveysEnabled = true;
 const el = (id) => document.getElementById(id);
 const n = (tag, text = '') => { const e = document.createElement(tag); e.textContent = text; return e; };
 function btn(text, action) { const b = n('button', text); b.type = 'button'; b.className = 'quiet'; b.addEventListener('click', action); return b; }
 function field(parent, label, value, change, area = false) { const l = n('label', label), x = document.createElement(area ? 'textarea' : 'input'); x.value = value; x.maxLength = area ? 20000 : 200; if (area)
     x.rows = 4; x.addEventListener('input', () => change(x.value)); l.append(x); parent.append(l); return x; }
+function dimensionField(parent, label, read, change) {
+    const display = (value) => /^\d+(?:[.,]\d+)?$/.test(value.trim()) ? quoteNumber(value.trim()) : value;
+    const x = field(parent, label, display(read()), change);
+    x.inputMode = 'decimal';
+    x.addEventListener('focus', () => { const value = read(); x.value = /^\d+(?:[.,]\d+)?$/.test(value.trim()) ? value.trim().replace(/([.,]\d*?)0+$/, '$1').replace(/[.,]$/, '') : value; });
+    x.addEventListener('blur', () => { x.value = display(read()); });
+    return x;
+}
 function fold(parent, title, open = false) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.open = open; d.append(n('summary', title)); parent.append(d); return d; }
 export class SurveyDesk {
     api;
@@ -241,8 +250,7 @@ export class SurveyDesk {
             field(d, 'Főtétel megnevezése', s.name, v => { s.name = v; d.querySelector('summary').textContent = v || 'Új főtétel'; this.touch(); });
             const sizes = fold(d, 'Méretek – nem kötelező');
             for (const [key, label] of [['length', 'Hossz (m)'], ['width', 'Szélesség (m)'], ['area', 'Terület (m²)']]) {
-                const x = field(sizes, label, s[key], v => { s[key] = v; this.touch(); });
-                x.inputMode = 'decimal';
+                dimensionField(sizes, label, () => s[key], v => { s[key] = v; this.touch(); });
             }
             field(d, 'Helyszíni jegyzet', s.notes, v => { s.notes = v; this.touch(); }, true);
             const attachments = fold(d, 'Fotók és hangjegyzetek (' + s.media.length + ')');

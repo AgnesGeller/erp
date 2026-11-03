@@ -267,3 +267,10 @@ Ellenőrzés: 188 regressziós teszt, TypeScript- és gateway-típusellenőrzés
 ## 2026. november 2. – mentési pont: munkaterv és négyszintű átvétel
 
 A felhasználó jóváhagyta a tíz saját ERP-táblát, a dolgozói saját belépést és a tesztek utáni élesítést. A pontos számítási/átvételi modell, a dolgozói adatbázisalap és a munkaterv tranzakciós végpontjai helyben elkészültek. Sikeres: 13 modellteszt, 6 dolgozói adatbázisteszt, 10 munkaterv-adatbázisteszt. A Napi személyszíneit csak olvastuk. Új éles adatbázis- vagy Auth-módosítás nincs, az élő rendszer 0.6.0 marad. A felület, fotócsomagok, teljes kiszolgáló-bekötés és végső regresszió még hátravan. A 10%-os kreditjelzés miatt mentési commit/push készül; részletek: [folytatási pont](munkaterv-folytatasi-pont.md).
+
+## 2026. november 3. – 0.6.1, számok megjelenítése
+
+- A PDF 14–15. fejezete és a munkaterv folytatási pontja újra ellenőrizve. A következő nagy egység a részletes munkaterv és négyszintű átvétel befejezése.
+- Az ajánlati és PDF-formázó már elhagyta a záró tizedesnullákat; a felmérési méretmezők is ezt használják. Fókuszban az eredeti pontos érték szerkeszthető, puszta megtekintés nem módosít mentett adatot.
+- A megjelenítéshez célzott regressziós próbák; a belső szorzók, számítás, adatbázis és jogosultságok változatlanok.
+- Ellenőrzés: 36 célzott teszt, sikeres TypeScript-build és típusellenőrzés; helyi böngészőben 10 / 12,5 / 1,24, szerkesztéskor megőrzött 1.2357.

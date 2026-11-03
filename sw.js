@@ -1,8 +1,8 @@
 const CACHE_PREFIX = 'diszkertek-erp-';
-const CACHE_NAME = CACHE_PREFIX + '0.6.0';
-const FILES = ['./', './index.html', './assets/style.css?v=0.6.0', './assets/js/main.js?v=0.6.0', './assets/js/erp-office.js?v=0.6.0', './assets/js/erp-office-setup.js?v=0.6.0',
-  './assets/js/erp-api.js?v=0.6.0', './assets/js/erp-dates.js?v=0.6.0', './assets/js/erp-customers.js?v=0.6.0', './assets/js/erp-clients.js?v=0.6.0', './assets/js/erp-site-works.js?v=0.6.0', './assets/js/erp-quotes.js?v=0.6.0', './assets/js/erp-quote-engine.js?v=0.6.0', './assets/js/erp-quote-tools.js?v=0.6.0', './assets/js/erp-calculator-import.js?v=0.6.0', './assets/js/erp-surveys.js?v=0.6.0', './assets/js/erp-survey-model.js?v=0.6.0', './assets/js/erp-survey-store.js?v=0.6.0', './assets/js/erp-survey-archive.js?v=0.6.0', './assets/vendor/fflate-0.8.2.js', './assets/js/erp-project-roles.js?v=0.6.0',
-  './manifest.webmanifest?v=0.6.0', './assets/logo.png', './assets/icon-d-192-v1.png', './assets/icon-d-512-v1.png',
+const CACHE_NAME = CACHE_PREFIX + '0.6.1';
+const FILES = ['./', './index.html', './assets/style.css?v=0.6.1', './assets/js/main.js?v=0.6.1', './assets/js/erp-office.js?v=0.6.1', './assets/js/erp-office-setup.js?v=0.6.1',
+  './assets/js/erp-api.js?v=0.6.1', './assets/js/erp-dates.js?v=0.6.1', './assets/js/erp-customers.js?v=0.6.1', './assets/js/erp-clients.js?v=0.6.1', './assets/js/erp-site-works.js?v=0.6.1', './assets/js/erp-quotes.js?v=0.6.1', './assets/js/erp-quote-engine.js?v=0.6.1', './assets/js/erp-quote-tools.js?v=0.6.1', './assets/js/erp-calculator-import.js?v=0.6.1', './assets/js/erp-surveys.js?v=0.6.1', './assets/js/erp-survey-model.js?v=0.6.1', './assets/js/erp-survey-store.js?v=0.6.1', './assets/js/erp-survey-archive.js?v=0.6.1', './assets/vendor/fflate-0.8.2.js', './assets/js/erp-project-roles.js?v=0.6.1',
+  './manifest.webmanifest?v=0.6.1', './assets/logo.png', './assets/icon-d-192-v1.png', './assets/icon-d-512-v1.png',
   './assets/favicon-d-v1.png', './assets/apple-touch-icon-d-v1.png'];
 const allowed = new Set(FILES.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener('install', event => {

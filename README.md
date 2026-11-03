@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **Verzió: 0.6.0**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **Verzió: 0.6.1**
 
 ## Mi használható?
 
@@ -41,8 +41,8 @@ npm test
 npm run check:edge
 ```
 
-Legutóbbi ellenőrzés: **2026. november 2., 212 sikeres teszteredmény**, éles PDF-letöltés és mobilnézet ellenőrizve. A felmérési menü végső éles UI-próbája még függőben van. A teljes üzleti lánc átadási próbája a hátralévő modulok elkészülése után következik. Telepítési és folytatási részletek a [projektleírásban](docs/reszletes-projektleiras.md).
+Legutóbbi célzott ellenőrzés: **2026. november 3., 36 sikeres teszt**, TypeScript-fordítás és helyi böngészőpróba. A teljes üzleti lánc átadási próbája a hátralévő modulok elkészülése után következik.
 
 +36 70 634 9630 · [info@diszkertek.hu](mailto:info@diszkertek.hu) · [www.diszkertek.hu](https://www.diszkertek.hu/)
 
-Belépési javítás: a sikeres, üres kiszolgálóválaszt is elfogadjuk a munkamenet ellenőrzésekor.
+Számok: fölösleges tizedesnullák nélkül, legfeljebb két tizedessel; a belső számítás pontos marad.

@@ -331,3 +331,21 @@ A rövid README és a [használati útmutató](bejegyzesek.md) frissült. A megl
 [Használati útmutató](munkalap-munkaido.md). A teljes üzleti lánc közös átadási próbája a hátralévő anyag- és pénzügyi modulok után szükséges.
 
 Élesítés: az öt saját ERP-tábla és a saját munkaterv-olvasó bővítése telepítve; az `erp-gateway` 20-as verziója aktív. Az élesítés nem hozott létre próbamunkalapot. A Supabase biztonsági ellenőrzés saját tábláknál jelzett RLS/policy információja szándékos alapértelmezett tiltás: a hozzáférés a szerepet ellenőrző RPC-n keresztül történik.
+
+## 2026. november 3. – Anyagmozgások előkészítése
+
+A PDF 3., 10., 15–16., 21–22. fejezetének és a 25/19–20., 27–28. próbáknak az ellenőrzése után elkészült a [konkrét tíz-táblás terv](anyagmozgas-anyagelorehaladas-terv.md). Saját ERP-metaadatok olvasása igazolta, hogy külön beszerzési/anyagmozgási táblák még nincsenek. A terv részszállítást, szerepkörös ár-/költségvédelmet, extra anyagokat, ajánlatverzióhoz kötött igényt és 100/70/0 költségalapot tartalmaz. Az AGENTS.md 13. pontja alapján adatbázis-jóváhagyásra vár; éles adat vagy szerkezet nem változott. A rövid README a tervre hivatkozik. Függőséget nem telepítettünk.
+
+## 2026. november 3. – Anyagmozgások és anyagelőrehaladás, 0.10.0
+
+- A felhasználó jóváhagyta a konkrét tíztáblás tervet, a saját ajánlatváltozási triggert és a tesztek utáni ERP-élesítést.
+- Saját anyag- és beszállítótörzs, ajánlatból származó verziózott terv, törzsazonosító szerinti összevont lista; külön extra igény és naplózott kapcsolás jóváhagyott ajánlati anyaghoz, dupla igény nélkül.
+- Szállítmányonkénti részérkezés, telephelyi átvétel, helyszínre szállítás, beépítés, visszaszállítás, ellenmozgás/visszaállítás és irodai árkorrekció. Rendezett sorzárak, revízió/előnézet, pontos UUID-s ismétlésvédelem.
+- Saját telephelyi teendők és értesítések a munkatervben, személy-/projekt-/szerepkör-ellenőrzéssel. Beépítési/beszerzési/szállítási mutatók, 100% felett is. Nettó beszerzési és 100/70/0 elszámolt anyagköltség, hiányzó ár jelzése, verziózott irodai súlybeállítás.
+- Irodai Anyagbeszerzés menü, munkatervi kapcsolat, közös törzsanyagválasztó az ajánlatban, mobilnézet; saját helyi piszkozat, mentési konfliktus feloldása megőrzött beírt adatokkal, szerepkör szerint szűrt CSV/JSON és helyi PDF-nyomtatás.
+- 403 automatikus teszt sikeres; frontend- és edge-TypeScript ellenőrzés. A helyi böngészőpróbában 60 egység érkezése, 40 átvétele, 12 kiszállítása és 10 beépítése, valamint a 11 400 Ft-os elszámolt költség is igazolt. Ügyféloldali árvédelem és 390 px-es mobilnézet ellenőrizve.
+- Élesítés előtti mentés: saját gateway 20-as verziója. A tíz új tábla DDL-jének éles adatbázison végzett, visszagörgetett próbája sikeres. Más alkalmazás, Auth, forrásügyfél és meglévő külső táblák változatlanok; függőséget nem telepítettünk.
+
+[Használati útmutató](anyagkezeles.md) · [Mai vezetői összefoglaló és kipróbálás](mai-fejlesztesek-2026-11-03.md). A teljes üzleti lánc közös átvételi próbája a hátralévő modulok után szükséges.
+
+Az éles saját ERP-adatbázis tíz táblája és ajánlatváltozási triggere telepítve. Az anyagelőzmények utolsó oldalának lezárása külön, csak a saját olvasófüggvényt érintő migrációban pontosítva; száz sor fölötti teszttel ellenőrizve. Az ERP-gateway 22-es verziója aktív. Éles próbamozgás nem készült.

@@ -1,0 +1,686 @@
+const { quoteNumber, quoteInput, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.10.0', import.meta.url).href);
+const { materialActions, materialSearch, materialCsv } = await import(new URL('./erp-material-model.js?v=0.10.0', import.meta.url).href);
+const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.10.0', import.meta.url).href);
+const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.10.0', import.meta.url).href);
+const node = (tag, text = '') => { const e = document.createElement(tag); e.textContent = text; return e; };
+const num = (v) => quoteNumber(v);
+const names = { init: 'Anyagterv betöltése', extra: 'Extra anyag felvétele', line: 'Anyagsor hozzárendelése', link: 'Extra hozzárendelése az elfogadott ajánlathoz', material: 'Anyagtörzs mentése', vendor: 'Beszállító mentése', policy: 'Költségsúlyok mentése', ...materialActions };
+const roles = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő', system: 'Ajánlatfrissítés' };
+function button(p, text, run) { const b = node('button', text); b.type = 'button'; b.className = 'quiet'; b.addEventListener('click', run); p.append(b); return b; }
+function fold(p, title, open = false) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.open = open; d.append(node('summary', title)); p.append(d); return d; }
+function input(p, label, value, change, type = 'text') { const l = node('label', label), x = document.createElement(type === 'textarea' ? 'textarea' : 'input'); if (type !== 'textarea') {
+    x.type = type;
+    if (type === 'number') {
+        x.step = 'any';
+        x.min = '0';
+    }
+} x.value = String(value ?? ''); x.addEventListener('input', () => change(x.value)); l.append(x); p.append(l); return x; }
+function select(p, label, value, list, change) { const l = node('label', label), s = document.createElement('select'); s.append(...list.map(([v, t]) => new Option(t, v))); s.value = value; s.addEventListener('change', () => change(s.value)); l.append(s); p.append(l); return s; }
+export class MaterialDesk {
+    api;
+    onError;
+    onSaved;
+    dialog = document.createElement('dialog');
+    body = node('div');
+    feedback = node('p');
+    owner;
+    org;
+    scope = { project_id: null, role: 'office' };
+    generation = 0;
+    view;
+    draft;
+    preview;
+    pending;
+    localSaved = true;
+    busy = false;
+    reading = false;
+    history = new EditHistory();
+    filter = {};
+    acknowledged = false;
+    conflict = false;
+    offline = false;
+    auto;
+    constructor(api, onError, onSaved) {
+        this.api = api;
+        this.onError = onError;
+        this.onSaved = onSaved;
+        this.dialog.id = 'material-dialog';
+        this.dialog.className = 'material-dialog';
+        this.dialog.setAttribute('aria-label', 'Anyagbeszerzés és anyagelőrehaladás');
+        this.feedback.setAttribute('role', 'status');
+        this.dialog.append(node('h2', 'Anyagbeszerzés és anyagelőrehaladás'), this.feedback, this.body);
+        document.body.append(this.dialog);
+        addDialogDismiss(this.dialog);
+        this.dialog.addEventListener('cancel', e => { if (!this.leave())
+            e.preventDefault();
+        else
+            this.cancelRead(); });
+        window.addEventListener('beforeunload', e => { if (this.saving || this.pending || this.draft && !this.localSaved) {
+            e.preventDefault();
+            e.returnValue = '';
+        } });
+        window.addEventListener('erp:before-update', e => { if (this.open && !this.leave())
+            e.preventDefault(); });
+        this.auto = setInterval(() => { if (this.open && !document.hidden && navigator.onLine && !this.busy && !this.dirty)
+            void this.load(); }, 60000);
+    }
+    get open() { return this.dialog.open; }
+    get saving() { return this.busy && !this.reading; }
+    get dirty() { return !!this.draft || !!this.pending; }
+    setOwner(owner, org) { if (this.owner === owner && this.org === org)
+        return; this.generation++; this.owner = owner; this.org = org; this.busy = false; this.reading = false; this.view = undefined; this.draft = undefined; this.preview = undefined; this.pending = undefined; this.conflict = false; this.offline = false; this.body.replaceChildren(); this.dialog.close(); }
+    leave() { if (this.saving) {
+        this.message('A mentés még folyamatban van. Várd meg a visszaigazolást.');
+        return false;
+    } return !this.dirty || confirm(this.pending ? (this.localSaved ? 'A mentés eredménye még nem ismert. Bezárod? Az eredeti kérés ezen az eszközön megmarad.' : 'A mentési kérés helyi tárolása sem sikerült. Bezáráskor elveszhet az újrapróbálás lehetősége. Folytatod?') : this.localSaved ? 'Bezárod a szerkesztést? A helyi piszkozat később folytatható.' : 'A helyi mentés nem sikerült. Bezáráskor a piszkozat elveszhet. Folytatod?'); }
+    cancelRead() { this.generation++; this.busy = false; this.reading = false; }
+    key() { return 'diszkertek-erp-material/' + this.owner + '/' + this.org + '/' + (this.scope.project_id ?? 'catalog') + '/' + this.scope.role; }
+    persist() { if (!this.owner || !this.org)
+        return; try {
+        localStorage.setItem(this.key(), JSON.stringify({ draft: this.draft, pending: this.pending }));
+        this.localSaved = true;
+    }
+    catch {
+        this.localSaved = false;
+        this.message('A helyi mentés nem sikerült. Bezárás előtt másold ki a fontos adatokat.');
+    } }
+    message(text, ok = false) { this.feedback.textContent = (ok ? '✓ ' : '') + text; this.feedback.className = 'office-status ' + (ok ? 'success' : ''); }
+    error(e) { this.message(e instanceof Error ? e.message : 'Az anyagkezelés nem sikerült.'); if (e && typeof e === 'object' && 'status' in e && e.status === 401)
+        this.onError(e); }
+    args() { return { organization_id: this.org, ...this.scope }; }
+    async show(owner, org, scope = { project_id: null, role: 'office' }, line) { if (this.open && !this.leave())
+        return; this.cancelRead(); this.setOwner(owner, org); this.scope = { ...scope }; this.filter = line ? { line_id: line } : {}; this.draft = undefined; this.preview = undefined; this.pending = undefined; try {
+        const p = JSON.parse(localStorage.getItem(this.key()) ?? '{}').pending;
+        if (p?.organization_id === org && p.project_id === this.scope.project_id && p.role === this.scope.role && typeof p.request_id === 'string')
+            this.pending = p;
+    }
+    catch { } if (!this.open)
+        this.dialog.showModal(); await this.load(); }
+    async load(append) { if (this.busy || !this.owner || !this.org)
+        return; const gen = ++this.generation, old = this.view; this.busy = true; this.reading = true; this.body.replaceChildren(); this.message('Anyagadatok betöltése…'); try {
+        const r = await this.api.material('material_read', { ...this.args(), filter: this.filter });
+        if (gen !== this.generation)
+            return;
+        if (append && old) {
+            const key = { line: 'lines', lot: 'lots', event: 'events', group: 'purchase_groups', master: 'materials', vendor: 'vendors', version: 'versions', catalog: 'catalog_events' };
+            const k = key[append], ids = new Set((old[k] ?? []).map((x) => x.id ?? x.version));
+            r[k] = [...(old[k] ?? []), ...(r[k] ?? []).filter((x) => !ids.has(x.id ?? x.version))];
+        }
+        this.view = r;
+        this.offline = false;
+        try {
+            localStorage.setItem(this.key() + '/context', JSON.stringify({ owner: this.owner, org: this.org, scope: this.scope, context: r.context, plan: r.plan, lines: r.lines, materials: r.materials, vendors: r.vendors, summary: r.summary, purchase_groups: r.purchase_groups, policy: r.policy, lots: [], events: [], cursors: {}, versions: [], catalog_events: [] }));
+        }
+        catch { }
+        this.render();
+        this.message('Az anyagadatok naprakészek.', true);
+    }
+    catch (e) {
+        if (gen === this.generation) {
+            this.view = undefined;
+            const status = e && typeof e === 'object' && 'status' in e ? Number(e.status) : 0;
+            let cached;
+            if ([0, 503].includes(status)) {
+                try {
+                    const c = JSON.parse(localStorage.getItem(this.key() + '/context') ?? 'null');
+                    if (c && c.owner === this.owner && c.org === this.org && c.scope.project_id === this.scope.project_id && c.scope.role === this.scope.role && c.context.person_id === this.owner)
+                        cached = c;
+                }
+                catch { }
+            }
+            if (cached) {
+                this.view = cached;
+                this.offline = true;
+                this.render();
+                this.message('Korábban betöltött adatok. Helyi piszkozat készíthető; készletfoglalás és éles mentés még nem történt.');
+            }
+            else {
+                this.error(e);
+                button(this.body, 'Betöltés újrapróbálása', () => { void this.load(append); });
+            }
+        }
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            this.reading = false;
+        }
+    } }
+    discard() { if (this.pending) {
+        this.message('Előbb próbáld újra az előző mentést.');
+        return false;
+    } if (this.draft && !confirm('Elveted a még nem mentett anyagkezelési módosítást?'))
+        return false; this.draft = undefined; this.preview = undefined; this.persist(); return true; }
+    touch(group) { if (!this.draft)
+        return; this.preview = undefined; this.acknowledged = false; this.history.remember(this.draft, group); this.persist(); this.body.querySelector('[data-material-review]')?.replaceChildren(node('p', 'A módosításhoz friss mentési előnézet szükséges.')); this.buttons(); }
+    buttons() { const u = this.body.querySelector('[data-material-undo]'), r = this.body.querySelector('[data-material-redo]'), s = this.body.querySelector('[data-material-save]'); if (u)
+        u.disabled = !this.history.canUndo; if (r)
+        r.disabled = !this.history.canRedo; if (s)
+        s.disabled = !this.preview || !!this.preview.document?.warning && !this.acknowledged; }
+    start(kind, data = {}) { if (this.busy || !this.view || !this.discard())
+        return; const office = this.scope.role === 'office', can = this.view.context.can_write === true; if (!office && !can)
+        return; if (!office && ['material', 'vendor', 'policy', 'init', 'line', 'link', 'price'].includes(kind))
+        return; this.conflict = false; this.draft = { kind, plan_revision: this.view.plan?.revision, reason: '', ...data }; this.history.reset(this.draft); this.persist(); this.render(); this.dialog.scrollTop = 0; }
+    resume() { try {
+        const d = JSON.parse(localStorage.getItem(this.key()) ?? '{}').draft;
+        if (!d || typeof d.kind !== 'string' || JSON.stringify(d).length > 60000)
+            throw Error('A piszkozat nem olvasható.');
+        this.draft = d;
+        this.preview = undefined;
+        this.history.reset(d);
+        this.render();
+        this.message('Helyi piszkozat. Mentés előtt kérj új előnézetet.');
+    }
+    catch (e) {
+        this.error(e);
+    } }
+    closeButton() { button(this.body, 'Bezárás', () => { if (this.leave()) {
+        this.cancelRead();
+        this.dialog.close();
+    } }); }
+    search() { const d = fold(this.body, 'Keresés és szűrés'); let text = this.filter.query ?? ''; input(d, 'Anyag / beszállító – legalább 2 karakter, ékezet nélkül is', text, v => { text = v; }); button(d, 'Keresés', () => { if (text.length === 1) {
+        this.message('Legalább két karaktert írj be.');
+        return;
+    } if (this.discard()) {
+        this.filter = { query: text };
+        void this.load();
+    } }); if (this.scope.project_id) {
+        select(d, 'Megjelenítés', this.filter.line_id ?? '', [['', 'Minden anyag'], ...this.view.lines.map((l) => [l.id, l.name + ' · ' + l.unit])], id => { if (this.discard()) {
+            this.filter = { query: this.filter.query, line_id: id || undefined };
+            void this.load();
+        } });
+    } }
+    render() {
+        const v = this.view;
+        if (!v)
+            return;
+        this.body.replaceChildren();
+        if (v.context.project)
+            this.body.append(node('h3', v.context.project.name), node('p', v.context.project.address));
+        if (this.pending) {
+            this.body.append(node('p', 'A mentés visszaigazolásra vár. Az eredeti kérést próbáld újra.'));
+            button(this.body, 'Az eredeti mentés újrapróbálása', () => { void this.write(this.pending, true); });
+            this.closeButton();
+            return;
+        }
+        if (this.scope.role === 'construction_lead')
+            button(this.body, 'Telephelyi teendők és értesítések', () => { void this.notes(); });
+        button(this.body, 'Anyagadatok frissítése', () => { if (this.discard()) {
+            this.filter = {};
+            void this.load();
+        } });
+        if (this.draft) {
+            this.renderDraft();
+            this.closeButton();
+            return;
+        }
+        if (!this.draft) {
+            try {
+                if (JSON.parse(localStorage.getItem(this.key()) ?? '{}').draft)
+                    button(this.body, 'Helyi piszkozat folytatása', () => this.resume());
+            }
+            catch { }
+        }
+        if (!this.scope.project_id) {
+            const projects = fold(this.body, 'Kertépítés kiválasztása', true);
+            select(projects, 'Kertépítés', '', [['', 'Válassz kertépítést'], ...(v.projects ?? []).sort((a, b) => a.name.localeCompare(b.name, 'hu')).map((p) => [p.id, p.name + ' · ' + p.address])], id => { if (id && this.discard()) {
+                this.scope = { project_id: id, role: 'office' };
+                this.filter = {};
+                void this.load();
+            } });
+            this.search();
+            this.renderCatalog();
+        }
+        else {
+            this.search();
+            if (this.scope.role === 'office')
+                button(this.body, 'Anyagtörzs és beszállítók', () => { if (this.discard()) {
+                    this.scope = { project_id: null, role: 'office' };
+                    this.filter = {};
+                    void this.load();
+                } });
+            if (!v.plan) {
+                this.body.append(node('p', 'Az anyagterv még nincs betöltve az elfogadott ajánlatból.'));
+                if (v.context.can_plan)
+                    button(this.body, 'Anyagterv betöltése az elfogadott ajánlatból', () => this.start('init'));
+            }
+            else {
+                this.body.append(node('p', 'Ajánlatváltozat: ' + v.plan.quote_version + ' · Anyagterv: ' + v.plan.revision + '. változat'));
+                if (v.context.can_write)
+                    button(this.body, '+ Extra anyag', () => this.start('extra', { id: crypto.randomUUID(), name: '', unit: '', quantity: '', extra_reason: 'shortage', supplier: '', expected_price: null }));
+                this.renderGroups();
+                this.renderLines();
+                this.renderLots();
+                this.renderEvents();
+                if (this.scope.role === 'office')
+                    this.renderVersions();
+            }
+        }
+        if (v.cost)
+            this.renderCost();
+        if (this.draft)
+            this.renderDraft();
+        this.closeButton();
+    }
+    page(parent, key, text) { const c = this.view.cursors?.[key]; if (!c)
+        return; button(parent, text, () => { if (!this.discard())
+        return; this.filter = { ...this.filter, ['after_' + key]: c }; if (key === 'event') {
+        delete this.filter.after_event;
+        this.filter.before_event = c;
+    } void this.load(key); }); }
+    renderGroups() { const rows = this.view.purchase_groups ?? []; if (this.scope.role === 'client')
+        return; const d = fold(this.body, 'Összevont beszerzési lista', !this.draft); for (const r of rows) {
+        const x = fold(d, r.name + ' · ' + num(r.received) + ' / ' + num(r.purchase_plan) + ' ' + r.unit);
+        x.append(node('p', 'Beépítési terv: ' + num(r.installed_plan) + ' · Beszerzési terv: ' + num(r.purchase_plan) + ' · Beszerzett: ' + num(r.received) + ' ' + r.unit), node('p', 'Telephelyen: ' + num(r.depot) + ' · Úton: ' + num(r.transit) + ' · Helyszínen: ' + num(r.site) + ' · Beépítve: ' + num(r.installed) + ' ' + r.unit));
+        if (!r.mapped && this.scope.role === 'office')
+            x.append(node('p', 'Közös törzsanyaghoz még nincs kapcsolva; külön beszerzési sorként szerepel.'));
+    } if (!rows.length)
+        d.append(node('p', 'Nincs összevonható anyagsor.')); this.page(d, 'group', 'További összevont anyagok'); }
+    renderLines() {
+        const v = this.view, root = fold(this.body, 'Anyagok (' + v.summary.line_count + ')', !this.draft);
+        for (const extra of [false, true]) {
+            const rows = v.lines.filter((l) => (l.source_kind === 'extra') === extra);
+            if (!rows.length)
+                continue;
+            const group = fold(root, extra ? 'Extra anyagok' : 'Ajánlati anyagok', !extra);
+            for (const l of rows.sort((a, b) => a.name.localeCompare(b.name, 'hu'))) {
+                const d = fold(group, l.name + ' · ' + num(l.installed) + ' / ' + num(l.installed_plan) + ' ' + l.unit + (l.active ? '' : ' · Korábbi tétel'), this.filter.line_id === l.id);
+                d.append(node('p', l.source_label || (extra ? 'Külön beszerzési igény; önmagában nem fizetős pótmunka.' : '')), node('p', 'Beépítési terv: ' + num(l.installed_plan) + ' ' + l.unit + ' · Eredeti: ' + num(l.original_installed) + ' ' + l.unit));
+                this.progress(d, 'Beépítve', l.installed, l.installed_plan, l.installed_percent, l.unit);
+                if (this.scope.role !== 'client') {
+                    d.append(node('p', 'Beszerzési terv: ' + num(l.purchase_plan) + ' ' + l.unit + ' · Beszerzett: ' + num(l.received) + ' · Telephelyen: ' + num(l.depot) + ' · Úton: ' + num(l.transit) + ' · Helyszínen még nem beépített: ' + num(l.site) + ' ' + l.unit));
+                    this.progress(d, 'Helyszínre szállítva', l.delivered, l.purchase_plan, l.delivered_percent, l.unit);
+                    this.progress(d, 'Beszerzett / megérkezett', l.received, l.purchase_plan, l.received_percent, l.unit);
+                }
+                if (['office', 'construction_lead'].includes(this.scope.role)) {
+                    d.append(node('p', 'Beszerzés: ' + (l.owner === 'office' ? 'Iroda – telephelyen átvehető' : 'Kivitelezők') + ' · ' + (l.supplier || 'Beszerzési hely még nincs megadva')), node('p', 'Várható egységár: ' + num(l.expected_price) + ' Ft · Csomagméret: ' + num(l.pack) + ' · Fuvar-kapacitás: ' + num(l.capacity) + ' · Tervezett fuvarok: ' + num(l.trips)));
+                    if (l.reason)
+                        d.append(node('p', l.reason));
+                    button(d, 'Szállítmányok és mozgások megnyitása', () => { if (this.discard()) {
+                        this.filter = { line_id: l.id };
+                        void this.load();
+                    } });
+                    if (v.context.can_write && l.active && !l.linked_line_id) {
+                        for (const kind of ['order', 'receive_depot', 'receive_site'])
+                            if (this.scope.role === 'office' || l.owner === 'crew')
+                                button(d, names[kind] + ' – új szállítmány', () => this.start(kind, { line_id: l.id, lot_id: crypto.randomUUID(), revision: 0, quantity: '', actual_price: null, place: l.supplier, work_date: todayBudapest() }));
+                    }
+                    if (v.context.can_plan) {
+                        button(d, 'Törzsanyag és beszerzési felelős', () => this.start('line', { line_id: l.id, revision: l.revision, material_id: l.material_id, owner: l.owner }));
+                        if (extra && l.active)
+                            button(d, 'Kapcsolás jóváhagyott ajánlati anyaghoz', () => this.start('link', { line_id: l.id, source_unit: l.unit, target_line_id: '' }));
+                    }
+                }
+            }
+        }
+        if (!v.lines.length)
+            root.append(node('p', 'Nincs megjeleníthető anyagsor.'));
+        this.page(root, 'line', 'További anyagsorok');
+        button(root, 'Megjelenített lista letöltése (CSV)', () => this.download(false));
+        button(root, 'Megjelenített lista letöltése (JSON)', () => this.download(true));
+        button(root, 'Megjelenített lista nyomtatása / PDF', () => this.print());
+    }
+    progress(parent, label, value, total, percent, unit) { parent.append(node('strong', label + ': ' + num(value) + ' / ' + num(total) + ' ' + unit + ' · ' + (percent == null ? 'Nincs pozitív terv' : num(percent) + '%'))); if (percent == null)
+        return; const n = Number(percent), scale = Math.max(100, Math.ceil(n / 100) * 100), track = node('div'); track.className = 'plan-track material-track'; track.setAttribute('role', 'meter'); track.setAttribute('aria-label', label); track.setAttribute('aria-valuemin', '0'); track.setAttribute('aria-valuemax', String(scale)); track.setAttribute('aria-valuenow', String(n)); const span = node('span'); span.style.width = (n / scale * 100) + '%'; span.style.backgroundColor = '#327650'; track.append(span); parent.append(track); }
+    renderLots() { const v = this.view; if (!['office', 'construction_lead'].includes(this.scope.role))
+        return; const root = fold(this.body, 'Szállítmányok (' + v.lots.length + ')', !!this.filter.line_id && !this.draft); for (const l of v.lots) {
+        const d = fold(root, l.name + ' · ' + new Date(l.created_at).toLocaleDateString('hu-HU') + ' · ' + l.id.slice(-6));
+        d.append(node('p', 'Megrendelt: ' + num(l.ordered) + ' · Telephelyen: ' + num(l.depot) + ' · Úton: ' + num(l.transit) + ' · Helyszínen: ' + num(l.site) + ' · Beépítve: ' + num(l.installed) + ' ' + l.unit), node('p', 'Beszerzési hely: ' + (l.place || 'Nincs megadva')));
+        if (l.price_visible)
+            d.append(node('p', 'Tényleges beszerzési egységár: ' + (l.actual_price == null ? 'Még nincs rögzítve' : num(l.actual_price) + ' Ft')));
+        if (v.context.can_write) {
+            for (const kind of ['order', 'receive_depot', 'receive_site', 'pickup', 'deliver', 'install', 'return_depot']) {
+                const line = v.lines.find((r) => r.id === l.line_id);
+                if (this.scope.role !== 'office' && line?.owner === 'office' && ['order', 'receive_depot', 'receive_site'].includes(kind))
+                    continue;
+                button(d, names[kind], () => this.start(kind, { line_id: l.line_id, lot_id: l.id, revision: l.revision, quantity: '', work_date: todayBudapest() }));
+            }
+            if (this.scope.role === 'office')
+                button(d, 'Tényleges egységár javítása', () => this.start('price', { line_id: l.line_id, lot_id: l.id, revision: l.revision, actual_price: l.actual_price, work_date: todayBudapest() }));
+        }
+        button(d, 'Szállítmány előzményei', () => { if (this.discard()) {
+            this.filter = { line_id: l.line_id, lot_id: l.id };
+            void this.load();
+        } });
+    } this.page(root, 'lot', 'További szállítmányok'); }
+    renderEvents() { const v = this.view; if (!['office', 'construction_lead'].includes(this.scope.role))
+        return; const root = fold(this.body, 'Anyagmozgások és visszavonások'); for (const e of v.events) {
+        const d = fold(root, new Date(e.created_at).toLocaleString('hu-HU') + ' · ' + (names[e.kind] ?? e.kind) + ' · ' + e.name);
+        d.append(node('p', 'Munkanap: ' + e.work_date + ' · ' + e.actor_name + ' · ' + roles[e.role]), node('p', 'Mennyiség: ' + num(e.quantity) + ' ' + e.unit + (e.reason ? ' · ' + e.reason : '')));
+        if (e.actual_price != null)
+            d.append(node('p', 'Rögzített egységár: ' + num(e.actual_price) + ' Ft'));
+        if (e.reversed_by)
+            d.append(node('p', 'Visszavont mozgás; az ellenmozgás az előzményekben látható.'));
+        if (v.context.can_write && !e.reversed_by) {
+            const lot = v.lots.find((l) => l.id === e.lot_id);
+            if (lot)
+                button(d, e.kind === 'reverse' ? 'Mozgás visszaállítása' : 'Mozgás visszavonása', () => this.start('reverse', { line_id: e.line_id, lot_id: e.lot_id, revision: lot.revision, reverses_id: e.id, work_date: todayBudapest() }));
+        }
+    } this.page(root, 'event', 'Korábbi mozgások'); }
+    renderCost() { const c = this.view.cost, d = fold(this.body, 'Belső anyagköltség – csak iroda'); d.append(node('p', 'Jóváhagyott ajánlati anyagérték: ' + num(c.quoted) + ' Ft'), node('p', 'Tényleges beszerzési költség: ' + num(c.purchased) + ' Ft'), node('p', 'Elszámolt tényleges költség: ' + num(c.charged) + ' Ft')); if (!c.complete)
+        d.append(node('strong', 'Hiányos költségadat: ' + c.missing_prices + ' szállítmány tényleges ára nincs megadva. A fenti összegek részlegesek.'));
+    else
+        d.append(node('strong', 'Anyagoldali különbség: ' + num(c.difference) + ' Ft')); d.append(node('p', 'Beépített / helyszíni maradék / még helyszínre nem szállított: ' + num(c.policy.installed) + ' / ' + num(c.policy.onsite) + ' / ' + num(c.policy.offsite) + '% · ' + c.policy.version + '. szabályváltozat')); }
+    renderCatalog() { const v = this.view; const m = fold(this.body, 'Anyagtörzs (' + v.materials.length + ')', !this.draft); button(m, '+ Új törzsanyag', () => this.start('material', { id: crypto.randomUUID(), revision: 0, name: '', unit: '', vendor_id: null, expected_price: null, pack: '0', capacity: '0', active: true })); for (const x of [...v.materials].sort((a, b) => a.name.localeCompare(b.name, 'hu')))
+        button(m, x.name + ' · ' + x.unit + (x.active ? '' : ' · Archivált'), () => this.start('material', { ...x })); this.page(m, 'master', 'További törzsanyagok'); const d = fold(this.body, 'Beszállítók (' + v.vendors.length + ')'); button(d, '+ Új beszállító', () => this.start('vendor', { id: crypto.randomUUID(), revision: 0, name: '', place: '', active: true })); for (const x of [...v.vendors].sort((a, b) => a.name.localeCompare(b.name, 'hu')))
+        button(d, x.name + (x.active ? '' : ' · Archivált'), () => this.start('vendor', { ...x })); this.page(d, 'vendor', 'További beszállítók'); const p = v.policy; button(this.body, 'Belső költségsúlyok', () => this.start('policy', { revision: p.version, installed: quoteInput(p.installed, true), onsite: quoteInput(p.onsite, true), offsite: quoteInput(p.offsite, true) })); const history = fold(this.body, 'Törzs- és beállításelőzmények'); for (const e of v.catalog_events ?? []) {
+        const d = fold(history, new Date(e.created_at).toLocaleString('hu-HU') + ' · ' + (names[e.kind] ?? e.kind) + ' · ' + e.actor_name);
+        this.renderObject(d, e.document);
+    } if (v.catalog_cursor)
+        button(history, 'Korábbi törzselőzmények', () => { this.filter = { ...this.filter, before_catalog: v.catalog_cursor }; void this.load('catalog'); }); }
+    renderVersions() { const v = this.view, d = fold(this.body, 'Anyagterv változatelőzményei'); for (const x of v.versions ?? [])
+        button(d, x.version + '. terv · ' + x.quote_version + '. ajánlat · ' + new Date(x.created_at).toLocaleString('hu-HU'), () => { if (this.discard()) {
+            this.filter = { ...this.filter, plan_version: x.version };
+            void this.load();
+        } }); if (v.version_cursor != null)
+        button(d, 'Korábbi tervváltozatok', () => { if (this.discard()) {
+            this.filter = { ...this.filter, before_version: v.version_cursor };
+            void this.load('version');
+        } }); if (v.history) {
+        const old = fold(d, 'Kiválasztott korábbi terv', true);
+        for (const l of v.history)
+            old.append(node('p', l.name + ' · ' + num(l.installed_plan) + ' / ' + num(l.purchase_plan) + ' ' + l.unit + (l.active ? '' : ' · Korábbi sor')));
+    } }
+    picker(parent, kind, label, value, changed) { const box = fold(parent, label, true); let rows = [...(this.view?.[kind] ?? [])]; const choices = () => [['', 'Nincs kiválasztva'], ...rows.filter(x => x.active).sort((a, b) => a.name.localeCompare(b.name, 'hu')).map(x => [x.id, x.name + (kind === 'materials' ? ' · ' + x.unit : '')]), ...(value && !rows.some(x => x.id === value) ? [[value, 'Jelenleg hozzárendelt tétel']] : [])]; const s = select(box, label, value ?? '', choices(), id => { value = id || null; changed(value, rows.find(x => x.id === id)); }); let request = 0, timer; input(box, 'Keresés – legalább 2 karakter, ékezet nélkül is', '', text => { clearTimeout(timer); if (text.length === 1)
+        return; const generation = this.generation, seq = ++request; timer = setTimeout(() => { void this.api.material('material_read', { ...this.args(), filter: { query: text } }).then(v => { if (generation !== this.generation || seq !== request || !s.isConnected)
+        return; rows = v[kind]; s.replaceChildren(...choices().map(([id, name]) => new Option(name, id))); s.value = value ?? ''; }).catch(e => { if (generation === this.generation)
+        this.error(e); }); }, 300); }); }
+    async notes(cursor, box) { const gen = this.generation, parent = box ?? fold(this.body, 'Telephelyi teendők', true); try {
+        const rows = await this.api.material('material_notifications', { cursor });
+        if (gen !== this.generation || !parent.isConnected)
+            return;
+        for (const n of rows.filter(n => n.organization_id === this.org))
+            button(parent, n.name + ' · Átvehető: ' + num(n.available) + ' ' + n.unit + ' · ' + new Date(n.created_at).toLocaleString('hu-HU') + (n.completed_at ? ' · Átvéve' : ''), () => { if (this.owner && this.org && this.leave())
+                void this.show(this.owner, this.org, { project_id: n.project_id, role: 'construction_lead' }, n.line_id); });
+        if (!rows.length)
+            parent.append(node('p', 'Nincs további telephelyi értesítés.'));
+        if (rows.length === 100) {
+            const last = rows.at(-1);
+            button(parent, 'Korábbi telephelyi teendők', () => { void this.notes({ time: last.created_at, id: last.id }, parent); });
+        }
+    }
+    catch (e) {
+        if (gen === this.generation)
+            this.error(e);
+    } }
+    renderDraft() {
+        const d = this.draft, v = this.view, kind = d.kind, box = fold(this.body, names[kind] ?? 'Anyagkezelés', true);
+        const text = (key, label, type = 'text', optional = false) => input(box, label, d[key], value => { d[key] = optional && value === '' ? null : value; this.touch(key); }, type);
+        const unit = (key, label, optional = false) => text(key, label, 'number', optional);
+        if (kind === 'init')
+            box.append(node('p', 'Az aktuális elfogadott ajánlat anyagai kerülnek a saját ERP-anyagtervbe.'));
+        if (kind === 'vendor') {
+            text('name', 'Beszállító neve');
+            text('place', 'Beszerzési hely');
+            this.activeCheckbox(box, d);
+        }
+        if (kind === 'material') {
+            text('name', 'Anyag neve');
+            text('unit', 'Mértékegység');
+            this.picker(box, 'vendors', 'Alapértelmezett beszállító', d.vendor_id, id => { d.vendor_id = id; this.touch(); });
+            unit('expected_price', 'Becsült nettó beszerzési egységár (Ft) – elhagyható', true);
+            unit('pack', 'Csomagméret – 0: nincs kerekítés');
+            unit('capacity', 'Egy fuvar kapacitása – 0: nincs megadva');
+            this.activeCheckbox(box, d);
+        }
+        if (kind === 'policy') {
+            box.append(node('p', 'A belső anyagelszámolás költségsúlyai.'));
+            unit('installed', 'Beépített anyag költsége (%)');
+            unit('onsite', 'Helyszínen még nem beépített anyag (%)');
+            unit('offsite', 'Még helyszínre nem szállított anyag (%)');
+        }
+        if (kind === 'extra') {
+            this.picker(box, 'materials', 'Törzsanyag – elhagyható', d.material_id, (id, m) => { d.material_id = id; if (m) {
+                d.name = m.name;
+                d.unit = m.unit;
+                d.expected_price = m.expected_price;
+                d.supplier = m.vendor_name ?? '';
+                this.touch();
+                this.render();
+            }
+            else
+                this.touch(); });
+            text('name', 'Extra anyag neve');
+            text('unit', 'Mértékegység');
+            unit('quantity', 'Szükséges mennyiség');
+            unit('expected_price', 'Várható nettó egységár (Ft) – elhagyható', true);
+            text('supplier', 'Beszerzési hely / beszállító');
+            select(box, 'Indok', d.extra_reason, [['customer', 'Ügyfél kérte'], ['shortage', 'Kevés volt a kalkulált mennyiség']], value => { d.extra_reason = value; this.touch(); });
+            box.append(node('strong', 'Ez a beszerzési igény nem jelent ügyfél által elfogadott fizetős pótmunkát.'));
+        }
+        if (kind === 'line') {
+            this.picker(box, 'materials', 'Törzsanyag', d.material_id, id => { d.material_id = id; this.touch(); });
+            select(box, 'Beszerzés felelőse', d.owner, [['office', 'Iroda szerzi be – telephelyen átvehető'], ['crew', 'Kivitelezők szerzik be']], value => { d.owner = value; this.touch(); });
+        }
+        if (kind === 'link') {
+            const current = v.lines.find((x) => x.id === d.line_id), unit = d.source_unit ?? current?.unit;
+            let rows = v.lines;
+            const target = select(box, 'Elfogadott ajánlati anyag', d.target_line_id, [['', 'Válassz azonos mértékegységű anyagot'], ...rows.filter((x) => x.source_kind === 'quote' && x.active && x.unit === unit).map((x) => [x.id, x.name + ' · ' + x.unit])], value => { d.target_line_id = value; this.touch(); });
+            let timer;
+            input(box, 'Ajánlati anyag keresése – legalább 2 karakter', '', text => { clearTimeout(timer); if (text.length < 2)
+                return; const gen = this.generation; timer = setTimeout(() => { void this.api.material('material_read', { ...this.args(), filter: { query: text } }).then(r => { if (gen !== this.generation || !target.isConnected)
+                return; rows = r.lines; target.replaceChildren(new Option('Válassz anyagot', ''), ...rows.filter((x) => x.source_kind === 'quote' && x.active && x.unit === unit).map((x) => new Option(x.name + ' · ' + x.unit, x.id))); target.value = d.target_line_id; }).catch(e => this.error(e)); }, 300); });
+            box.append(node('p', 'Az extra szállítmányai ehhez az ajánlati anyaghoz kapcsolódnak, dupla igény nélkül.'));
+        }
+        if (materialActions[kind]) {
+            const l = v.lines.find((x) => x.id === d.line_id), lot = v.lots.find((x) => x.id === d.lot_id);
+            box.append(node('p', (l?.name ?? lot?.name ?? 'Kiválasztott anyag') + ' · ' + (l?.unit ?? lot?.unit ?? '')));
+            text('work_date', 'Munkanap', 'date');
+            if (!['price', 'reverse'].includes(kind))
+                unit('quantity', 'Mozgás mennyisége');
+            if (kind === 'price' || d.revision === 0 || ['receive_depot', 'receive_site'].includes(kind) && lot?.price_visible && lot.actual_price == null)
+                unit('actual_price', 'Tényleges nettó beszerzési egységár (Ft) – ha még nem ismert, üres', true);
+            if (d.revision === 0) {
+                text('place', 'Tényleges beszerzési hely');
+                this.picker(box, 'vendors', 'Beszállító – elhagyható', d.vendor_id, id => { d.vendor_id = id; this.touch(); });
+            }
+            if (kind === 'reverse')
+                box.append(node('strong', 'A korrekció megőrzött ellenmozgás. A későbbi felhasználást előbb rendezni kell.'));
+            box.append(node('p', 'Eltérő egységárú részszállítást új szállítmányként rögzíts.'));
+        }
+        if (this.conflict)
+            button(box, 'Friss adatok betöltése – a beírt adatok megőrzésével', () => { void this.refreshDraft(); });
+        text('reason', kind === 'reverse' ? 'Visszavonás / visszaállítás indoka (kötelező)' : 'Megjegyzés / módosítás indoka (opcionális)', 'textarea');
+        const actions = node('div');
+        actions.className = 'material-actions';
+        const undo = button(actions, 'Visszavonás', () => { const x = this.history.undo(); if (x) {
+            this.draft = x;
+            this.preview = undefined;
+            this.persist();
+            this.render();
+        } });
+        undo.dataset.materialUndo = 'true';
+        const redo = button(actions, 'Újra', () => { const x = this.history.redo(); if (x) {
+            this.draft = x;
+            this.preview = undefined;
+            this.persist();
+            this.render();
+        } });
+        redo.dataset.materialRedo = 'true';
+        button(actions, 'Szerkesztés elvetése', () => { if (this.discard())
+            this.render(); });
+        box.append(actions);
+        const review = node('div');
+        review.dataset.materialReview = 'true';
+        box.append(review);
+        if (this.preview) {
+            this.renderObject(review, this.preview.document);
+            if (this.preview.document?.warning) {
+                review.append(node('strong', this.preview.document.warning));
+                const label = node('label', 'A terv túllépését ellenőriztem, megerősítem'), x = document.createElement('input');
+                x.type = 'checkbox';
+                x.className = 'inline-check';
+                x.checked = this.acknowledged;
+                x.addEventListener('change', () => { this.acknowledged = x.checked; d.exceed_accepted = x.checked; this.persist(); this.buttons(); });
+                label.prepend(x);
+                review.append(label);
+            }
+        }
+        button(box, 'Mentési előnézet ellenőrzése', () => { void this.review(); });
+        const save = button(box, names[kind] ?? 'Mentés', () => this.save());
+        save.dataset.materialSave = 'true';
+        this.buttons();
+    }
+    activeCheckbox(p, d) { const l = node('label', 'Aktív törzsrekord'), x = document.createElement('input'); x.type = 'checkbox'; x.className = 'inline-check'; x.checked = d.active !== false; x.addEventListener('change', () => { d.active = x.checked; this.touch(); }); l.prepend(x); p.append(l); }
+    renderObject(parent, value) { if (!value)
+        return; const labels = { name: 'Megnevezés', unit: 'Mértékegység', quantity: 'Mennyiség', place: 'Beszerzési hely', supplier: 'Beszállító / hely', ordered: 'Megrendelt', depot: 'Telephelyen', transit: 'Átvett / úton', site: 'Helyszínen még nem beépített', installed: 'Beépített', actual_price: 'Tényleges nettó egységár (Ft)', expected_price: 'Várható nettó egységár (Ft)', pack: 'Csomagméret', capacity: 'Fuvar-kapacitás', onsite: 'Helyszíni költségsúly (%)', offsite: 'Még ki nem szállított költségsúly (%)', owner: 'Beszerzési felelős', active: 'Aktív', extra_reason: 'Extra indoka' }; if (value.kind)
+        parent.append(node('h3', names[value.kind] ?? 'Anyagkezelés')); for (const [key, label] of Object.entries(labels)) {
+        if (!(key in value))
+            continue;
+        let v = value[key];
+        if (key === 'owner')
+            v = v === 'office' ? 'Iroda' : 'Kivitelezők';
+        else if (key === 'extra_reason')
+            v = v === 'customer' ? 'Ügyfél kérte' : 'Kevés volt a kalkulált mennyiség';
+        else if (typeof v === 'boolean')
+            v = v ? 'Igen' : 'Nem';
+        else if (['quantity', 'ordered', 'depot', 'transit', 'site', 'installed', 'actual_price', 'expected_price', 'pack', 'capacity', 'onsite', 'offsite'].includes(key))
+            v = num(v);
+        parent.append(node('p', label + ': ' + (v ?? 'Nincs megadva')));
+    } if (value.before) {
+        const b = fold(parent, 'Mentés előtti adatok');
+        this.renderObject(b, value.before);
+    } if (value.after && typeof value.after === 'object') {
+        const a = fold(parent, 'Mentés utáni adatok', true);
+        this.renderObject(a, value.after);
+    } }
+    async review() { if (this.busy || !this.draft)
+        return; if (!navigator.onLine) {
+        this.message('Az előnézethez internetkapcsolat kell. A helyi piszkozat megmaradt.');
+        return;
+    } const gen = this.generation, snapshot = JSON.stringify(this.draft); this.busy = true; this.reading = true; this.message('Készlet és mennyiségek ellenőrzése…'); try {
+        const r = await this.api.material('material_preview', { ...this.args(), command: structuredClone(this.draft) });
+        if (gen !== this.generation || snapshot !== JSON.stringify(this.draft))
+            return;
+        this.preview = r;
+        this.acknowledged = false;
+        this.render();
+        this.message(r.document.warning ? 'A terv túllépését külön meg kell erősíteni.' : 'A mentési előnézet ellenőrzése sikeres.', !r.document.warning);
+    }
+    catch (e) {
+        if (gen === this.generation)
+            this.error(e);
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            this.reading = false;
+        }
+    } }
+    async refreshDraft() { if (this.busy || !this.draft)
+        return; const gen = this.generation, d = structuredClone(this.draft); this.busy = true; this.reading = true; try {
+        const filter = {};
+        if (d.line_id)
+            filter.line_id = d.line_id;
+        if (d.lot_id && d.revision > 0)
+            filter.lot_id = d.lot_id;
+        if (d.kind === 'material')
+            filter.master_id = d.id;
+        if (d.kind === 'vendor')
+            filter.vendor_id = d.id;
+        const v = await this.api.material('material_read', { ...this.args(), filter });
+        if (gen !== this.generation)
+            return;
+        d.plan_revision = v.plan?.revision;
+        if (d.kind === 'policy')
+            d.revision = v.policy.version;
+        else if (d.kind === 'material' || d.kind === 'vendor') {
+            const row = v[d.kind === 'material' ? 'materials' : 'vendors'].find((x) => x.id === d.id);
+            d.revision = row?.revision ?? 0;
+        }
+        else if (d.lot_id && d.revision > 0) {
+            const row = v.lots.find((x) => x.id === d.lot_id);
+            if (!row)
+                throw Error('A szállítmány már nem ezen az anyagsoron található. Nyisd meg az aktuális anyagot.');
+            d.revision = row.revision;
+        }
+        else if (d.kind === 'line') {
+            const row = v.lines.find((x) => x.id === d.line_id);
+            if (!row)
+                throw Error('Az anyagsor nem elérhető.');
+            d.revision = row.revision;
+        }
+        this.view = v;
+        this.draft = d;
+        this.preview = undefined;
+        this.conflict = false;
+        this.history.reset(d);
+        this.persist();
+        this.render();
+        this.message('Friss adatok betöltve. A beírt adatok megmaradtak; ellenőrizd újra az előnézetet.');
+    }
+    catch (e) {
+        if (gen === this.generation)
+            this.error(e);
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            this.reading = false;
+        }
+    } }
+    save() { if (this.busy || !this.draft || !this.preview) {
+        this.message('Előbb ellenőrizd a mentési előnézetet.');
+        return;
+    } if (this.preview.document.warning && !this.acknowledged) {
+        this.message('A terv túllépését külön meg kell erősíteni.');
+        return;
+    } void this.write({ ...this.args(), command: structuredClone(this.draft), preview_token: this.preview.token, confirmed: true, request_id: crypto.randomUUID() }); }
+    async write(args, retry = false) { if (this.busy || !this.owner)
+        return; if (this.pending && !retry) {
+        this.message('Előbb az eredeti mentést próbáld újra.');
+        return;
+    } this.pending = structuredClone(args); this.persist(); const gen = this.generation; this.busy = true; this.reading = false; this.message('Anyagkezelési művelet mentése…'); const locked = new Map(); for (const x of Array.from(this.body.querySelectorAll('button,input,textarea,select'))) {
+        locked.set(x, x.disabled);
+        x.disabled = true;
+    } let saved = false; try {
+        await this.api.material('material_write', args);
+        if (gen !== this.generation)
+            return;
+        this.pending = undefined;
+        this.draft = undefined;
+        this.preview = undefined;
+        this.persist();
+        saved = true;
+    }
+    catch (e) {
+        if (gen === this.generation) {
+            if (e && typeof e === 'object' && 'status' in e && [400, 401, 403, 409, 422].includes(Number(e.status))) {
+                this.pending = undefined;
+                this.preview = undefined;
+                this.conflict = Number(e.status) === 409;
+            }
+            this.persist();
+            this.error(e);
+        }
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            for (const [x, value] of locked)
+                x.disabled = value;
+        }
+    } if (gen !== this.generation)
+        return; if (saved) {
+        this.filter = {};
+        await this.load();
+        if (gen + 1 === this.generation) {
+            if (this.view)
+                this.message('Az anyagkezelési művelet mentve, az összesítők frissültek.', true);
+            this.onSaved();
+        }
+    }
+    else if (this.view)
+        this.render(); }
+    download(json) { if (!this.view)
+        return; const rows = this.view.lines, blob = new Blob([json ? JSON.stringify({ format: 'diszkertek-materials-1', project: this.view.context.project, plan: this.view.plan, lines: rows }, null, 2) : materialCsv(rows, this.scope.role === 'client')], { type: json ? 'application/json' : 'text/csv;charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = 'Diszkertek_anyaglista_' + todayBudapest() + (json ? '.json' : '.csv'); a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); this.message('A megjelenített lista letöltése elindult.', true); }
+    print() { if (!this.view)
+        return; const rows = structuredClone(this.view.lines), project = this.view.context.project, client = this.scope.role === 'client'; const frame = document.createElement('iframe'); frame.title = 'Anyaglista nyomtatása'; frame.style.cssText = 'position:fixed;left:-10000px;width:900px;height:800px'; frame.srcdoc = '<!doctype html><html lang="hu"><meta charset="utf-8"><title>Díszkertek anyaglista</title><style>@page{size:A4;margin:15mm}body{font:11pt Arial;color:#203c2e}table{border-collapse:collapse;width:100%;font-size:9pt}td,th{border:1px solid #acb6ae;padding:7px;text-align:left;overflow-wrap:anywhere}tr{break-inside:avoid}thead{display:table-header-group}</style><body></body></html>'; frame.onload = () => { const doc = frame.contentDocument; if (!doc)
+        return; doc.body.append(node('h1', 'DÍSZKERTEK – anyaglista'), node('p', (project?.name ?? '') + ' · ' + (project?.address ?? '')), node('p', 'A megjelenített, jogosultság szerint szűrt lista.')); const table = document.createElement('table'), head = document.createElement('thead'), tr = document.createElement('tr'); for (const label of ['Anyag', 'Egység', 'Beépítési terv', ...(client ? [] : ['Beszerzési terv', 'Telephelyen', 'Úton', 'Helyszínen']), 'Beépített'])
+        tr.append(node('th', label)); head.append(tr); table.append(head); const body = document.createElement('tbody'); for (const r of rows) {
+        const row = document.createElement('tr');
+        for (const value of [r.name, r.unit, num(r.installed_plan), ...(client ? [] : [num(r.purchase_plan), num(r.depot), num(r.transit), num(r.site)]), num(r.installed)])
+            row.append(node('td', value));
+        body.append(row);
+    } table.append(body); doc.body.append(table, node('p', '+36 70 634 9630 · info@diszkertek.hu · www.diszkertek.hu')); frame.contentWindow.onafterprint = () => frame.remove(); frame.contentWindow?.focus(); frame.contentWindow?.print(); }; document.body.append(frame); }
+}

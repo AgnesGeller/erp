@@ -69,6 +69,7 @@ export class ErpApi {
   async staffPublic<T>(action:'staff_setup'|'staff_recover',args:Record<string,unknown>):Promise<T>{return this.request<T>({action,...args});}
   async staff<T>(action:'staff_admin_list'|'staff_manage'|'staff_issue',args:Record<string,unknown>):Promise<T>{return this.feature<T>(action,args);}
   async plan<T>(action:string,args:Record<string,unknown>={}):Promise<T>{if(!/^plan_(projects|read|init|graph|task|notifications|history|statistics|color)$/.test(action))throw new ApiError('Ismeretlen munkatervművelet.',400);return this.feature<T>(action,args);}
+  async material<T>(action:'material_read'|'material_preview'|'material_write'|'material_notifications',args:Record<string,unknown>={}):Promise<T>{return this.feature<T>(action,args);}
   async sheet<T>(action:'sheet_read'|'sheet_preview'|'sheet_write'|'sheet_mine',args:Record<string,unknown>):Promise<T>{return this.feature<T>(action,args);}
   async entry<T>(action:'entry_read'|'entry_preview'|'entry_write',args:Record<string,unknown>):Promise<T>{return this.feature<T>(action,args);}
   private async feature<T>(action:string,args:Record<string,unknown>):Promise<T>{const epoch=this.epoch,token=await this.accessToken();if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);try{const result=await this.request<{data:T}>({...args,action},token);if(epoch!==this.epoch)throw new ApiError('A munkamenet megváltozott.',401);return result.data;}catch(e){if(epoch===this.epoch&&e instanceof ApiError&&e.status===401)this.clear();throw e;}}

@@ -1,5 +1,5 @@
-const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await import(new URL('./erp-quote-tools.js?v=0.9.0', import.meta.url).href);
-const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.9.0', import.meta.url).href);
+const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await import(new URL('./erp-quote-tools.js?v=0.10.0', import.meta.url).href);
+const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.10.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const labels = { draft: 'Piszkozat', ready: 'Elkészült, kiküldésre vár', sent: 'Kiküldött', accepted: 'Elfogadott', rejected: 'Elutasított', withdrawn: 'Visszavont' };
 const eventNames = { entry_change_accepted: 'Kétoldalúan jóváhagyott változás', save: 'Mentés', ready: 'Elkészültnek jelölve', draft: 'Visszaállítva szerkesztésre', revise: 'Revízió indítva', accept: 'Árajánlat elfogadva', reject: 'Ajánlat elutasítva', withdraw: 'Ajánlat visszavonva', start: 'Kertépítés elindítva', mail_processing: 'Kiküldési rögzítés', mail_sent: 'Kiküldés visszaigazolva', manual_send_confirmed: 'Kézi kiküldés irodai visszaigazolása' };
@@ -405,10 +405,20 @@ export class QuoteDesk {
             } }));
         }
     }
+    materialPicker(parent, m, changed) { const box = fold(parent, 'Választás a közös anyagtörzsből'); let timer, sequence = 0; const result = document.createElement('div'); input(box, 'Anyag keresése – legalább 2 karakter', '', text => { clearTimeout(timer); const request = ++sequence, epoch = this.epoch; if (text.length < 2) {
+        result.replaceChildren();
+        return;
+    } timer = setTimeout(() => { void this.api.material('material_read', { organization_id: this.org, project_id: null, role: 'office', filter: { query: text } }).then(v => { if (request !== sequence || epoch !== this.epoch || !result.isConnected)
+        return; result.replaceChildren(); select(result, 'Törzsanyag kiválasztása', '', [['', 'Válassz anyagot'], ...v.materials.sort((a, b) => a.name.localeCompare(b.name, 'hu')).map((r) => [r.id, r.name + ' · ' + r.unit])], id => { const row = v.materials.find((x) => x.id === id); if (!row)
+        return; Object.assign(m, { material_id: row.id, name: row.name, unit: row.unit, unit_price: row.expected_price ?? '0', pack: row.pack, capacity: row.capacity, supplier: row.vendor_name ?? '' }); changed(); }); if (v.cursors.master)
+        result.append(n('p', 'Szűkítsd tovább a keresést a további találatokhoz.')); }).catch(e => { if (epoch === this.epoch)
+        this.message(e instanceof Error ? e.message : 'Az anyagtörzs nem tölthető be.'); }); }, 300); }); box.append(result); }
     materials(parent, t, change) { const render = () => { parent.querySelectorAll(':scope > div').forEach(v => v.remove()); const box = document.createElement('div'); for (const m of t.materials) {
         const d = fold(box, m.name || 'Anyag megnevezése szükséges');
+        this.materialPicker(d, m, () => { change(); render(); });
         for (const [key, label, kind] of [['name', 'Anyagnév', 'text'], ['factor', 'Szükséges mennyiség egységnyi alapra', 'number'], ['unit', 'Mértékegység', 'text'], ['waste', 'Ráhagyás (%)', 'number'], ['pack', 'Csomagméret – 0: nincs', 'number'], ['capacity', 'Egy fuvar kapacitása – 0: nincs', 'number'], ['unit_price', 'Belső beszerzési egységár (Ft)', 'number'], ['supplier', 'Beszerzési hely / beszállító', 'text']])
-            input(d, label, m[key], v => { m[key] = v; change(); }, kind, 200, key === 'factor');
+            input(d, label, m[key], v => { m[key] = v; if (key === 'name' || key === 'unit')
+                delete m.material_id; change(); }, kind, 200, key === 'factor');
         input(d, 'Egyedi anyagmennyiség-képlet – elhagyható', m.quantity_formula, v => { m.quantity_formula = v; change(); }, 'text', 300);
         select(d, 'Számítás alapja', m.basis, [['quantity', 'Tétel számított mennyisége'], ['area', 'Terület (m²)'], ['volume', 'Térfogat (m³)'], ['length', 'Hossz (m)'], ['count', 'Darabszám']], v => { m.basis = v; change(); });
         select(d, 'Beszerzés felelőse', m.owner ?? 'workers', [['workers', 'Kivitelezők szerzik be'], ['office', 'Iroda szerzi be – telephelyen átvehető']], v => { m.owner = v; change(); });
@@ -660,7 +670,7 @@ export class QuoteDesk {
         return;
     } if (this.catalogChanged && !confirm('A még nem mentett árlista-módosításokat felváltja az import. Folytatod?'))
         return; const epoch = this.epoch; this.loading = true; try {
-        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.9.0', import.meta.url).href);
+        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.10.0', import.meta.url).href);
         const imported = await readCalculator(file);
         if (epoch !== this.epoch)
             return;

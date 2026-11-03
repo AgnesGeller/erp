@@ -1,5 +1,5 @@
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.9.0', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.9.0', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.10.0', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.10.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
@@ -14,6 +14,7 @@ function field(parent, label, value, change, type = 'text') { const l = node('la
 export class WorkPlanDesk {
     api;
     onError;
+    materials;
     sheets;
     organization;
     isClient = false;
@@ -58,7 +59,7 @@ export class WorkPlanDesk {
             el('plan-role').value = this.view?.context.role ?? ''; });
         el('plan-refresh').addEventListener('click', () => { if (this.leave())
             void this.load(); });
-        setInterval(() => { if (el('plan-dialog').open && !document.hidden && navigator.onLine && !this.busy && !this.dirty && !this.entries?.open && !this.sheets?.open)
+        setInterval(() => { if (el('plan-dialog').open && !document.hidden && navigator.onLine && !this.busy && !this.dirty && !this.entries?.open && !this.sheets?.open && !this.materials?.open)
             void this.load(); }, 60000);
         el('plan-retry').addEventListener('click', () => { if (this.pending)
             void this.send(this.pending.action, this.pending.args, true); });
@@ -69,6 +70,12 @@ export class WorkPlanDesk {
         window.addEventListener('erp:before-update', e => { if (this.busy || (this.dirty && !confirm('Frissíted az alkalmazást? A még nem mentett munkatervi módosítások elvésznek.')))
             e.preventDefault(); });
     }
+    setMaterialDesk(desk) { this.materials = desk; desk.setOwner(this.owner, this.organization); }
+    openMaterials(line) { if (!this.owner || !this.organization || !this.view || !this.materials || this.busy)
+        return; if (this.dirty) {
+        this.message('Előbb fejezd be vagy mentsd a jelenlegi szerkesztést.');
+        return;
+    } void this.materials.show(this.owner, this.organization, this.scope(), line); }
     setWorksheetDesk(desk) { this.sheets = desk; desk.setOwner(this.owner, this.organization); }
     openSheets() { if (!this.owner || !this.organization || !this.view || !this.sheets || this.busy)
         return; if (this.dirty) {
@@ -83,8 +90,8 @@ export class WorkPlanDesk {
         this.message('Előbb mentsd a munkaterv szerkesztését és az esetleges függő műveletet.');
         return;
     } void this.entries.show(this.owner, this.scope(), entry, target); }
-    get entryBusy() { return this.entries?.saving === true || this.sheets?.saving === true; }
-    get dirty() { return this.sheets?.open === true && this.sheets?.dirty === true || this.entries?.dirty === true || this.changed || !!this.pending || this.formChanged.size > 0; }
+    get entryBusy() { return this.materials?.saving === true || this.entries?.saving === true || this.sheets?.saving === true; }
+    get dirty() { return this.materials?.open === true && this.materials?.dirty === true || this.sheets?.open === true && this.sheets?.dirty === true || this.entries?.dirty === true || this.changed || !!this.pending || this.formChanged.size > 0; }
     setOwner(owner, organization, isClient = false) { if (this.owner !== owner || this.organization !== organization) {
         this.reset();
         this.owner = owner;
@@ -99,8 +106,8 @@ export class WorkPlanDesk {
             }
             catch { /* A hálózati újrapróbálás ebben a munkamenetben továbbra is elérhető. */ }
         }
-    } this.organization = organization; this.isClient = isClient; this.sheets?.setOwner(owner, organization); this.entries?.setOwner(owner); el('show-workplan').hidden = !owner; }
-    reset() { this.sheets?.setOwner(undefined); this.organization = undefined; this.isClient = false; this.entries?.setOwner(undefined); this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
+    } this.organization = organization; this.isClient = isClient; this.materials?.setOwner(owner, organization); this.sheets?.setOwner(owner, organization); this.entries?.setOwner(owner); el('show-workplan').hidden = !owner; }
+    reset() { this.materials?.setOwner(undefined); this.sheets?.setOwner(undefined); this.organization = undefined; this.isClient = false; this.entries?.setOwner(undefined); this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
     cancelRead() { if (this.reading) {
         this.epoch++;
         this.request++;
@@ -108,7 +115,8 @@ export class WorkPlanDesk {
         this.reading = false;
         this.lock(false);
     } }
-    leave() { if (this.sheets?.open && !this.sheets.leave())
+    leave() { if (this.materials?.open && !this.materials.leave())
+        return false; if (this.sheets?.open && !this.sheets.leave())
         return false; if (this.entries?.open && !this.entries.leave())
         return false; if (this.busy && !this.reading) {
         this.message('A mentés még folyamatban van. Várd meg a visszajelzést.');
@@ -246,7 +254,7 @@ export class WorkPlanDesk {
         const p = this.projects.find(p => p.id === n.project_id);
         const row = node('div');
         row.className = 'plan-note';
-        const labels = { review: 'Átvételre vár', repair: 'Javítás szükséges', attribution: 'Résztvevők pontosítása', assignment: 'Munkatársi hozzárendelés szükséges', info: 'Változás a munkán', entry: 'Bejegyzés feldolgozásra vár' };
+        const labels = { review: 'Átvételre vár', repair: 'Javítás szükséges', attribution: 'Résztvevők pontosítása', assignment: 'Munkatársi hozzárendelés szükséges', info: 'Változás a munkán', entry: 'Bejegyzés feldolgozásra vár', material: 'Anyag átvehető a telephelyen' };
         button(row, (labels[n.kind] ?? 'Értesítés') + ' · ' + (p?.name ?? 'Korábbi munka') + (n.completed_at ? ' · Elintézve' : ''), () => { if (!p || !this.leave())
             return; void this.goNote(n); });
         row.append(node('small', new Date(n.created_at).toLocaleString('hu-HU')));
@@ -259,6 +267,14 @@ export class WorkPlanDesk {
             return;
         el('plan-project').value = n.project_id;
         await this.selectProject();
+        if (n.kind === 'material') {
+            if (n.role && Array.from(el('plan-role').options).some(o => o.value === n.role)) {
+                el('plan-role').value = n.role;
+                await this.load();
+            }
+            this.openMaterials(n.line_id);
+            return;
+        }
         if (n.entry_id) {
             if (n.role && Array.from(el('plan-role').options).some(o => o.value === n.role)) {
                 el('plan-role').value = n.role;
@@ -302,6 +318,8 @@ export class WorkPlanDesk {
             button(root, 'Bejegyzések és változások', () => this.openEntries());
         if (this.sheets && v.context.role !== 'client')
             button(root, 'Munkalapok és munkaidő', () => this.openSheets());
+        if (this.materials)
+            button(root, 'Anyagbeszerzés és előrehaladás', () => this.openMaterials());
         if (!v.plan) {
             this.renderTime(root);
             root.append(node('p', 'A részletes munkaterv még nincs összeállítva.'));

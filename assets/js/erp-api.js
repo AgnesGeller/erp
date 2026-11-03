@@ -129,6 +129,7 @@ export class ErpApi {
     async staff(action, args) { return this.feature(action, args); }
     async plan(action, args = {}) { if (!/^plan_(projects|read|init|graph|task|notifications|history|statistics|color)$/.test(action))
         throw new ApiError('Ismeretlen munkatervművelet.', 400); return this.feature(action, args); }
+    async material(action, args = {}) { return this.feature(action, args); }
     async sheet(action, args) { return this.feature(action, args); }
     async entry(action, args) { return this.feature(action, args); }
     async feature(action, args) { const epoch = this.epoch, token = await this.accessToken(); if (epoch !== this.epoch)

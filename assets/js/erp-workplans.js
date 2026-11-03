@@ -14,6 +14,7 @@ function field(parent, label, value, change, type = 'text') { const l = node('la
 export class WorkPlanDesk {
     api;
     onError;
+    entries;
     epoch = 0;
     request = 0;
     owner;
@@ -54,7 +55,7 @@ export class WorkPlanDesk {
             el('plan-role').value = this.view?.context.role ?? ''; });
         el('plan-refresh').addEventListener('click', () => { if (this.leave())
             void this.load(); });
-        setInterval(() => { if (el('plan-dialog').open && !document.hidden && navigator.onLine && !this.busy && !this.dirty)
+        setInterval(() => { if (el('plan-dialog').open && !document.hidden && navigator.onLine && !this.busy && !this.dirty && !this.entries?.open)
             void this.load(); }, 60000);
         el('plan-retry').addEventListener('click', () => { if (this.pending)
             void this.send(this.pending.action, this.pending.args, true); });
@@ -65,6 +66,14 @@ export class WorkPlanDesk {
         window.addEventListener('erp:before-update', e => { if (this.busy || (this.dirty && !confirm('Frissíted az alkalmazást? A még nem mentett munkatervi módosítások elvésznek.')))
             e.preventDefault(); });
     }
+    setEntryDesk(desk) { this.entries = desk; desk.setOwner(this.owner); }
+    async refreshAfterEntry() { if (this.owner && !this.busy && !this.dirty)
+        await this.load(); }
+    openEntries(entry, target) { if (!this.entries || !this.owner || !this.view || this.busy)
+        return; if (this.dirty) {
+        this.message('Előbb mentsd a munkaterv szerkesztését és az esetleges függő műveletet.');
+        return;
+    } void this.entries.show(this.owner, this.scope(), entry, target); }
     get dirty() { return this.changed || !!this.pending || this.formChanged.size > 0; }
     setOwner(owner) { if (this.owner !== owner) {
         this.reset();
@@ -80,8 +89,8 @@ export class WorkPlanDesk {
             }
             catch { /* A hálózati újrapróbálás ebben a munkamenetben továbbra is elérhető. */ }
         }
-    } el('show-workplan').hidden = !owner; }
-    reset() { this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
+    } this.entries?.setOwner(owner); el('show-workplan').hidden = !owner; }
+    reset() { this.entries?.setOwner(undefined); this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
     cancelRead() { if (this.reading) {
         this.epoch++;
         this.request++;
@@ -219,7 +228,7 @@ export class WorkPlanDesk {
         const p = this.projects.find(p => p.id === n.project_id);
         const row = node('div');
         row.className = 'plan-note';
-        const labels = { review: 'Átvételre vár', repair: 'Javítás szükséges', attribution: 'Résztvevők pontosítása', assignment: 'Munkatársi hozzárendelés szükséges', info: 'Változás a munkán' };
+        const labels = { review: 'Átvételre vár', repair: 'Javítás szükséges', attribution: 'Résztvevők pontosítása', assignment: 'Munkatársi hozzárendelés szükséges', info: 'Változás a munkán', entry: 'Bejegyzés feldolgozásra vár' };
         button(row, (labels[n.kind] ?? 'Értesítés') + ' · ' + (p?.name ?? 'Korábbi munka') + (n.completed_at ? ' · Elintézve' : ''), () => { if (!p || !this.leave())
             return; void this.goNote(n); });
         row.append(node('small', new Date(n.created_at).toLocaleString('hu-HU')));
@@ -232,6 +241,14 @@ export class WorkPlanDesk {
             return;
         el('plan-project').value = n.project_id;
         await this.selectProject();
+        if (n.entry_id) {
+            if (n.role && Array.from(el('plan-role').options).some(o => o.value === n.role)) {
+                el('plan-role').value = n.role;
+                await this.load();
+            }
+            this.openEntries(n.entry_id);
+            return;
+        }
         const detail = el('plan-view').querySelector('[data-task-id="' + n.task_id + '"]');
         if (detail) {
             detail.open = true;
@@ -263,6 +280,8 @@ export class WorkPlanDesk {
         const v = this.view, root = el('plan-view'), opened = new Set(Array.from(root.querySelectorAll('details[data-task-id][open]')).map(d => d.dataset.taskId));
         root.replaceChildren();
         root.append(node('h2', v.context.project.name), node('p', v.context.project.address));
+        if (this.entries)
+            button(root, 'Bejegyzések és változások', () => this.openEntries());
         if (!v.plan) {
             root.append(node('p', 'A részletes munkaterv még nincs összeállítva.'));
             if (v.context.can_edit)
@@ -346,6 +365,10 @@ export class WorkPlanDesk {
                 checks.append(c);
             }
             d.append(checks);
+            if (this.entries)
+                button(d, 'Bejegyzés ehhez a munkafázishoz', () => this.openEntries(undefined, t.source_line_id));
+            if (t.contract_label && t.contract_label !== t.title)
+                d.append(node('p', 'Aktuális ajánlati tartalom: ' + t.contract_label));
             if (v.context.role === 'office')
                 d.append(node('p', 'Ajánlati munkadíj: ' + quoteNumber(t.labor) + ' Ft'));
             if (t.internal_info)

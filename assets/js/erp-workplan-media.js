@@ -43,7 +43,7 @@ export class WorkMedia {
     } }
     async show(owner, project, ref) { const blob = await this.read(owner, project, ref.id); if (!blob)
         throw Error('Ez a fotó nincs ezen az eszközön. A másik eszközön letöltött munkatervcsomagból hozhatod át.'); downloadSurveyFile(blob, ref.id + '.jpg'); }
-    async export(owner, view) { view = workplanArchiveView(view); const refs = workMediaReferences(view), files = {}, missing = []; let bytes = 0; for (const ref of refs) {
+    async export(owner, view, entry = false) { view = entry ? entryArchiveView(view) : workplanArchiveView(view); const refs = workMediaReferences(view), files = {}, missing = []; let bytes = 0; for (const ref of refs) {
         const blob = await this.read(owner, view.context.project.id, ref.id);
         if (!blob) {
             missing.push(ref.id);
@@ -55,11 +55,12 @@ export class WorkMedia {
         if (ref.sha256 && await hash(blob) !== ref.sha256)
             throw Error('A helyi fotó ellenőrzőösszege eltér.');
         files['media/' + ref.id] = new Uint8Array(await blob.arrayBuffer());
-    } files['munkaterv.json'] = new TextEncoder().encode(JSON.stringify({ format: 'diszkertek-workplan-1', project_id: view.context.project.id, view, missing_files: missing })); const z = await zip(); downloadSurveyFile(new Blob([z.zipSync(files, { level: 0 })], { type: 'application/zip' }), 'Diszkertek_munkaterv_' + view.context.project.id + '.zip'); return missing.length; }
-    async import(owner, view, file) { if (file.size > 70 * 1024 * 1024)
+    } files['munkaterv.json'] = new TextEncoder().encode(JSON.stringify({ format: entry ? 'diszkertek-entry-1' : 'diszkertek-workplan-1', project_id: view.context.project.id, entry_id: entry ? view.entry.id : undefined, view, missing_files: missing })); const z = await zip(); downloadSurveyFile(new Blob([z.zipSync(files, { level: 0 })], { type: 'application/zip' }), (entry ? 'Diszkertek_bejegyzes_' + view.entry.id : 'Diszkertek_munkaterv_' + view.context.project.id) + '.zip'); return missing.length; }
+    async import(owner, view, file, entry = false) { if (entry)
+        view = entryArchiveView(view); if (file.size > 70 * 1024 * 1024)
         throw Error('A csomag legfeljebb 70 MB lehet.'); const refs = workMediaReferences(view), allowed = new Map(refs.map(r => ['media/' + r.id, r])); let size = 0, count = 0; const z = await zip(); const unpacked = z.unzipSync(new Uint8Array(await file.arrayBuffer()), { filter: f => { if (f.name !== 'munkaterv.json' && !allowed.has(f.name))
             return false; if (++count > 1000 || f.originalSize > 5 * 1024 * 1024 || (size += f.originalSize) > 70 * 1024 * 1024)
-            throw Error('A kibontott csomag túl nagy.'); return true; } }); const manifest = JSON.parse(new TextDecoder().decode(unpacked['munkaterv.json'])); if (manifest.format !== 'diszkertek-workplan-1' || manifest.project_id !== view.context.project.id)
+            throw Error('A kibontott csomag túl nagy.'); return true; } }); const manifest = JSON.parse(new TextDecoder().decode(unpacked['munkaterv.json'])); if (manifest.format !== (entry ? 'diszkertek-entry-1' : 'diszkertek-workplan-1') || manifest.project_id !== view.context.project.id || entry && manifest.entry_id !== view.entry.id)
         throw Error('Ez a csomag másik munkához tartozik.'); let added = 0; for (const [path, ref] of allowed) {
         const bytes = unpacked[path];
         if (!bytes)
@@ -81,3 +82,4 @@ export class WorkMedia {
         }
     } return added; }
 }
+export function entryArchiveView(view) { const pick = (x, keys) => Object.fromEntries(keys.filter(k => x?.[k] !== undefined).map(k => [k, x[k]])); const e = view.entry, client = view.context.role === 'client', money = ['office', 'client'].includes(view.context.role); const payload = (p) => ({ ...pick(p, ['body', 'target_line_id', 'media']), ...(money ? pick(p, ['damage', 'suggestion']) : p?.damage ? { damage: pick(p.damage, ['location', 'occurred_at']) } : {}) }); const version = { ...pick(e.version, ['version', 'base_quote_version', 'actor_role', 'created_at']), payload: payload(e.version.payload) }; return { context: { role: view.context.role, project: pick(view.context.project, ['id', 'name', 'address', 'quote_id', 'quote_version']) }, entry: { ...pick(e, ['id', 'kind', 'state', 'current_version', 'created_at', 'updated_at']), version, decisions: (e.decisions ?? []).map((d) => pick(d, ['purpose', 'party', 'accepted', 'created_at', 'active_role'])), ...(money ? pick(e, ['offer', 'summary']) : {}), events: (e.events ?? []).map((x) => ({ ...pick(x, ['id', 'kind', 'version', 'created_at', 'active_role', 'state']), data: payload(x.data) })) }, events: (view.events ?? []).map((x) => ({ media: (x.media ?? []).filter((m) => !client || m.visibility === 'client') })) }; }

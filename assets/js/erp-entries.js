@@ -1,0 +1,489 @@
+const { entryKinds, financialKinds, parameterFields } = await import(new URL('./erp-entry-model.js?v=0.8.0', import.meta.url).href);
+const { quoteNumber, quoteInput, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.8.0', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.8.0', import.meta.url).href);
+const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.8.0', import.meta.url).href);
+const labels = { needs_office: 'Irodai feldolgozásra vár', needs_client: 'Megrendelői döntésre vár', reported: 'Bejelentve', investigating: 'Ellenőrzés alatt', repairing: 'Javítás folyamatban', repaired: 'Javítva, átvételre vár', reopened: 'Újranyitva', answered: 'Megválaszolva', closed: 'Lezárva', disputed: 'Vitatott', liability_proposed: 'Felelősségi döntésre vár', liability_agreed: 'Közösen elfogadott felelősség', applied: 'Jóváhagyva és alkalmazva', withdrawn: 'Visszavonva', rejected: 'Elutasítva' };
+const events = { create: 'Létrehozás', revise: 'Új változat', price: 'Irodai ajánlat', approve: 'Elfogadás', reject: 'Elutasítás', comment: 'Megjegyzés', status: 'Állapotváltás', react: 'Címzetti visszajelzés', withdraw: 'Visszavonás', archive: 'Archiválás', restore: 'Visszaállítás' };
+const roles = { office: 'Iroda', client: 'Megrendelő', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész' };
+const n = (tag, text = '') => { const el = document.createElement(tag); el.textContent = text; return el; };
+function btn(parent, text, run) { const b = n('button', text); b.type = 'button'; b.className = 'quiet'; b.addEventListener('click', run); parent.append(b); return b; }
+function fold(parent, title, open = false) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.open = open; d.append(n('summary', title)); parent.append(d); return d; }
+function field(parent, label, value, change, type = 'text') { const l = n('label', label), x = document.createElement(type === 'textarea' ? 'textarea' : 'input'); if (type !== 'textarea')
+    x.type = type; x.value = String(value ?? ''); x.addEventListener('input', () => change(x.value)); l.append(x); parent.append(l); return x; }
+function select(parent, label, value, items, change) { const l = n('label', label), s = document.createElement('select'); s.append(...items.map(([v, t]) => new Option(t, v))); s.value = value; s.addEventListener('change', () => change(s.value)); l.append(s); parent.append(l); return s; }
+export class EntryDesk {
+    api;
+    onError;
+    onSaved;
+    dialog = document.createElement('dialog');
+    body = n('div');
+    feedback = n('p');
+    owner;
+    scope = {};
+    view;
+    generation = 0;
+    reading = false;
+    busy = false;
+    draft;
+    history = new EditHistory();
+    preview;
+    pending;
+    media = new WorkMedia();
+    archive = false;
+    transientDirty = false;
+    constructor(api, onError, onSaved) {
+        this.api = api;
+        this.onError = onError;
+        this.onSaved = onSaved;
+        this.dialog.id = 'entry-dialog';
+        this.dialog.className = 'entry-dialog';
+        this.dialog.setAttribute('aria-label', 'Kertépítési bejegyzések');
+        this.feedback.className = 'office-status';
+        this.feedback.setAttribute('role', 'status');
+        this.dialog.append(n('h2', 'Bejegyzések és változások'), this.feedback, this.body);
+        document.body.append(this.dialog);
+        addDialogDismiss(this.dialog);
+        this.dialog.addEventListener('cancel', e => { if (!this.leave())
+            e.preventDefault();
+        else
+            this.cancelRead(); });
+        window.addEventListener('beforeunload', e => { if (this.busy && !this.reading || this.pending) {
+            e.preventDefault();
+            e.returnValue = '';
+        } });
+        window.addEventListener('erp:before-update', e => { if (this.dialog.open && !this.leave())
+            e.preventDefault(); });
+    }
+    get open() { return this.dialog.open; }
+    setOwner(owner) { if (this.owner === owner)
+        return; this.generation++; this.owner = owner; this.view = undefined; this.draft = undefined; this.pending = undefined; this.preview = undefined; this.transientDirty = false; this.busy = false; this.reading = false; this.body.replaceChildren(); this.dialog.close(); }
+    key() { return 'diszkertek-erp-entry/' + this.owner + '/' + this.scope.project_id; }
+    remember() { if (!this.owner)
+        return; try {
+        localStorage.setItem(this.key(), JSON.stringify({ draft: this.draft, pending: this.pending }));
+    }
+    catch {
+        this.message('A piszkozat helyi mentése nem sikerült. Az ablak bezárása előtt másold ki a szöveget.');
+    } }
+    leave() { if (this.busy && !this.reading) {
+        this.message('A mentés még folyamatban van. Várd meg a visszajelzést.');
+        return false;
+    } return (!this.draft && !this.pending && !this.transientDirty) || confirm(this.pending ? 'A mentés eredménye még nem ismert. Bezárod az ablakot? Az eredeti kérés az eszközön megmarad.' : this.transientDirty ? 'Bezárod a még nem mentett visszajelzést? A megadott szöveg elvész.' : 'Bezárod a szerkesztést? A piszkozat ezen az eszközön megmarad.'); }
+    cancelRead() { this.generation++; this.reading = false; this.busy = false; }
+    message(text, ok = false) { this.feedback.textContent = (ok ? '✓ ' : '') + text; this.feedback.className = 'office-status ' + (ok ? 'success' : ''); }
+    error(e) { this.message(e instanceof Error ? e.message : 'A bejegyzés nem tölthető be.'); if (e && typeof e === 'object' && 'status' in e && e.status === 401)
+        this.onError(e); }
+    async show(owner, scope, entry, target) { if (this.dialog.open && !this.leave())
+        return; this.setOwner(owner); this.scope = { ...scope }; this.draft = undefined; this.pending = undefined; this.preview = undefined; try {
+        const local = JSON.parse(localStorage.getItem(this.key()) ?? '{}');
+        this.pending = local.pending;
+    }
+    catch { } if (!this.dialog.open)
+        this.dialog.showModal(); await this.load(entry); if (target && this.view && !this.pending)
+        this.start('create', target); }
+    async load(entry, version, cursor, eventCursor) { if (this.busy)
+        return; const gen = ++this.generation, previous = this.view; this.body.replaceChildren(); this.busy = true; this.reading = true; this.message('Bejegyzések betöltése…'); try {
+        const v = await this.api.entry('entry_read', { ...this.scope, entry_id: entry ?? null, version: version ?? null, archived: this.archive, cursor: cursor ?? null, event_cursor: eventCursor ?? null });
+        if (gen !== this.generation)
+            return;
+        if (cursor && previous) {
+            const ids = new Set(previous.entries.map((x) => x.id));
+            v.entries = [...previous.entries, ...v.entries.filter((x) => !ids.has(x.id))];
+        }
+        if (eventCursor && previous?.entry && v.entry?.id === previous.entry.id && v.entry?.version.version === previous.entry.version.version) {
+            const ids = new Set(previous.entry.events.map((x) => x.id));
+            v.entry.events = [...previous.entry.events, ...v.entry.events.filter((x) => !ids.has(x.id))];
+        }
+        this.view = v;
+        this.draft = undefined;
+        this.preview = undefined;
+        this.render();
+        this.message('A bejegyzések naprakészek.', true);
+    }
+    catch (e) {
+        if (gen === this.generation) {
+            this.view = undefined;
+            this.error(e);
+        }
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            this.reading = false;
+        }
+    } }
+    touch(group) { if (!this.draft)
+        return; this.preview = undefined; this.history.remember(this.draft, group); this.remember(); for (const [name, value] of [['undo', this.history.canUndo], ['redo', this.history.canRedo]]) {
+        const b = this.body.querySelector('[data-entry-' + name + ']');
+        if (b)
+            b.disabled = !value;
+    } const review = this.body.querySelector('[data-entry-review]'); review?.replaceChildren(n('p', 'Az új tartalomhoz frissítsd az előnézetet.')); }
+    discard() { if (this.pending) {
+        this.message('Előbb ellenőrizd az előző mentés eredményét az Újrapróbálás gombbal.');
+        return false;
+    } if ((this.draft || this.transientDirty) && !confirm('Elveted a még nem közzétett szerkesztést?'))
+        return false; this.draft = undefined; this.preview = undefined; this.transientDirty = false; this.remember(); return true; }
+    start(operation, target) { const v = this.view; if (!v || this.busy || !this.discard())
+        return; const e = v.entry; this.draft = { operation, entry_id: operation === 'create' ? crypto.randomUUID() : e.id, revision: operation === 'create' ? 0 : e.revision, entry_version: operation === 'create' ? null : e.current_version, kind: operation === 'create' ? 'note' : e.kind, payload: operation === 'create' ? { body: '', visible_to_team: false, recipient_id: null, target_line_id: target ?? null, media: [], suggestion: { params: {} }, damage: {} } : structuredClone(e.version.payload), patch: operation === 'price' ? structuredClone(e.pricing_patch ?? { rows: [] }) : null }; if (target && operation === 'create')
+        this.draft.kind = 'modify'; if (operation === 'price' && e.kind === 'modify' && !this.draft.patch.rows.length) {
+        const sections = v.pricing_sections;
+        sections.forEach((s, index) => { const l = s.lines.find((l) => l.id === e.version.payload.target_line_id); if (l)
+            this.draft.patch.rows.push({ section_index: index, line: { ...structuredClone(l), inherit: false, params: structuredClone(v.quote.lines.find((r) => r.id === l.id)?.params ?? l.params) } }); });
+    } this.history.reset(this.draft); this.remember(); this.render(); }
+    render() {
+        const v = this.view;
+        if (!v)
+            return;
+        this.body.replaceChildren();
+        this.body.append(n('p', v.context.project.name + ' · ' + v.context.project.address));
+        if (this.pending) {
+            btn(this.body, 'Az előző mentés újrapróbálása', () => { void this.write(this.pending, true); });
+            this.body.append(n('p', 'A bizonytalan eredményű kérés ugyanazzal az azonosítóval ismétlődik.'));
+        }
+        btn(this.body, 'Lista frissítése', () => { if (this.discard())
+            void this.load(); });
+        if (['office', 'construction_lead', 'client'].includes(v.context.role))
+            btn(this.body, 'Új bejegyzés hozzáadása', () => this.start('create'));
+        if (!this.draft) {
+            try {
+                const local = JSON.parse(localStorage.getItem(this.key()) ?? '{}');
+                if (local.draft)
+                    btn(this.body, 'Helyi piszkozat folytatása', () => { this.draft = local.draft; this.history.reset(this.draft); this.render(); });
+            }
+            catch { }
+        }
+        if (v.context.role === 'office')
+            select(this.body, 'Megjelenítés', this.archive ? 'all' : 'active', [['active', 'Aktív bejegyzések'], ['all', 'Archiváltakkal együtt']], value => { if (this.discard()) {
+                this.archive = value === 'all';
+                void this.load();
+            } });
+        const list = fold(this.body, 'Bejegyzések (' + v.entries.length + ')', !v.entry && !this.draft);
+        for (const e of v.entries)
+            btn(list, entryKinds[e.kind] + ' · ' + (labels[e.state] ?? e.state) + ' · ' + e.body, () => { if (this.discard())
+                void this.load(e.id); });
+        if (!v.entries.length)
+            list.append(n('p', 'Ehhez a munkához még nincs bejegyzés.'));
+        if (v.entry_cursor)
+            btn(list, 'Korábbi bejegyzések betöltése', () => { if (this.discard())
+                void this.load(undefined, undefined, v.entry_cursor); });
+        if (this.draft)
+            this.renderForm(this.body);
+        else if (v.entry)
+            this.renderEntry(this.body);
+        btn(this.body, 'Bezárás', () => { if (this.leave()) {
+            this.cancelRead();
+            this.dialog.close();
+        } });
+    }
+    renderForm(parent) {
+        const d = this.draft, p = d.payload, v = this.view, form = fold(parent, 'Bejegyzés szerkesztése', true);
+        if (d.operation === 'create')
+            select(form, 'Bejegyzéstípus', d.kind, Object.entries(entryKinds), kind => { d.kind = kind; this.touch(); this.render(); });
+        field(form, 'Leírás', p.body, value => { p.body = value; this.touch('body'); }, 'textarea').maxLength = 12000;
+        if (['modify', 'remove'].includes(d.kind))
+            select(form, 'Érintett ajánlati sor', p.target_line_id ?? '', [['', 'Válassz ajánlati sort'], ...v.quote.lines.map((l) => [l.id, l.section + ' · ' + l.label])], value => { p.target_line_id = value; d.patch = null; this.touch(); this.render(); });
+        const visibility = field(form, 'A munkán dolgozó csapat is láthatja', '', () => { }, 'checkbox');
+        visibility.checked = p.visible_to_team === true;
+        visibility.addEventListener('change', () => { p.visible_to_team = visibility.checked; this.touch(); });
+        visibility.className = 'inline-check';
+        select(form, 'Címzett', p.recipient_id ?? '', [['', 'Nincs külön címzett'], ...(v.recipients ?? v.people).filter((x) => x.active).sort((a, b) => a.name.localeCompare(b.name, 'hu')).map((x) => [x.id, x.name])], value => { p.recipient_id = value || null; this.touch(); });
+        if (d.kind === 'modify' && v.context.role === 'client') {
+            p.suggestion ??= { params: {} };
+            const x = fold(form, 'Mennyiség- vagy árjavaslat');
+            for (const [key, label] of [['quantity', 'Javasolt mennyiség'], ['material_unit', 'Javasolt anyag egységár (Ft)'], ['labor_unit', 'Javasolt munka egységár (Ft)']])
+                field(x, label, quoteInput(p.suggestion[key]), value => { p.suggestion[key] = value; this.touch(key); }).inputMode = 'decimal';
+            const line = v.quote.lines.find((l) => l.id === p.target_line_id);
+            if (line) {
+                p.suggestion.params ??= {};
+                for (const f of line.fields)
+                    field(x, f.label + ' (' + f.unit + ')', p.suggestion.params[f.key] ?? quoteInput(line.params[f.key]), value => { p.suggestion.params[f.key] = value; this.touch(f.key); }).inputMode = 'decimal';
+            }
+        }
+        if (d.kind === 'damage') {
+            p.damage ??= {};
+            const x = fold(form, 'Káradatok', true);
+            for (const [key, label, type] of [['location', 'Kár helye', 'text'], ['occurred_at', 'Esemény időpontja', 'datetime-local'], ['cause', 'Feltételezett ok', 'textarea'], ['responsible_name', 'Érintett neve', 'text'], ['estimated', 'Becsült kár (Ft)', 'text'], ['actual', 'Tényleges kár (Ft), ha ismert', 'text']])
+                field(x, label, p.damage[key], value => { p.damage[key] = value; this.touch(key); }, type);
+            select(x, 'Feltételezett felelős', p.damage.responsible ?? 'unknown', [['unknown', 'Tisztázatlan'], ['contractor', 'Kivitelező'], ['client', 'Megrendelő'], ['third_party', 'Harmadik fél']], value => { p.damage.responsible = value; this.touch(); });
+            x.append(n('p', 'A végleges felelősséget az iroda és a megrendelő közösen fogadja el. A rögzítés nem jelent fizetési kötelezettséget.'));
+        }
+        if (financialKinds.includes(d.kind) && v.context.role === 'office' && d.kind !== 'remove') {
+            const pricing = fold(form, 'Irodai árazás', !!d.patch);
+            if (!d.patch)
+                btn(pricing, 'Pontos ajánlat készítése', () => { if (d.operation === 'create' && d.kind === 'modify') {
+                    const line = v.quote.lines.find((l) => l.id === p.target_line_id);
+                    if (!line) {
+                        this.message('Válassz érintett sort.');
+                        return;
+                    }
+                    const index = v.pricing_sections.findIndex((s) => s.lines.some((l) => l.id === line.id)), original = v.pricing_sections[index].lines.find((l) => l.id === line.id);
+                    d.patch = { rows: [{ section_index: index, line: { ...structuredClone(original), inherit: false, params: structuredClone(line.params) } }] };
+                }
+                else
+                    d.patch = { rows: [] }; this.touch(); this.render(); });
+            else
+                this.renderPricing(pricing);
+        }
+        this.photos(form, p.media ??= []);
+        const actions = n('div');
+        actions.className = 'entry-actions';
+        const undo = btn(actions, 'Visszavonás', () => { const before = this.history.undo(); if (before) {
+            this.draft = before;
+            this.preview = undefined;
+            this.remember();
+            this.render();
+        } });
+        undo.disabled = !this.history.canUndo;
+        undo.dataset.entryUndo = 'true';
+        const redo = btn(actions, 'Újra', () => { const after = this.history.redo(); if (after) {
+            this.draft = after;
+            this.preview = undefined;
+            this.remember();
+            this.render();
+        } });
+        redo.disabled = !this.history.canRedo;
+        redo.dataset.entryRedo = 'true';
+        btn(actions, 'Szerkesztés elvetése', () => { if (this.discard())
+            this.render(); });
+        form.append(actions);
+        const review = n('div');
+        review.dataset.entryReview = 'true';
+        form.append(review);
+        if (this.preview)
+            this.renderOffer(review, this.preview);
+        if (financialKinds.includes(d.kind)) {
+            btn(form, 'Pontos előnézet ellenőrzése', () => { void this.review(); });
+            btn(form, 'Bejegyzés és ajánlat közzététele', () => { if (!this.preview) {
+                this.message('Előbb ellenőrizd a pontos előnézetet.');
+                return;
+            } if (confirm(this.preview.offer ? 'Ezt a pontos ajánlati tartalmat teszed közzé? Az ellenoldal döntéséig a jelenlegi megállapodás változatlan.' : 'Elküldöd ezt a kérelmet irodai feldolgozásra?'))
+                void this.write({ ...this.args(), confirmed: true, request_id: crypto.randomUUID() }); });
+        }
+        else
+            btn(form, 'Bejegyzés közzététele', () => { void this.write({ ...this.args(), request_id: crypto.randomUUID() }); });
+    }
+    renderPricing(parent) { const d = this.draft, patch = d.patch, v = this.view; patch.rows.forEach((row, index) => { const line = row.line, t = line.pricing, box = fold(parent, (index + 1) + '. ' + (t?.name ?? 'Válassz típust'), true); select(box, 'Főtétel', String(row.section_index), [...v.pricing_sections.map((s, i) => [String(i), s.name]), ['-1', 'Új főtétel']], value => { row.section_index = Number(value); row.section_id ??= crypto.randomUUID(); this.touch(); this.render(); }); if (row.section_index === -1)
+        field(box, 'Új főtétel neve', row.section_name ?? '', value => { row.section_name = value; this.touch('section-' + index); }); select(box, 'Árazott típus', line.type_id ?? t?.id ?? '', [['', 'Válassz típust'], ...(v.book?.types ?? []).slice().sort((a, b) => (a.category + ' ' + a.name).localeCompare(b.category + ' ' + b.name, 'hu')).map((t) => [t.id, t.category + ' · ' + t.name])], id => { const type = v.book.types.find((t) => t.id === id); if (type) {
+        row.line = { id: line.id, type_id: id, pricing: structuredClone(type), inherit: false, params: structuredClone(type.defaults ?? {}) };
+        this.touch();
+        this.render();
+    } }); if (t) {
+        line.params ??= {};
+        for (const f of parameterFields(t))
+            field(box, f.label + ' (' + f.unit + ')', quoteInput(line.params[f.key]), value => { line.params[f.key] = value; this.touch(index + f.key); }).inputMode = 'decimal';
+        const pricing = fold(box, 'Árak és minimumdíjak');
+        for (const [key, label] of [['main', 'Főanyag egységár'], ['auxiliary', 'Segédanyag egységár'], ['transport', 'Szállítás egységár'], ['labor', 'Munka egységár'], ['material_cm', 'Anyag / cm'], ['labor_cm', 'Munka / cm'], ['material_min', 'Minimum anyagösszeg'], ['labor_min', 'Minimum munkaösszeg'], ['total_min', 'Teljes minimum']])
+            field(pricing, label + ' (Ft)', quoteInput(t[key] ?? '0'), value => { t[key] = value; this.touch(index + key); }).inputMode = 'decimal';
+        select(pricing, 'Teljes minimum kiegészítése', t.total_min_target ?? 'labor', [['labor', 'Munkadíj'], ['material', 'Anyagköltség']], value => { t.total_min_target = value; this.touch(); });
+        const agreed = fold(box, 'Egyedi megállapodott egységár');
+        for (const [key, label] of [['material_unit', 'Anyag egységár'], ['labor_unit', 'Munka egységár']])
+            field(agreed, label + ' (Ft); üresen a kalkuláció', quoteInput(line.agreement?.[key]), value => { line.agreement ??= {}; if (value === '')
+                delete line.agreement[key];
+            else
+                line.agreement[key] = value; if (!Object.keys(line.agreement).some(k => ['material_unit', 'labor_unit'].includes(k)))
+                delete line.agreement; this.touch(index + 'agreed' + key); }).inputMode = 'decimal';
+        const materials = fold(box, 'Anyagok és pontos belső szorzók');
+        for (const material of t.materials ?? [])
+            for (const [key, label] of [['name', 'Anyag neve'], ['unit', 'Egysége'], ['factor', 'Pontos szorzó']])
+                field(materials, label, material[key], value => { material[key] = value; this.touch(index + material.name + key); });
+        field(box, 'Ügyfélnek látható megjegyzés', line.public_note ?? '', value => { line.public_note = value; this.touch(index + 'note'); }, 'textarea');
+    } btn(box, 'Sor kivétele', () => { patch.rows.splice(index, 1); this.touch(); this.render(); }); }); if (d.kind === 'extra')
+        btn(parent, 'Árazott sor hozzáadása', () => { patch.rows.push({ section_index: 0, line: { id: crypto.randomUUID(), params: {}, pricing: null } }); this.touch(); this.render(); }); }
+    args() { const d = this.draft; return { ...this.scope, entry_id: d.entry_id, entry_version: d.entry_version, revision: d.revision, operation: d.operation, kind: d.kind, quote_version: this.view.context.project.quote_version, payload: structuredClone(d.payload), ...(d.patch ? { patch: structuredClone(d.patch) } : {}) }; }
+    async review() { if (this.busy || !this.draft)
+        return; this.busy = true; this.reading = true; const gen = this.generation, snapshot = JSON.stringify(this.draft); this.message('Ajánlati előnézet ellenőrzése…'); try {
+        const data = await this.api.entry('entry_preview', this.args());
+        if (gen !== this.generation || snapshot !== JSON.stringify(this.draft))
+            return;
+        this.preview = data;
+        this.render();
+        this.message(data.offer ? 'A pontos ajánlati előnézet elkészült.' : 'A kérelem elküldhető irodai árazásra.', true);
+    }
+    catch (e) {
+        if (gen === this.generation)
+            this.error(e);
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            this.reading = false;
+        }
+    } }
+    renderOffer(parent, data) { if (!data.offer) {
+        parent.append(n('p', 'Az iroda pontosítja és árazza a kérelmet; addig az eredeti megállapodás marad érvényben.'));
+        return;
+    } const summary = data.summary; if (summary)
+        parent.append(n('strong', 'Eddigi bruttó: ' + quoteNumber(summary.previous_gross) + ' Ft → Javasolt bruttó: ' + quoteNumber(summary.gross) + ' Ft')); for (const s of data.offer.sections) {
+        const box = fold(parent, s.name + ' · ' + quoteNumber(s.net) + ' Ft');
+        for (const l of s.lines)
+            box.append(n('p', l.label + ' · ' + quoteNumber(l.quantity) + ' ' + l.unit + ' · Anyag: ' + quoteNumber(l.material_unit) + ' Ft/' + l.unit + ' · Munka: ' + quoteNumber(l.labor_unit) + ' Ft/' + l.unit + ' · Nettó: ' + quoteNumber(l.net) + ' Ft'));
+    } parent.append(n('p', 'ÁFA vetítési alap: ' + quoteNumber(data.offer.tax_base) + ' Ft · ÁFA: ' + quoteNumber(data.offer.vat) + ' Ft'), n('strong', 'Bruttó összesen: ' + quoteNumber(data.offer.gross) + ' Ft')); }
+    renderEntry(parent) {
+        const v = this.view, e = v.entry, role = v.context.role, current = e.version.version === e.current_version, terminal = ['applied', 'closed', 'liability_agreed', 'withdrawn', 'rejected'].includes(e.state), creator = ['office', 'construction_lead', 'client'].includes(role);
+        const box = fold(parent, entryKinds[e.kind] + ' · ' + labels[e.state], true);
+        box.append(n('p', new Date(e.created_at).toLocaleString('hu-HU') + ' · ' + roles[e.author_role]), n('p', e.version.payload.body));
+        select(box, 'Megőrzött változat', String(e.version.version), e.versions.map((x) => [String(x.version), x.version + '. változat · ' + new Date(x.created_at).toLocaleString('hu-HU')]), value => { if (this.discard())
+            void this.load(e.id, Number(value)); });
+        if (!current)
+            box.append(n('strong', 'Korábbi, csak olvasható változat.'));
+        if (e.offer)
+            this.renderOffer(box, e);
+        const damage = e.version.payload.damage;
+        if (damage) {
+            box.append(n('p', 'Kár helye: ' + (damage.location || 'Nincs megadva') + ' · ' + (damage.occurred_at ? new Date(damage.occurred_at).toLocaleString('hu-HU') : 'Időpont nincs megadva')));
+            if (damage.responsible) {
+                box.append(n('p', 'Feltételezett felelős: ' + { unknown: 'Tisztázatlan', contractor: 'Kivitelező', client: 'Megrendelő', third_party: 'Harmadik fél' }[damage.responsible] + ' · ' + (damage.responsible_name ?? '') + ' · ' + (damage.cause ?? '')), n('p', 'Becsült: ' + quoteNumber(damage.estimated) + ' Ft · Tényleges: ' + quoteNumber(damage.actual) + ' Ft' + (damage.actual != null && damage.estimated != null ? ' · Különbség: ' + quoteNumber(Number(damage.actual) - Number(damage.estimated)) + ' Ft' : '')));
+            }
+        }
+        this.photoList(box, e.version.payload.media ?? []);
+        for (const decision of e.decisions)
+            box.append(n('p', (decision.party === 'office' ? 'Iroda' : 'Megrendelő') + ': ' + (decision.accepted ? '✓ Elfogadta' : 'Elutasította') + ' · ' + new Date(decision.created_at).toLocaleString('hu-HU')));
+        if (current && !e.archived) {
+            if (creator && !terminal) {
+                if (role === 'office' && financialKinds.includes(e.kind))
+                    btn(box, 'Irodai árazás / ellenajánlat', () => this.start('price'));
+                if (role === 'office' || e.author_id === v.context.person_id)
+                    btn(box, 'Új változat szerkesztése', () => this.start('revise'));
+                const ownParty = role === 'office' ? 'office' : role === 'client' ? 'client' : null, purpose = financialKinds.includes(e.kind) && e.offer ? 'price' : e.kind === 'damage' ? 'liability' : e.kind === 'defect' && e.state === 'repaired' ? 'repair' : null;
+                if (ownParty && purpose && (purpose !== 'repair' || role === 'client') && !e.decisions.some((d) => d.party === ownParty && d.purpose === purpose))
+                    for (const [op, label] of [['approve', purpose === 'repair' ? 'Javítás átvétele' : purpose === 'liability' ? 'Felelősség elfogadása' : 'Pontos ajánlat elfogadása'], ['reject', 'Elutasítás / nem fogadom el']])
+                        btn(box, label, () => { if (confirm(label + '? Ez kizárólag a megjelenített ' + e.version.version + '. változatra vonatkozik.'))
+                            void this.write(this.command(op, { confirmed: true })); });
+                if (role === 'office' || e.author_id === v.context.person_id)
+                    btn(box, 'Bejegyzés visszavonása', () => { if (confirm('Visszavonod ezt a még nem alkalmazott bejegyzést? Az előzmény megmarad.'))
+                        void this.write(this.command('withdraw')); });
+            }
+            const states = e.kind === 'defect' ? (role === 'office' || role === 'construction_lead' ? { reported: ['investigating', 'repairing', 'repaired'], reopened: ['investigating', 'repairing', 'repaired'], investigating: ['repairing', 'repaired'], repairing: ['repaired'] }[e.state] ?? [] : role === 'client' && ['repaired', 'closed'].includes(e.state) ? ['reopened'] : []) : ['request', 'complaint'].includes(e.kind) ? (role === 'office' || role === 'construction_lead' ? ['answered'] : role === 'client' || e.author_id === v.context.person_id ? ['closed', 'reopened'] : []) : [];
+            if (states.length) {
+                const status = fold(box, 'Állapot és javítási fotók');
+                let text = e.version.payload.body;
+                field(status, 'Leírás / elvégzett javítás', text, value => { text = value; this.transientDirty = true; }, 'textarea');
+                const photos = structuredClone(e.version.payload.media ?? []);
+                this.photos(status, photos, false);
+                for (const state of states)
+                    btn(status, labels[state], () => { if (confirm('Rögzíted: ' + labels[state] + '?'))
+                        void this.write(this.command('status', { state, payload: { ...e.version.payload, body: text, media: photos } })); });
+            }
+            if (e.recipient_id === v.context.person_id)
+                for (const [reaction, label] of [['seen', 'Láttam'], ['in_progress', 'Folyamatban'], ['done', 'Elvégeztem']])
+                    btn(box, label, () => { void this.write(this.command('react', { payload: { reaction } })); });
+            if (creator) {
+                const comment = fold(box, 'Megjegyzés hozzáadása');
+                let body = '';
+                field(comment, 'Megjegyzés', body, value => { body = value; this.transientDirty = true; }, 'textarea');
+                btn(comment, 'Megjegyzés mentése', () => { void this.write(this.command('comment', { payload: { body } })); });
+            }
+            if (role === 'office' && terminal)
+                btn(box, 'Archiválás', () => { if (confirm('Archiválod a lezárt bejegyzést? Később visszaállítható.'))
+                    void this.write(this.command('archive')); });
+        }
+        else if (current && e.archived && role === 'office')
+            btn(box, 'Visszaállítás az archívumból', () => { void this.write(this.command('restore')); });
+        const history = fold(parent, 'Eseménynapló');
+        for (const event of e.events) {
+            const row = n('div');
+            row.className = 'plan-history-row';
+            row.append(n('strong', new Date(event.created_at).toLocaleString('hu-HU') + ' · ' + roles[event.active_role] + ' · ' + (events[event.kind] ?? 'Változás') + ' · ' + event.version + '. változat'));
+            if (event.data.body)
+                row.append(n('p', event.data.body));
+            if (event.state)
+                row.append(n('p', labels[event.state] ?? event.state));
+            this.photoList(row, event.data.media ?? []);
+            history.append(row);
+        }
+        if (e.event_cursor)
+            btn(history, 'Korábbi események betöltése', () => { if (this.discard())
+                void this.load(e.id, e.version.version, undefined, e.event_cursor); });
+        const transfer = fold(parent, 'Fotók átvitele másik eszközre');
+        transfer.append(n('p', 'A fotók ezen az eszközön maradnak. A látható bejegyzés csomagjával vihetők át másik eszközre.'));
+        btn(transfer, 'Bejegyzés és fotók letöltése', () => { void this.transfer(); });
+        const input = field(transfer, 'Fotócsomag megnyitása', '', () => { }, 'file');
+        input.accept = '.zip,application/zip';
+        input.addEventListener('change', () => { if (input.files?.[0])
+            void this.transfer(input.files[0]); });
+    }
+    command(operation, extra = {}) { const e = this.view.entry; return { ...this.scope, entry_id: e.id, entry_version: e.current_version, revision: e.revision, operation, request_id: crypto.randomUUID(), ...extra }; }
+    photoList(parent, photos) { for (const ref of photos)
+        btn(parent, 'Fotó letöltése – ' + ref.name, () => { if (this.owner)
+            void this.media.show(this.owner, this.scope.project_id, ref).catch(e => this.error(e)); }); }
+    photos(parent, photos, draft = true) { const box = fold(parent, 'Fotók (' + photos.length + ')'); box.append(n('p', 'A fotó helyben marad; a szöveg és azonosító eszközök között szinkronizálódik.')); this.photoList(box, photos); if (draft)
+        for (const ref of photos)
+            btn(box, 'Fotó kivétele – ' + ref.name, () => { photos.splice(photos.indexOf(ref), 1); this.touch(); this.render(); }); const upload = field(box, 'Fotó hozzáadása', '', () => { }, 'file'); upload.accept = 'image/jpeg,image/png,image/webp'; upload.multiple = true; upload.addEventListener('change', () => { void this.addPhotos(Array.from(upload.files ?? []), photos, draft); }); }
+    async addPhotos(files, photos, draft) { if (this.busy || !this.owner)
+        return; if (photos.length + files.length > 12) {
+        this.message('Legfeljebb tizenkét fotó adható meg.');
+        return;
+    } const gen = this.generation; this.busy = true; try {
+        for (const file of files) {
+            const ref = await this.media.add(this.owner, this.scope.project_id, file, 'client');
+            if (gen !== this.generation)
+                return;
+            photos.push(ref);
+        }
+        if (draft) {
+            this.touch();
+            this.render();
+        }
+        else
+            this.transientDirty = true;
+        this.message('A fotók ezen az eszközön mentve vannak.', true);
+    }
+    catch (e) {
+        this.error(e);
+    }
+    finally {
+        if (gen === this.generation)
+            this.busy = false;
+    } }
+    archiveView() { const v = this.view, e = v.entry; return { context: v.context, entry: e, events: [...(e.version.payload.media ?? []).map((m) => ({ media: [m] })), ...e.events.map((x) => ({ media: x.data.media ?? [] }))] }; }
+    async transfer(file) { if (this.busy || !this.owner || !this.view?.entry)
+        return; this.busy = true; try {
+        const view = this.archiveView();
+        const count = file ? await this.media.import(this.owner, view, file, true) : await this.media.export(this.owner, view, true);
+        this.message(file ? 'Helyi fotók átvétele kész: ' + count + '.' : 'A csomag letöltésre előkészítve.' + (count ? ' Ezen az eszközön nem elérhető fotók: ' + count + '.' : ''), true);
+    }
+    catch (e) {
+        this.error(e);
+    }
+    finally {
+        this.busy = false;
+    } }
+    async write(args, retry = false) { if (this.busy || !this.owner)
+        return; if (this.pending && !retry) {
+        this.message('Előbb próbáld újra az előző mentést.');
+        return;
+    } this.pending = structuredClone(args); this.remember(); const gen = this.generation; this.busy = true; this.reading = false; this.message('Bejegyzés mentése…'); let success = false; const disabled = new Map(); for (const x of Array.from(this.body.querySelectorAll('input,textarea,button,select'))) {
+        disabled.set(x, x.disabled);
+        x.disabled = true;
+    } try {
+        await this.api.entry('entry_write', args);
+        if (gen !== this.generation)
+            return;
+        this.pending = undefined;
+        this.draft = undefined;
+        this.transientDirty = false;
+        this.remember();
+        success = true;
+    }
+    catch (e) {
+        if (gen === this.generation) {
+            if (e && typeof e === 'object' && 'status' in e && [400, 401, 403, 409, 422].includes(Number(e.status)))
+                this.pending = undefined;
+            this.remember();
+            this.error(e);
+        }
+    }
+    finally {
+        if (gen === this.generation) {
+            this.busy = false;
+            for (const [x, state] of disabled)
+                x.disabled = state;
+        }
+    } if (success && gen === this.generation) {
+        await this.load(args.entry_id);
+        this.message('A műveletet mentettük.', true);
+        this.onSaved();
+    }
+    else if (gen === this.generation && this.pending)
+        this.render(); }
+}

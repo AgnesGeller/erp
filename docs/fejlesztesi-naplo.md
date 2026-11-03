@@ -298,3 +298,8 @@ A felhasználó jóváhagyta a tíz saját ERP-táblát, a dolgozói saját bel�
 ## 2026. november 3. – Bejegyzések: ellenőrzött fejlesztési mentés
 
 A felhasználó jóváhagyta a hat saját ERP-táblás változáskezelési tervet és a tesztek utáni élesítést. Elkészült a helyi adatbázis- és kiszolgálóréteg, kétoldalú és pontos változathoz kötött atomi alkalmazással, történetvédelemmel és adatszűréssel. A teljes regresszió 300/300 sikeres; az utána hozzáadott négy próbával a 21 érintett modell-/adatbázispróba is sikeres. Fordítás és edge típusellenőrzés sikeres. **Ez még nem éles funkció:** felület, böngészőpróba és saját ERP-telepítés hátravan. [Folytatás és pontos határok](bejegyzesek-fejlesztesi-allapot.md). Másik app és éles adatbázis nem módosult; függőséget nem telepítettünk.
+
+
+## 2026. november 3. – Bejegyzésfelület és fotócsomag fejlesztési mentése
+
+Elkészült az új, még be nem kapcsolt bejegyzésablak és a munkatervi csatlakozás előkészítése. Helyi piszkozat, Visszavonás/Újra, pontos árelőnézet, felső ×, hálózati újrapróba, verziók, hiba-/káradatok és saját helyi fotócsomag. A teljes regresszió 316/316 sikeres; az utána bővített lapozási és hozzáférési próbákkal a 26 érintett teszt is sikeres. A böngészőben az árazás, piszkozat-visszaállítás és javított áfaösszeg igazolt, a közzététel megerősítésénél az IAB vezérlés időtúllépést jelzett. **Élesítés nem történt.** A felület további ellenőrzései és pontos bekötése a [folytatási jegyzetben](bejegyzesek-fejlesztesi-allapot.md) szerepelnek.

@@ -13,7 +13,7 @@
 - Részletes munkaterv, négyszintű átvétel, megosztás, javítási teendők és saját dolgozói belépés.
 - Telepítés és frissítés a felső menüből; mobilon is használható felület.
 
-[Munkaterv és átvétel használata](docs/munkaterv-es-atvetel.md). Folyamatban: kétoldalú változáskezelés; a helyi adatbázis- és kiszolgálópróbák elkészültek, a kezelőfelület és az élesítés még hátravan. [Folytatási pont](docs/bejegyzesek-fejlesztesi-allapot.md).
+[Munkaterv és átvétel használata](docs/munkaterv-es-atvetel.md). Folyamatban: kétoldalú változáskezelés; a helyi adatbázis, kiszolgáló és bejegyzésfelület elkészült; a teljes böngészős átvételi próba és az élesítés még hátravan. [Folytatási pont](docs/bejegyzesek-fejlesztesi-allapot.md).
 
 A járdasablon pontosítandó sorait a főnök ajánlatkészítéskor választja ki. A teljes ERP fejlesztése még folyamatban van; a Groq MI-próbájához saját szerveroldali kulcs szükséges.
 
@@ -42,7 +42,7 @@ npm test
 npm run check:edge
 ```
 
-Legutóbbi teljes ellenőrzés: **2026. november 3., 300 sikeres teszt**, TypeScript-fordítás és helyi böngészőpróba. A teljes üzleti lánc átadási próbája a hátralévő modulok elkészülése után következik.
+Legutóbbi teljes ellenőrzés: **2026. november 3., 316 sikeres teszt**, TypeScript-fordítás és helyi böngészőpróba. A teljes üzleti lánc átadási próbája a hátralévő modulok elkészülése után következik.
 
 +36 70 634 9630 · [info@diszkertek.hu](mailto:info@diszkertek.hu) · [www.diszkertek.hu](https://www.diszkertek.hu/)
 

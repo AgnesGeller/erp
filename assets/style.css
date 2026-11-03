@@ -26,3 +26,6 @@
 .login-area .sr-only{width:1px;min-height:1px;height:1px;padding:0}
 
 dialog{max-height:calc(100svh - 24px);overflow-y:auto;overscroll-behavior:contain}.dialog-dismiss-bar{position:sticky;top:0;height:44px;margin-bottom:8px;background:inherit;z-index:12}.dialog-dismiss{position:absolute;right:0;top:0;min-width:44px;min-height:44px;padding:4px;font-size:28px;line-height:1;background:#f5f4ef;color:#214a35;border:1px solid #a8b6a3}.dialog-dismiss:hover{background:#e6eadd}dialog>h2,dialog>.workspace-heading{padding-right:0}#quote-pdf-dialog>.dialog-dismiss{position:sticky;top:0;float:right;z-index:3}
+
+/* Bejegyzések: saját, még nem bekapcsolt ERP-ablak. */
+.entry-dialog{width:min(920px,calc(100vw - 24px));max-width:calc(100vw - 24px);box-sizing:border-box}.entry-dialog label{display:block;min-width:0}.entry-dialog input:not([type=checkbox]),.entry-dialog textarea,.entry-dialog select{box-sizing:border-box;max-width:100%;width:100%}.entry-dialog button{max-width:100%;white-space:normal;overflow-wrap:anywhere}.entry-actions{display:flex;flex-wrap:wrap;gap:8px}.entry-dialog textarea{min-height:100px}.entry-dialog .office-status{position:relative;overflow-wrap:anywhere}

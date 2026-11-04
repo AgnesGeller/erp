@@ -44,6 +44,7 @@ export class ErpApi {
       return data as T;
     } finally {clearTimeout(timer);}
   }
+  async finance<T=unknown>(action:string,body:Record<string,unknown>={}):Promise<T>{return this.feature<T>(action,body);}
   async emailOptions():Promise<{email_enabled:boolean}> {return this.request({action:'auth_options'});}
   async requestEmail(email:string,kind:'register'|'recover'):Promise<{success:boolean;message:string}> {
     return this.request({action:kind==='register'?'register_email':'recover_email',email});

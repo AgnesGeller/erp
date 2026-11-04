@@ -5,24 +5,27 @@ const clientSetupOpening = clientSetupToken !== null;
 if (clientSetupOpening)
     history.replaceState(null, '', location.pathname + location.search);
 const setupOpening = clientSetupOpening || new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.10.0', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.10.0', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.11.0', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.11.0', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
-const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.10.0', import.meta.url).href);
+const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.11.0', import.meta.url).href);
 const api = new ErpApi();
-const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.10.0', import.meta.url).href);
-const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.10.0', import.meta.url).href);
-const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.10.0', import.meta.url).href);
-const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.10.0', import.meta.url).href);
-const { ClientAdmin, ClientPortal } = await import(new URL('./erp-clients.js?v=0.10.0', import.meta.url).href);
-const { StaffAdmin } = await import(new URL('./erp-staff.js?v=0.10.0', import.meta.url).href);
-const { WorkPlanDesk } = await import(new URL('./erp-workplans.js?v=0.10.0', import.meta.url).href);
-const { MaterialDesk } = await import(new URL('./erp-materials.js?v=0.10.0', import.meta.url).href);
-const { WorksheetDesk } = await import(new URL('./erp-worksheets.js?v=0.10.0', import.meta.url).href);
-const { EntryDesk } = await import(new URL('./erp-entries.js?v=0.10.0', import.meta.url).href);
+const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.11.0', import.meta.url).href);
+const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.11.0', import.meta.url).href);
+const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.11.0', import.meta.url).href);
+const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.11.0', import.meta.url).href);
+const { ClientAdmin, ClientPortal } = await import(new URL('./erp-clients.js?v=0.11.0', import.meta.url).href);
+const { StaffAdmin } = await import(new URL('./erp-staff.js?v=0.11.0', import.meta.url).href);
+const { WorkPlanDesk } = await import(new URL('./erp-workplans.js?v=0.11.0', import.meta.url).href);
+const { MaterialDesk } = await import(new URL('./erp-materials.js?v=0.11.0', import.meta.url).href);
+const { WorksheetDesk } = await import(new URL('./erp-worksheets.js?v=0.11.0', import.meta.url).href);
+const { EntryDesk } = await import(new URL('./erp-entries.js?v=0.11.0', import.meta.url).href);
+const { FinanceDesk } = await import(new URL('./erp-finance.js?v=0.11.0', import.meta.url).href);
+const finance = new FinanceDesk(api, showError);
 const staffAdmin = new StaffAdmin(api);
 const workplans = new WorkPlanDesk(api, showError);
+workplans.setFinanceHandler((project, role) => { void finance.showProject(project, role); });
 const entries = new EntryDesk(api, showError, project => { void workplans.refreshAfterEntry(); if (project?.quote_id)
     void quotes.refreshAfterContractChange(project.quote_id); });
 workplans.setEntryDesk(entries);
@@ -100,6 +103,7 @@ function resetView() {
     get('office-status').textContent = '';
     get('login-feedback').textContent = '';
     generation++;
+    finance.reset();
     staffAdmin.reset();
     workplans.reset();
     get('show-materials').hidden = true;
@@ -248,6 +252,7 @@ async function loadWorkspace() {
             dirty = false;
         }
         get('show-materials').hidden = !current.is_office;
+        finance.setOwner(current.person_id, current.organization_id, current.is_office ? 'office' : current.is_client ? 'client' : 'staff');
         workplans.setOwner(current.person_id, current.organization_id, current.is_client === true && !current.is_office);
         staffAdmin.setOrganization(current.is_office ? current.organization_id : undefined);
         get('staff-workspace').hidden = true;

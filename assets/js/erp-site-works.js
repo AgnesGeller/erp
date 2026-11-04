@@ -1,5 +1,5 @@
 const el = (id) => document.getElementById(id);
-const labels = { preparation: 'Kertépítési előkészítés', requested: 'Jóváhagyásra váró karbantartási igény', confirmed: 'Jóváhagyott karbantartás', waiting_start: 'Indításra váró kertépítés', running: 'Futó kertépítés', cancelled: 'Visszavont igény' };
+const labels = { preparation: 'Kertépítési előkészítés', requested: 'Jóváhagyásra váró karbantartási igény', confirmed: 'Jóváhagyott karbantartás', waiting_start: 'Indításra váró kertépítés', running: 'Futó kertépítés', closed: 'Lezárt kertépítés', cancelled: 'Visszavont igény' };
 function item(tag, value) { const n = document.createElement(tag); n.textContent = value; return n; }
 export class SiteWorks {
     api;

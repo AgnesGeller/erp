@@ -1,0 +1,597 @@
+const n = (tag, text = '') => { const e = document.createElement(tag); e.textContent = text; return e; };
+export function financeMoney(v) { if (v == null)
+    return 'Nem számítható'; const value = String(v); if (!/^-?[0-9]+(?:\.[0-9]{1,2})?$/.test(value))
+    return 'Nem számítható'; const negative = value.startsWith('-'), [whole, fraction = ''] = value.replace(/^-/, '').split('.'), tail = fraction.replace(/0+$/, ''); return (negative && (BigInt(whole) !== 0n || Number(fraction) !== 0) ? '−' : '') + BigInt(whole).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + (tail ? ',' + tail : '') + ' Ft'; }
+export function financeSum(values) { let result = 0n; for (const value of values) {
+    const s = String(value);
+    if (!/^-?[0-9]+(?:\.[0-9]{1,2})?$/.test(s))
+        throw Error('Hiányos pénzösszeg.');
+    const [whole, fraction = ''] = s.replace(/^-/, '').split('.');
+    const amount = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+    result += s.startsWith('-') ? -amount : amount;
+} const sign = result < 0n ? '-' : ''; const abs = result < 0n ? -result : result; return sign + (abs / 100n).toString() + '.' + (abs % 100n).toString().padStart(2, '0'); }
+const money = financeMoney;
+const labels = { init: 'Pénzügyi nyilvántartás indítása', document: 'Pénzügyi igény rögzítése', intent: 'Fizetési szándék', request: 'Fizetési igény', invoice_request: 'Számlakiállítási igény', decision: 'Döntés rögzítése', receipt: 'Befizetés igazolása', advance: 'Előleg igazolása', refund: 'Pénz visszafizetése', reverse: 'Pénztétel visszavonása', close: 'Munka átadva / kertépítés lezárva', reopen: 'Kertépítés újranyitása', paid: 'Teljes munka kifizetve', correct: 'Zárási eredmény korrigálása', policy: 'Láthatóság és jutalékalap mentése', settle: 'Éves jutalékelszámolás rögzítése', payout: 'Jutalékkifizetés igazolása', year_reverse: 'Éves esemény visszavonása', open: 'Nyitott', accepted: 'Elfogadva', disputed: 'Vitatott', withdrawn: 'Visszavonva', confirmed: 'Igazolva', cash: 'Készpénz', transfer: 'Átutalás' };
+function btn(parent, text, run) { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.addEventListener('click', run); parent.append(b); return b; }
+function fold(parent, title, open = false) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.open = open; d.append(n('summary', title)); parent.append(d); return d; }
+function input(parent, label, value = '', type = 'text') { const l = n('label', label), e = type === 'textarea' ? document.createElement('textarea') : document.createElement('input'); if (e instanceof HTMLInputElement)
+    e.type = type; e.value = value; l.append(e); parent.append(l); return e; }
+function select(parent, label, choices, value = '') { const l = n('label', label), s = document.createElement('select'); for (const [v, t] of choices)
+    s.add(new Option(t, v)); s.value = choices.some(([v]) => v === value) ? value : choices[0]?.[0] ?? ''; l.append(s); parent.append(l); return s; }
+export class FinanceDesk {
+    api;
+    onError;
+    yearButton;
+    owner;
+    org;
+    role = 'office';
+    epoch = 0;
+    busy = false;
+    reading = false;
+    changed = false;
+    view;
+    options;
+    pending;
+    preview;
+    currentCommand;
+    globalCommand = false;
+    yearView;
+    pagesDone = new Set();
+    edits = [];
+    editIndex = 0;
+    dialog = document.createElement('dialog');
+    status = n('p');
+    body = n('div');
+    formBox = n('div');
+    previewBox = n('div');
+    years = n('div');
+    project = document.createElement('select');
+    roles = document.createElement('select');
+    fields = {};
+    projectRows = [];
+    constructor(api, onError) {
+        this.api = api;
+        this.onError = onError;
+        this.dialog.id = 'finance-dialog';
+        this.dialog.className = 'workspace finance-dialog';
+        this.dialog.setAttribute('aria-label', 'Pénzügyi elszámolás');
+        const head = n('div');
+        head.className = 'finance-heading';
+        head.append(n('h1', 'Pénzügyi elszámolás'));
+        const close = btn(head, '×', () => this.close());
+        close.setAttribute('aria-label', 'Pénzügyi ablak bezárása');
+        close.title = 'Bezárás';
+        this.dialog.append(head);
+        const toolbar = n('div');
+        toolbar.className = 'finance-actions';
+        this.roles.setAttribute('aria-label', 'Pénzügyi munkaszerep');
+        this.project.setAttribute('aria-label', 'Kertépítés kiválasztása');
+        toolbar.append(this.roles, this.project);
+        btn(toolbar, 'Frissítés', () => { if (this.leave())
+            void this.load(); });
+        this.yearButton = btn(toolbar, 'Éves jutalék', () => { if (this.leave())
+            void this.showYear(); });
+        this.yearButton.hidden = true;
+        const exports = fold(toolbar, 'Letöltés / PDF');
+        btn(exports, 'JSON letöltése', () => { void this.checkedExport('json'); });
+        btn(exports, 'CSV letöltése', () => { void this.checkedExport('csv'); });
+        btn(exports, 'Nyomtatás / PDF', () => { void this.checkedExport('print'); });
+        this.status.setAttribute('role', 'status');
+        this.status.className = 'office-status';
+        this.dialog.append(toolbar, this.status, this.body, this.formBox, this.previewBox, this.years);
+        document.body.append(this.dialog);
+        document.getElementById('show-finance').addEventListener('click', () => { void this.open(); });
+        this.dialog.addEventListener('cancel', e => { e.preventDefault(); this.close(); });
+        this.roles.addEventListener('change', () => { const selected = this.roles.value; if (!this.leave()) {
+            this.roles.value = this.role;
+            return;
+        } this.role = selected; this.view = undefined; this.yearView = undefined; this.years.replaceChildren(); this.clearForm(); void this.open(); });
+        this.project.addEventListener('change', () => { const old = this.view?.context.project.id; if (this.leave()) {
+            this.clearForm();
+            void this.load();
+        }
+        else
+            this.project.value = old ?? ''; });
+        window.addEventListener('beforeunload', e => { if (this.changed || this.pending || this.busy && !this.reading) {
+            e.preventDefault();
+            e.returnValue = '';
+        } });
+        window.addEventListener('erp:before-update', e => { if (this.dialog.open && !this.leave())
+            e.preventDefault(); });
+        setInterval(() => { if (this.dialog.open && !document.hidden && navigator.onLine && !this.busy && !this.changed && !this.pending && !this.currentCommand)
+            void this.load(); }, 60000);
+    }
+    setOwner(owner, org, kind = 'office') { if (owner !== this.owner || org !== this.org) {
+        this.reset();
+        this.owner = owner;
+        this.org = org;
+        this.role = kind === 'staff' ? 'construction_worker' : kind;
+        this.roles.replaceChildren(...(kind === 'staff' ? [['construction_worker', 'Kertépítő'], ['gardener', 'Kertész'], ['construction_lead', 'Építésvezető']] : [[kind, kind === 'office' ? 'Iroda' : 'Megrendelő']]).map(([v, t]) => new Option(t, v)));
+        this.roles.value = this.role;
+    } document.getElementById('show-finance').hidden = !owner; }
+    reset() { this.epoch++; this.owner = undefined; this.org = undefined; this.pending = undefined; this.preview = undefined; this.currentCommand = undefined; this.busy = false; this.reading = false; this.changed = false; this.view = undefined; this.yearView = undefined; this.body.replaceChildren(); this.formBox.replaceChildren(); this.previewBox.replaceChildren(); this.years.replaceChildren(); this.project.replaceChildren(); this.dialog.close(); document.getElementById('show-finance').hidden = true; }
+    get openNow() { return this.dialog.open; }
+    leave() { if (this.busy && !this.reading) {
+        this.message('A mentés még folyamatban van. Várd meg a visszajelzést.');
+        return false;
+    } if ((this.changed || this.pending) && !confirm(this.pending ? 'A mentés eredménye bizonytalan. Bezárod? Az eredeti kérés újrapróbálható marad.' : 'Elhagyod a még nem mentett pénzügyi adatokat?'))
+        return false; return true; }
+    close() { if (!this.leave())
+        return; if (this.reading)
+        this.epoch++; this.busy = false; this.reading = false; this.dialog.close(); this.yearView = undefined; this.years.replaceChildren(); this.clearForm(); }
+    message(text, ok = false) { this.status.textContent = (ok ? '✓ ' : '') + text; this.status.className = 'office-status ' + (ok ? 'success' : ''); }
+    error(e) { if (e?.status === 401 || e?.status === 403) {
+        this.view = undefined;
+        this.yearView = undefined;
+        this.body.replaceChildren();
+        this.years.replaceChildren();
+        this.formBox.replaceChildren();
+        this.previewBox.replaceChildren();
+    } this.message(e instanceof Error ? e.message : 'A pénzügyi művelet nem sikerült.'); if (e?.status === 401 || e?.status === 403)
+        this.onError(e); }
+    scope(global = false) { return { organization_id: this.org, role: this.role, project_id: global ? null : this.project.value || null }; }
+    key() { return 'diszkertek-erp-finance/' + this.owner + '/' + this.org + '/' + this.role + '/' + (this.project.value || 'global'); }
+    draft() { try {
+        localStorage.setItem(this.key(), JSON.stringify({ fields: Object.fromEntries(Object.entries(this.fields).map(([k, v]) => [k, v.value])), pending: this.pending }));
+    }
+    catch {
+        this.message('Ezen az eszközön nem tárolható piszkozat. A mentéshez maradj az oldalon.');
+    } }
+    restore() { try {
+        const raw = localStorage.getItem(this.key());
+        if (!raw)
+            return;
+        const d = JSON.parse(raw);
+        for (const [k, v] of Object.entries(d.fields ?? {}))
+            if (this.fields[k] && typeof v === 'string')
+                this.fields[k].value = v;
+        this.pending = d.pending;
+        this.changed = Object.keys(d.fields ?? {}).length > 0;
+        if (this.pending)
+            btn(this.previewBox, 'Előző mentés újrapróbálása', () => { void this.save(true); });
+    }
+    catch { /* A hibás helyi piszkozat nem akadályozza az új rögzítést. */ } }
+    clearForm() { this.fields = {}; this.edits = []; this.editIndex = 0; this.changed = false; this.currentCommand = undefined; this.preview = undefined; this.pending = undefined; this.formBox.replaceChildren(); this.previewBox.replaceChildren(); }
+    lock(value) { for (const e of Array.from(this.dialog.querySelectorAll('button,input,select,textarea')))
+        if (e.getAttribute('aria-label') !== 'Pénzügyi ablak bezárása')
+            e.disabled = value; }
+    async open() { if (!this.owner || !this.org || this.busy)
+        return; if (!this.dialog.open)
+        this.dialog.showModal(); const epoch = this.epoch; this.busy = true; this.reading = true; this.lock(true); try {
+        this.options = await this.api.finance('finance_options', this.scope(true));
+        this.yearButton.hidden = !this.options.can_commission;
+        if (!this.options.can_commission) {
+            this.yearView = undefined;
+            this.years.replaceChildren();
+        }
+        const rows = await this.api.finance('finance_projects', this.scope(true));
+        if (epoch !== this.epoch)
+            return;
+        const selected = this.project.value;
+        this.projectRows = rows;
+        this.project.replaceChildren(new Option('Válassz kertépítést', ''), ...rows.map(p => new Option(p.name + ' · ' + p.address, p.id)));
+        this.project.value = rows.some(p => p.id === selected) ? selected : rows[0]?.id ?? '';
+        this.roles.hidden = this.roles.options.length === 1;
+        this.message(rows.length ? 'Válassz kertépítést vagy nyisd meg az éves jutalékot.' : 'Nincs elérhető pénzügyi kertépítés.');
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.busy = false;
+            this.reading = false;
+            this.lock(false);
+        }
+    } if (epoch === this.epoch && this.project.value)
+        await this.load();
+    else if (epoch === this.epoch) {
+        this.body.replaceChildren();
+        if (this.role === 'office')
+            btn(this.body, 'Pénzügyi beállítások', () => this.policyForm());
+    } }
+    async showProject(id, role) { if (!this.leave())
+        return; if (role && Array.from(this.roles.options).some(o => o.value === role)) {
+        this.role = role;
+        this.roles.value = role;
+    } await this.open(); if (this.projectRows.some(p => p.id === id)) {
+        this.project.value = id;
+        await this.load();
+    } }
+    async load() { if (!this.org || this.busy || !this.project.value)
+        return; const epoch = this.epoch; this.busy = true; this.reading = true; this.lock(true); try {
+        const v = await this.api.finance('finance_read', this.scope());
+        if (epoch !== this.epoch)
+            return;
+        this.view = v;
+        this.pagesDone.clear();
+        this.render();
+        this.restorePending();
+        this.message('A pénzügyi kimutatás naprakész.', true);
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.busy = false;
+            this.reading = false;
+            this.lock(false);
+        }
+    } }
+    render() {
+        const v = this.view;
+        this.body.replaceChildren();
+        this.years.replaceChildren();
+        this.body.append(n('h2', v.context.project.name), n('p', v.context.project.address));
+        if (this.role === 'office')
+            btn(this.body, 'Pénzügyi beállítások', () => this.policyForm());
+        if (!v.account) {
+            this.body.append(n('p', 'Ehhez a kertépítéshez még nincs pénzügyi nyilvántartás.'));
+            if (this.role === 'office')
+                btn(this.body, 'Pénzügyi nyilvántartás indítása', () => { void this.prepare({ kind: 'init' }); });
+            return;
+        }
+        if (v.context.can_finance) {
+            const a = v.account, c = a.contract;
+            for (const [label, value] of [['Teljes megrendelés – bruttó', c.gross], ['Ügyfél által átvett munkák – bruttó', c.accepted_gross], ['Igazolt befizetések, visszafizetésekkel', a.paid], ['Előlegként rögzített összeg', a.advance], ['Átvett munkák egyenlege', a.balance], ['Teljes megrendelés egyenlege', a.total_outstanding]]) {
+                const row = n('p');
+                row.className = 'finance-total';
+                row.append(n('span', label), n('strong', money(value)));
+                this.body.append(row);
+            }
+            this.body.append(n('p', 'A negatív egyenleg azt jelzi, hogy az ügyfél többet fizetett be, mint az eddig átvett munkák értéke.'));
+            btn(this.body, this.role === 'office' ? 'Új pénzügyi tétel / igény' : 'Fizetési szándék jelzése', () => this.paymentForm());
+            const composition = fold(this.body, 'A megrendelés összetétele');
+            composition.append(n('p', 'Anyagköltség – nettó: ' + money(c.material)), n('p', 'Munkadíj – nettó: ' + money(c.labor)), n('p', 'ÁFA: ' + money(c.vat)));
+            const lines = fold(this.body, 'Elszámolható és még át nem vett tételek');
+            for (const l of c.lines) {
+                const d = fold(lines, l.section + ' · ' + l.title);
+                d.append(n('p', (l.accepted ? 'Ügyfél által átvéve' : 'Még nincs ügyfélátvétel') + ' · ' + money(l.gross) + ' bruttó'));
+            }
+            const docs = fold(this.body, 'Fizetési jelzések és igények (' + v.documents.length + ')');
+            for (const d of v.documents) {
+                const row = fold(docs, (labels[d.kind] ?? d.kind) + ' · ' + money(d.amount) + ' · ' + (labels[d.state] ?? d.state));
+                row.append(n('p', d.billing_name + ' · ' + (labels[d.method] ?? d.method)), n('p', d.note || ''));
+                if (['open', 'accepted', 'disputed'].includes(d.state)) {
+                    if ((this.role === 'office' && d.kind === 'intent') || (this.role === 'client' && d.kind !== 'intent')) {
+                        btn(row, 'Elfogadom', () => this.decision(d, 'accepted'));
+                        btn(row, 'Vitatom', () => this.decision(d, 'disputed'));
+                    }
+                    if (this.role === 'office' || d.author_id === v.context.person_id)
+                        btn(row, 'Igény visszavonása', () => this.decision(d, 'withdrawn'));
+                    if (this.role === 'office')
+                        btn(row, 'Beérkezett pénz igazolása ehhez az igényhez', () => this.paymentForm(d));
+                }
+            }
+            this.pageButton(docs, 'documents', v.documents, 'before_time', 'before_id');
+            const payments = fold(this.body, 'Igazolt pénzmozgások (' + v.payments.length + ')');
+            for (const p of v.payments) {
+                const d = fold(payments, (labels[p.kind] ?? p.kind) + ' · ' + money(p.amount) + ' · ' + p.work_date);
+                d.append(n('p', p.billing_name + ' · ' + (labels[p.method] ?? p.method)), n('p', p.reference || ''), n('p', p.reason || ''));
+                if (this.role === 'office' && !v.payments.some((r) => r.reverses_id === p.id))
+                    btn(d, 'Tétel visszavonása elleneseménnyel', () => this.reasonCommand('reverse', { reverses_id: p.id }));
+            }
+            this.pageButton(payments, 'payments', v.payments, 'payment_time', 'payment_id');
+            const h = fold(this.body, 'Átvételek elszámolási előzményei');
+            for (const e of v.history)
+                h.append(n('p', new Date(e.created_at).toLocaleString('hu-HU') + ' · Elszámolható: ' + money(e.accepted_gross) + ' · Változás: ' + money(e.delta)));
+            if (v.history.length >= 100 && !this.pagesDone.has('history'))
+                btn(h, 'Korábbi elszámolási változások', () => { void this.more('history', { before_version: v.history.at(-1).version }); });
+            const decisions = fold(this.body, 'Döntések és vitatások');
+            for (const d of v.decisions)
+                decisions.append(n('p', new Date(d.created_at).toLocaleString('hu-HU') + ' · ' + (labels[d.decision] ?? d.decision) + ' · ' + d.reason));
+            this.pageButton(decisions, 'decisions', v.decisions, 'decision_time', 'decision_id');
+        }
+        if (v.profit) {
+            const p = fold(this.body, 'Belső eredmény', true);
+            p.append(n('p', 'Munkaoldali eredmény: ' + money(v.profit.labor)), n('p', 'Anyagoldali eredmény: ' + money(v.profit.material)), n('strong', 'Összes eredmény: ' + money(v.profit.total)));
+            if (!v.profit.complete)
+                p.append(n('p', 'A számítás hiányos. A hiányzó tervidőt, kalkulációs óradíjat vagy tényleges anyagárat az iroda tudja rendezni.'));
+            if (v.profit_snapshot?.correction_needed)
+                p.append(n('p', 'A lezárás óta változtak a forrásadatok. A rögzített zárási eredményhez külön irodai korrekció szükséges.'));
+        }
+        if (this.role === 'office') {
+            const d = fold(this.body, 'Átadás és fizetettség');
+            d.append(n('p', v.account.closed ? 'A kertépítés lezárva.' : 'A kertépítés még nincs lezárva.'), n('p', v.account.paid_marked ? 'A teljes munka kifizetve.' : 'A teljes kifizetés még nincs megjelölve.'));
+            if (v.account.closed) {
+                btn(d, 'Kertépítés újranyitása', () => this.reasonCommand('reopen'));
+                btn(d, 'Zárási eredmény korrigálása', () => this.reasonCommand('correct'));
+            }
+            else
+                btn(d, 'Munka átadva / kertépítés lezárva', () => { void this.prepare({ kind: 'close' }); });
+            if (!v.account.paid_marked)
+                btn(d, 'Teljes munka kifizetve', () => { void this.prepare({ kind: 'paid' }); });
+        }
+    }
+    pageButton(parent, key, rows, time, id) { if (rows.length >= 100 && !this.pagesDone.has(key))
+        btn(parent, 'Korábbi tételek betöltése', () => { const last = rows.at(-1); void this.more(key, { [time]: last.created_at, [id]: last.id }); }); }
+    async more(key, filter) { if (this.busy || !this.view)
+        return; this.busy = true; this.reading = true; const epoch = this.epoch; this.lock(true); try {
+        const v = await this.api.finance('finance_read', { ...this.scope(), filter });
+        if (epoch !== this.epoch)
+            return;
+        const old = this.view[key], seen = new Set(old.map((x) => x.id ?? x.version));
+        if (v[key].length < 100)
+            this.pagesDone.add(key);
+        this.view[key] = [...old, ...v[key].filter((x) => !seen.has(x.id ?? x.version))];
+        this.render();
+        if (v[key].length < 100)
+            this.message('Minden korábbi tételt betöltöttünk.', true);
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.busy = false;
+            this.reading = false;
+            this.lock(false);
+        }
+    } }
+    field(k, label, value = '', type = 'text') { const e = input(this.formBox, label, value, type); e.maxLength = { billing_name: 200, billing_address: 500, tax_number: 40, reference: 200, amount: 40 }[k] ?? 4000; this.fields[k] = e; e.addEventListener('input', () => { this.changed = true; this.preview = undefined; this.previewBox.replaceChildren(); this.recordEdit(); this.draft(); }); return e; }
+    choice(k, label, choices, value = '') { const e = select(this.formBox, label, choices, value); this.fields[k] = e; e.addEventListener('change', () => { this.changed = true; this.preview = undefined; this.previewBox.replaceChildren(); this.recordEdit(); this.draft(); }); return e; }
+    paymentForm(document) { if (!this.leave())
+        return; this.clearForm(); const office = this.role === 'office'; this.formBox.append(n('h2', office ? 'Új pénzügyi tétel' : 'Fizetési szándék')); this.choice('operation', 'Művelet', office ? [['receipt', 'Befizetés igazolása'], ['advance', 'Előleg igazolása'], ['refund', 'Pénz visszafizetése'], ['request', 'Fizetési igény'], ['invoice_request', 'Számlakiállítási igény']] : [['intent', 'Fizetési szándék']]); const amountField = this.field('amount', 'Összeg – bruttó forint', document?.amount ?? ''); amountField.inputMode = 'decimal'; this.choice('method', 'Fizetési mód', [['cash', 'Készpénz'], ['transfer', 'Átutalás']], document?.method ?? 'cash'); this.field('work_date', 'Pénz beérkezésének / visszafizetésének napja', new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Budapest' }), 'date'); this.choice('billing_kind', 'Számlázási alany', [['person', 'Magánszemély'], ['company', 'Cég'], ['condominium', 'Társasház']], document?.billing_kind ?? 'person'); this.field('billing_name', 'Számlázási név', document?.billing_name ?? this.view?.context.project.customer ?? ''); this.field('billing_address', 'Számlázási cím', document?.billing_address ?? ''); this.field('tax_number', 'Adószám', document?.tax_number ?? ''); this.field('reference', 'Hivatkozás', document?.id ?? ''); this.field('reason', 'Megjegyzés / javítás vagy visszafizetés indoka', '', 'textarea'); this.formBox.append(n('p', 'A fizetési jelzés és a számlaigény önmagában nem igazolt befizetés.')); btn(this.formBox, 'Mentési előnézet ellenőrzése', () => { const c = Object.fromEntries(Object.entries(this.fields).map(([k, e]) => [k, e.value])); c.amount = c.amount.trim().replace(/[\s\u00a0\u202f]/g, '').replace(',', '.'); c.kind = ['intent', 'request', 'invoice_request'].includes(c.operation) ? 'document' : c.operation; if (c.kind === 'document')
+        c.document_kind = c.operation; delete c.operation; if (document)
+        c.document_id = document.id; void this.prepare(c); }); btn(this.formBox, 'Mégse / bezárás', () => { if (this.leave())
+        this.clearForm(); }); this.editControls(); this.restore(); }
+    decision(d, decision) { this.reasonCommand('decision', { document_id: d.id, document_revision: d.revision, decision }); }
+    reasonCommand(kind, extra = {}) { if (!this.leave())
+        return; this.clearForm(); this.formBox.append(n('h2', labels[kind])); this.field('reason', 'Indok / megjegyzés', '', 'textarea'); btn(this.formBox, 'Előnézet ellenőrzése', () => { void this.prepare({ kind, ...extra, reason: this.fields.reason.value }); }); btn(this.formBox, 'Mégse', () => { if (this.leave())
+        this.clearForm(); }); this.editControls(); }
+    policyForm() { if (!this.leave() || this.role !== 'office')
+        return; this.clearForm(); const p = this.options?.policy ?? this.view?.context.policy ?? {}; this.formBox.append(n('h2', 'Eredmény és jutalék láthatósága')); for (const [k, label] of [['profit_worker', 'Belső eredményt a kertész/kertépítő láthat'], ['profit_lead', 'Belső eredményt az építésvezető láthat'], ['commission_active', 'Dolgozó saját jutalékát láthatja']]) {
+        const e = this.field(k, label, '', 'checkbox');
+        e.checked = p[k] === true;
+    } this.choice('commission_basis', 'Jutalék alapja', [['labor', 'Munkaoldali eredmény'], ['material', 'Anyagoldali eredmény'], ['both', 'Munka- és anyagoldali eredmény együtt']], p.commission_basis ?? 'both'); this.field('reason', 'Változtatás indoka', '', 'textarea'); btn(this.formBox, 'Beállítások előnézete', () => { void this.prepare({ kind: 'policy', revision: p.version ?? 0, profit_worker: this.fields.profit_worker.checked, profit_lead: this.fields.profit_lead.checked, commission_active: this.fields.commission_active.checked, commission_basis: this.fields.commission_basis.value, reason: this.fields.reason.value }, true); }); }
+    capture() { return Object.fromEntries(Object.entries(this.fields).map(([k, e]) => [k, { value: e.value, checked: e instanceof HTMLInputElement && e.type === 'checkbox' ? e.checked : undefined }])); }
+    recordEdit() { if (!this.edits.length)
+        this.edits = [this.capture()];
+    else {
+        this.edits = this.edits.slice(0, this.editIndex + 1);
+        this.edits.push(this.capture());
+        if (this.edits.length > 60)
+            this.edits.shift();
+        this.editIndex = this.edits.length - 1;
+    } }
+    editControls() { this.edits = [this.capture()]; this.editIndex = 0; const move = (delta) => { const next = this.editIndex + delta; if (next < 0 || next >= this.edits.length || this.busy || this.pending)
+        return; this.editIndex = next; for (const [k, v] of Object.entries(this.edits[next])) {
+        const e = this.fields[k];
+        if (e) {
+            e.value = v.value;
+            if (e instanceof HTMLInputElement && v.checked !== undefined)
+                e.checked = v.checked;
+        }
+    } this.changed = true; this.preview = undefined; this.currentCommand = undefined; this.previewBox.replaceChildren(); this.draft(); }; btn(this.formBox, 'Visszavonás', () => move(-1)); btn(this.formBox, 'Újra', () => move(1)); }
+    restorePending() { if (this.pending || this.changed)
+        return; try {
+        const raw = localStorage.getItem(this.key());
+        if (!raw)
+            return;
+        const d = JSON.parse(raw);
+        const p = d.pending;
+        if (p && p.organization_id === this.org && p.role === this.role && (!p.project_id || p.project_id === this.project.value)) {
+            this.pending = p;
+            this.previewBox.replaceChildren();
+            this.previewBox.append(n('p', 'Egy korábbi pénzügyi mentés eredménye még ellenőrzésre vár.'));
+            btn(this.previewBox, 'Előző mentés újrapróbálása', () => { void this.save(true); });
+        }
+    }
+    catch { } }
+    async checkedExport(kind) { if (this.busy || !this.org || !this.owner)
+        return; if (!navigator.onLine) {
+        this.message('A pénzügyi kimutatás letöltése előtt internetes jogosultság-ellenőrzés szükséges.');
+        return;
+    } const epoch = this.epoch; this.busy = true; this.reading = true; this.lock(true); try {
+        if (this.view)
+            this.view = await this.api.finance('finance_read', this.scope());
+        if (this.yearView)
+            this.yearView = await this.api.finance('finance_year', { ...this.scope(true), year: this.yearView.year });
+        if (epoch !== this.epoch)
+            return;
+        if (kind === 'json')
+            this.export();
+        else if (kind === 'csv')
+            this.exportCsv();
+        else
+            this.print();
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.busy = false;
+            this.reading = false;
+            this.lock(false);
+        }
+    } }
+    exportRows() { const rows = [['Típus', 'Megnevezés', 'Összeg – Ft', 'Állapot / dátum']]; const v = this.view; if (v?.account?.contract) {
+        rows.push(['Összesítő', 'Megrendelt bruttó', v.account.contract.gross, ''], ['Összesítő', 'Elszámolható bruttó', v.account.contract.accepted_gross, ''], ['Összesítő', 'Igazolt befizetés', v.account.paid, ''], ['Összesítő', 'Egyenleg', v.account.balance, '']);
+        for (const p of v.payments)
+            rows.push(['Pénzmozgás', labels[p.kind], p.amount, p.work_date]);
+        for (const d of v.documents)
+            rows.push(['Igény', labels[d.kind], d.amount, labels[d.state]]);
+    } if (v?.profit)
+        for (const [k, label] of [['labor', 'Munkaoldali eredmény'], ['material', 'Anyagoldali eredmény'], ['total', 'Összes belső eredmény']])
+            rows.push(['Eredmény', label, v.profit[k], '']); for (const y of this.yearView?.rows ?? [])
+        rows.push(['Jutalék', y.name + ' · ' + y.project_name, y.amount, y.final ? 'Lezárt kertépítés' : 'Előzetes']); return rows; }
+    download(blob, filename) { const url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); this.message('A kimutatás letöltését elindítottuk. A böngésző Letöltések listájában találod.', true); }
+    exportCsv() { if (!this.view && !this.yearView)
+        return; const cell = (v) => '"' + String(v ?? '').replace(/^\s*[=+@-]/, "'$&").replaceAll('"', '""') + '"'; this.download(new Blob(['\ufeff' + this.exportRows().map(r => r.map(cell).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }), 'Diszkertek_penzugyi_kimutatas.csv'); }
+    print() { if (!this.view && !this.yearView)
+        return; const w = window.open('', '_blank'); if (!w) {
+        this.message('A böngésző letiltotta az előnézeti ablakot. Engedélyezd az előugró ablakot.');
+        return;
+    } w.opener = null; const d = w.document; d.title = 'DÍSZKERTEK – pénzügyi kimutatás'; const style = d.createElement('style'); style.textContent = 'body{font:14px Arial;color:#173f2c;margin:30px}table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #bbb;text-align:left}h1{font-size:24px}button{padding:12px}@media print{button{display:none}thead{display:table-header-group}}'; d.head.append(style); d.body.append(n('h1', 'DÍSZKERTEK – pénzügyi kimutatás'), n('p', this.view?.context.project.name ?? 'Éves jutalék'), n('p', 'A betöltött, jogosultság szerint látható tételek.')); const table = d.createElement('table'); for (const [i, row] of this.exportRows().entries()) {
+        const tr = d.createElement('tr');
+        for (const v of row) {
+            const td = d.createElement(i === 0 ? 'th' : 'td');
+            td.textContent = String(v ?? '');
+            tr.append(td);
+        }
+        table.append(tr);
+    } d.body.append(table); const b = d.createElement('button'); b.textContent = 'Nyomtatás / Mentés PDF-ként'; b.onclick = () => w.print(); d.body.append(b); }
+    async prepare(command, global = false) { if (this.busy)
+        return; if (!navigator.onLine) {
+        this.draft();
+        this.message('Internet nélkül a piszkozat megőrizhető; pénzügyi művelet nem véglegesíthető.');
+        return;
+    } const epoch = this.epoch; this.busy = true; this.lock(true); this.previewBox.replaceChildren(); try {
+        const c = { ...(global || command.kind === 'init' ? {} : { revision: this.view?.account?.revision }), ...command };
+        const p = await this.api.finance('finance_preview', { ...this.scope(global), command: c });
+        if (epoch !== this.epoch)
+            return;
+        this.currentCommand = c;
+        this.globalCommand = global;
+        this.preview = p;
+        this.pending = undefined;
+        this.previewBox.append(n('h2', 'Mentési előnézet'), n('p', labels[c.kind] ?? 'Pénzügyi művelet'));
+        const data = p.document;
+        if (data.amount != null)
+            this.previewBox.append(n('strong', 'Összeg: ' + money(data.amount)));
+        if (data.balance_after != null)
+            this.previewBox.append(n('p', 'Átvett munkák egyenlege a művelet után: ' + money(data.balance_after)));
+        if (c.kind === 'decision')
+            this.previewBox.append(n('p', 'Döntés: ' + (labels[c.decision] ?? c.decision)));
+        if (c.kind === 'close' || c.kind === 'correct')
+            this.previewBox.append(n('p', 'Rögzítendő belső eredmény: ' + money(data.profit?.total)));
+        if (c.kind === 'init')
+            this.previewBox.append(n('p', 'Megrendelt bruttó érték: ' + money(data.contract?.gross) + ' · Korábbi befizetés nem kerül automatikusan ide.'));
+        btn(this.previewBox, 'Ellenőriztem – ' + labels[c.kind], () => { void this.save(); });
+        btn(this.previewBox, 'Vissza a szerkesztéshez', () => { this.preview = undefined; this.currentCommand = undefined; this.previewBox.replaceChildren(); });
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.busy = false;
+            this.reading = false;
+            this.lock(false);
+        }
+    } }
+    async save(retry = false) { if (this.busy || !this.owner || !this.org)
+        return; if (!retry) {
+        if (!this.preview || !this.currentCommand)
+            return;
+        this.pending = { ...this.scope(this.globalCommand), action: 'finance_write', command: structuredClone(this.currentCommand), request_id: crypto.randomUUID(), preview_token: this.preview.token, confirmed: true };
+        this.draft();
+    } if (!this.pending || this.pending.organization_id !== this.org || this.pending.role !== this.role || this.pending.project_id && this.pending.project_id !== this.project.value)
+        return; const epoch = this.epoch, key = this.key(); this.busy = true; this.lock(true); try {
+        await this.api.finance('finance_write', this.pending);
+        if (epoch !== this.epoch)
+            return;
+        try {
+            localStorage.removeItem(key);
+        }
+        catch { }
+        this.pending = undefined;
+        this.clearForm();
+        this.options = await this.api.finance('finance_options', this.scope(true));
+        this.yearButton.hidden = !this.options.can_commission;
+        if (!this.options.can_commission) {
+            this.yearView = undefined;
+            this.years.replaceChildren();
+        }
+        this.busy = false;
+        if (this.project.value)
+            await this.load();
+        if (this.yearView)
+            await this.showYear(this.yearView.year);
+        this.message('A pénzügyi műveletet sikeresen rögzítettük.', true);
+    }
+    catch (e) {
+        if (epoch !== this.epoch)
+            return;
+        if (e?.status === 409) {
+            this.pending = undefined;
+            this.preview = undefined;
+            this.currentCommand = undefined;
+            this.draft();
+            this.previewBox.replaceChildren();
+            btn(this.previewBox, 'Friss adatok betöltése – a beírt adatok megőrzésével', () => { void this.load(); });
+        }
+        else if (e?.status === 422) {
+            this.pending = undefined;
+            this.draft();
+        }
+        else {
+            this.previewBox.replaceChildren();
+            btn(this.previewBox, 'Előző mentés újrapróbálása', () => { void this.save(true); });
+        }
+        this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.busy = false;
+            this.reading = false;
+            this.lock(false);
+        }
+    } }
+    async showYear(year, filter = {}, append = false) { if (this.busy || !this.org)
+        return; const epoch = this.epoch; this.busy = true; this.reading = true; this.lock(true); try {
+        const y = year ?? new Date().getFullYear(), v = await this.api.finance('finance_year', { ...this.scope(true), year: y, filter });
+        if (epoch !== this.epoch)
+            return;
+        if (append && this.yearView?.year === y) {
+            for (const key of ['rows', 'settlements']) {
+                const seen = new Set(this.yearView[key].map((r) => r.id ?? r.version_id + '/' + r.person_id));
+                v[key] = [...this.yearView[key], ...v[key].filter((r) => !seen.has(r.id ?? r.version_id + '/' + r.person_id))];
+            }
+        }
+        this.yearView = v;
+        this.years.replaceChildren();
+        this.years.append(n('h2', 'Éves jutalék – ' + y), n('p', 'A futó kertépítések összege előzetes. A jutalék a kertépítés lezárásának évébe kerül; az új év külön indul.'));
+        const yr = input(this.years, 'Év', String(y), 'number');
+        btn(this.years, 'Év megnyitása', () => { void this.showYear(Number(yr.value)); });
+        for (const person of v.summary ?? [])
+            this.years.append(n('strong', person.name + ' · Lezárt munkák: ' + money(person.final) + ' · Előzetes: ' + money(person.preliminary)));
+        if (v.row_cursor != null)
+            btn(this.years, 'További projektes jutaléktételek', () => { void this.showYear(y, { offset: v.row_cursor }, true); });
+        if (v.settlement_cursor != null)
+            btn(this.years, 'Korábbi éves elszámolások', () => { void this.showYear(y, { settlement_offset: v.settlement_cursor }, true); });
+        for (const row of v.rows) {
+            const d = fold(this.years, row.name + ' · ' + row.project_name);
+            d.append(n('p', money(row.amount) + ' · ' + (row.final ? 'Lezárt kertépítés' : 'Előzetes összeg')));
+            if (!row.complete)
+                d.append(n('p', 'A számítás vagy a tényleges munkavégzői felosztás hiányos.'));
+        }
+        for (const warning of v.warnings ?? [])
+            this.years.append(n('p', warning.name + ': hiányos eredményszámítás vagy munkavégzői felosztás; a jutalék még nem végleges.'));
+        if (!v.rows.length)
+            this.years.append(n('p', 'Ebben az évben nincs személyre kimutatott jutalék.'));
+        if (this.role === 'office') {
+            const p = select(this.years, 'Munkatárs', [['', 'Válassz munkatársat'], ...v.people.map((p) => [p.id, p.name])]);
+            const amount = input(this.years, 'Igazolt jutalékkifizetés összege – forint');
+            const reason = input(this.years, 'Megjegyzés / korrekció indoka', '', 'textarea');
+            btn(this.years, 'Éves elszámolás előnézete', () => { void this.prepare({ kind: 'settle', year: y, person_id: p.value, reason: reason.value }, true); });
+            btn(this.years, 'Jutalékkifizetés előnézete', () => { void this.prepare({ kind: 'payout', year: y, person_id: p.value, amount: amount.value, reason: reason.value }, true); });
+            for (const s of v.settlements) {
+                const d = fold(this.years, (s.kind === 'settle' ? 'Éves elszámolás' : s.kind === 'payout' ? 'Kifizetés' : 'Ellenesemény') + ' · ' + money(s.amount));
+                d.append(n('p', v.people.find((p) => p.id === s.person_id)?.name ?? 'Munkatárs'), n('p', s.reason || ''));
+                if (s.kind !== 'reverse' && !v.settlements.some((r) => r.reverses_id === s.id))
+                    btn(d, 'Éves esemény visszavonásának előnézete', () => { void this.prepare({ kind: 'year_reverse', year: y, person_id: s.person_id, reverses_id: s.id, reason: reason.value }, true); });
+            }
+        }
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.busy = false;
+            this.reading = false;
+            this.lock(false);
+        }
+    } }
+    export() { if (!this.view && !this.yearView)
+        return; this.download(new Blob([JSON.stringify({ loaded_history_only: true, financial: this.view, annual: this.yearView }, null, 2)], { type: 'application/json' }), 'Diszkertek_penzugyi_kimutatas.json'); }
+}

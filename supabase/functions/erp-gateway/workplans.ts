@@ -1,7 +1,7 @@
 import {actualTimeView} from './worksheet-model.ts';
 import {verifiedSession} from './clients.ts';
 import {transitionTask,progressSummary,effectiveAcceptance,validateTaskGraph,type TaskState,type TaskCommand,type WorkRole} from './workplan-model.ts';
-type Obj=Record<string,any>;type Options={materialNotifications?:boolean;url:string;key:string;fetchImpl?:typeof fetch};
+type Obj=Record<string,any>;type Options={financeNotifications?:boolean;materialNotifications?:boolean;url:string;key:string;fetchImpl?:typeof fetch};
 const uuid=(x:unknown):x is string=>typeof x==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(x);
 const roles=['office','construction_lead','construction_worker','gardener','client'];
 class PlanError extends Error{constructor(public status:number,message:string){super(message);}}
@@ -28,7 +28,7 @@ export function createWorkPlans(options:Options){const request=options.fetchImpl
  return async(input:Obj,token:string,actor:string,memberships:unknown)=>{try{
   const verified=verifiedSession(token);if(verified.user!==actor)throw new PlanError(401,'Érvénytelen munkamenet.');const base={p_actor:actor,p_session:verified.session};
   if(input.action==='plan_projects')return {data:await rpc('erp_plan_projects',base)};
-  if(input.action==='plan_notifications'){if(input.notification_id!=null&&!uuid(input.notification_id))throw new PlanError(422,'Érvénytelen értesítés.');const [notes,materialNotes]=await Promise.all([rpc('erp_plan_notifications',{...base,p_notification:input.notification_id??null}),options.materialNotifications?rpc('erp_material_notifications',{...base,p_notification:input.notification_id??null}):Promise.resolve([])]);return {data:[...notes,...materialNotes].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))};}
+  if(input.action==='plan_notifications'){if(input.notification_id!=null&&!uuid(input.notification_id))throw new PlanError(422,'Érvénytelen értesítés.');const [notes,materialNotes,financeNotes]=await Promise.all([rpc('erp_plan_notifications',{...base,p_notification:input.notification_id??null}),options.materialNotifications?rpc('erp_material_notifications',{...base,p_notification:input.notification_id??null}):Promise.resolve([]),options.financeNotifications?rpc('erp_finance_notifications',base):Promise.resolve([])]);return {data:[...notes,...materialNotes,...financeNotes].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))};}
   if(input.action==='plan_color'){
    if(!Array.isArray(memberships)||!memberships.some(m=>m.organization_id===input.organization_id&&m.is_office===true)||!uuid(input.person_id)||!/^#[a-f0-9]{6}$/i.test(input.color)||!Number.isSafeInteger(input.revision))throw new PlanError(403,'Személyszínt csak az iroda módosíthat.');return {data:await rpc('erp_plan_color_save',{p_org:input.organization_id,p_actor:actor,p_person:input.person_id,p_color:input.color,p_revision:input.revision,p_source:'manual',p_ref:null})};
   }

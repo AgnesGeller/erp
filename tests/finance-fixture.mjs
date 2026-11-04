@@ -1,0 +1,3 @@
+import {readFile} from 'node:fs/promises';import {workplanFixture,id} from './workplan-fixture.mjs';
+export async function financeFixture(){const f=await workplanFixture();for(const name of ['erp-project-entries','erp-construction-worksheets','erp-materials','erp-finance'])await f.db.exec(await readFile('database/proposals/'+name+'.sql','utf8'));const q=(await f.db.query('select calculation from erp.quote_versions where quote_id=$1',[f.quote])).rows[0].calculation;Object.assign(q,{material:'0.00',tax_base:'850000.00',vat:'0.00',gross:'850000.00',vat_mode:'0'});await f.db.query('update erp.quote_versions set input=$1,calculation=$2 where quote_id=$3',[JSON.stringify({hourly_rate:'8500'}),JSON.stringify(q),f.quote]);await f.start();await f.init();return f;}
+export {id};

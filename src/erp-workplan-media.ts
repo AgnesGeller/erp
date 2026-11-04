@@ -1,6 +1,6 @@
 import type {MediaRef} from './erp-workplan-model.js';
-const {checkMediaBytes}=await import(new URL('./erp-survey-model.js?v=0.10.0',import.meta.url).href) as typeof import('./erp-survey-model.js');
-const {downloadSurveyFile}=await import(new URL('./erp-survey-archive.js?v=0.10.0',import.meta.url).href) as typeof import('./erp-survey-archive.js');
+const {checkMediaBytes}=await import(new URL('./erp-survey-model.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-survey-model.js');
+const {downloadSurveyFile}=await import(new URL('./erp-survey-archive.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-survey-archive.js');
 type Zip={zipSync:(files:Record<string,Uint8Array>,options:{level:number})=>Uint8Array;unzipSync:(data:Uint8Array,options:{filter:(f:{name:string;originalSize:number})=>boolean})=>Record<string,Uint8Array>};
 const hash=async(blob:Blob)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))).map(x=>x.toString(16).padStart(2,'0')).join('');
 const zip=async()=>await import(new URL('../vendor/fflate-0.8.2.js',import.meta.url).href) as Zip;

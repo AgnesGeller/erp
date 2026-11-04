@@ -1,5 +1,5 @@
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.10.0', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.10.0', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.11.0', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.11.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
@@ -254,14 +254,19 @@ export class WorkPlanDesk {
         const p = this.projects.find(p => p.id === n.project_id);
         const row = node('div');
         row.className = 'plan-note';
-        const labels = { review: 'Átvételre vár', repair: 'Javítás szükséges', attribution: 'Résztvevők pontosítása', assignment: 'Munkatársi hozzárendelés szükséges', info: 'Változás a munkán', entry: 'Bejegyzés feldolgozásra vár', material: 'Anyag átvehető a telephelyen' };
+        const labels = { review: 'Átvételre vár', repair: 'Javítás szükséges', attribution: 'Résztvevők pontosítása', assignment: 'Munkatársi hozzárendelés szükséges', info: 'Változás a munkán', entry: 'Bejegyzés feldolgozásra vár', material: 'Anyag átvehető a telephelyen', finance: 'Pénzügyi teendő' };
         button(row, (labels[n.kind] ?? 'Értesítés') + ' · ' + (p?.name ?? 'Korábbi munka') + (n.completed_at ? ' · Elintézve' : ''), () => { if (!p || !this.leave())
             return; void this.goNote(n); });
         row.append(node('small', new Date(n.created_at).toLocaleString('hu-HU')));
         d.append(row);
     } if (!notes.length)
         d.append(node('p', 'Nincs új értesítés.')); }
-    async goNote(n) { const epoch = this.epoch; try {
+    financeHandler;
+    setFinanceHandler(fn) { this.financeHandler = fn; }
+    async goNote(n) { if (n.kind === 'finance') {
+        this.financeHandler?.(n.project_id, n.role);
+        return;
+    } const epoch = this.epoch; try {
         await this.api.plan('plan_notifications', { notification_id: n.id });
         if (epoch !== this.epoch)
             return;

@@ -1,7 +1,7 @@
-const { entryKinds, financialKinds, parameterFields } = await import(new URL('./erp-entry-model.js?v=0.10.0', import.meta.url).href);
-const { quoteNumber, quoteInput, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.10.0', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.10.0', import.meta.url).href);
-const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.10.0', import.meta.url).href);
+const { entryKinds, financialKinds, parameterFields } = await import(new URL('./erp-entry-model.js?v=0.11.0', import.meta.url).href);
+const { quoteNumber, quoteInput, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.11.0', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.11.0', import.meta.url).href);
+const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.11.0', import.meta.url).href);
 const labels = { needs_office: 'Irodai feldolgozásra vár', needs_client: 'Megrendelői döntésre vár', reported: 'Bejelentve', investigating: 'Ellenőrzés alatt', repairing: 'Javítás folyamatban', repaired: 'Javítva, átvételre vár', reopened: 'Újranyitva', answered: 'Megválaszolva', closed: 'Lezárva', disputed: 'Vitatott', liability_proposed: 'Felelősségi döntésre vár', liability_agreed: 'Közösen elfogadott felelősség', applied: 'Jóváhagyva és alkalmazva', withdrawn: 'Visszavonva', rejected: 'Elutasítva' };
 const events = { create: 'Létrehozás', revise: 'Új változat', price: 'Irodai ajánlat', approve: 'Elfogadás', reject: 'Elutasítás', comment: 'Megjegyzés', status: 'Állapotváltás', react: 'Címzetti visszajelzés', withdraw: 'Visszavonás', archive: 'Archiválás', restore: 'Visszaállítás' };
 const roles = { office: 'Iroda', client: 'Megrendelő', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész' };

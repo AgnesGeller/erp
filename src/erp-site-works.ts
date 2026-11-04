@@ -2,7 +2,7 @@ import type {ErpApi} from './erp-api.js';
 interface Site{id:string;address:string;label:string;}
 interface Work{id:string;name:string;work_type:'construction'|'maintenance';work_status:string;customer_id:string;location_id:string;customer_name:string;site_address:string;description:string;requested_date:string|null;scheduled_date:string|null;people:number|null;hours:number|null;revision:number;}
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
-const labels:Record<string,string>={preparation:'Kertépítési előkészítés',requested:'Jóváhagyásra váró karbantartási igény',confirmed:'Jóváhagyott karbantartás',waiting_start:'Indításra váró kertépítés',running:'Futó kertépítés',cancelled:'Visszavont igény'};
+const labels:Record<string,string>={preparation:'Kertépítési előkészítés',requested:'Jóváhagyásra váró karbantartási igény',confirmed:'Jóváhagyott karbantartás',waiting_start:'Indításra váró kertépítés',running:'Futó kertépítés',closed:'Lezárt kertépítés',cancelled:'Visszavont igény'};
 function item(tag:string,value:string){const n=document.createElement(tag);n.textContent=value;return n;}
 export class SiteWorks {
  private org:string|undefined;private epoch=0;private loading=false;private saving=false;private changed=false;private customerId:string|undefined;private customerName='';private requestId:string|undefined;private pending:Record<string,string>|undefined;private rows:Work[]=[];private approvalDays=new Map<string,string>();

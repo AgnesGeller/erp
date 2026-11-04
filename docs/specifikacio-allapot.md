@@ -1,6 +1,6 @@
 # A fejlesztői PDF teljesítési állapota
 
-Ellenőrzés: **2026. november 4. – ERP 0.14.0**. Alap: a 15 oldalas teljes fejlesztői specifikáció, a kiegészítés és az azóta jóváhagyott döntések. Ez állapotfelmérés, nem készre jelentés. A teljes megbízásból az alábbi hátralévő részek is megvalósítandók.
+Ellenőrzés: **2026. november 4. – ERP 0.14.1**. Alap: a 15 oldalas teljes fejlesztői specifikáció, a kiegészítés és az azóta jóváhagyott döntések. Ez állapotfelmérés, nem készre jelentés. A teljes megbízásból az alábbi hátralévő részek is megvalósítandók.
 
 | Terület / PDF-fejezet | Jelenlegi állapot | Mi hiányzik még? |
 | --- | --- | --- |
@@ -35,3 +35,8 @@ Pénzügyi pontosítás: éven átnyúló kertépítés jutaléka a lezárás é
 ## 0.13.0 – Munkacsomag és áttekinthetőbb navigáció
 
 Az eredeti üzleti szabályok megtartásával elkészült a Kiss Csaba-minta szerinti munkacsomag: külön ár nélküli csapat-, saját ügyféláras megrendelői és belső irodai PDF. A részfeladatok négyszintű átvétele változatlan. Négy kezdőlapi út és három munkatervnézet segíti a használatot; [rövid útmutató](munkacsomag.md). Az előző táblázat további hiányai és a teljes üzleti átadás még nyitottak.
+
+
+## 0.14.1 – Munkanapi anyagkapcsolat és következő pontosítás
+
+A kertépítési napi munkalapon elérhető az adott nap beszállítás/beépítés összesítése és rögzítőfelülete, valamint az irodai anyagtörzs. A korábbi időlap-export nem tartalmazza automatikusan az anyagnaplót. A főnök új, területeken átívelő sorszámos részszakaszai és azok szabad, húzással történő szerkesztése még következő fejlesztés; [rögzített követelmények](fonoki-szakaszolas-pontositas.md).

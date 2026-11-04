@@ -15,3 +15,6 @@ test('409 után nincs régi mentési előnézet, a beírt adatok megmaradnak',as
 test('Visszavonás és Újra megőrzi az előző mennyiséget',()=>{const h=harness();h.d.draft=draft();h.d.history.reset(h.d.draft);h.d.draft.quantity='3';h.d.touch('quantity');assert.equal(h.d.history.undo().quantity,'1');assert.equal(h.d.history.redo().quantity,'3');});
 test('Offline nincs színlelt ellenőrzés vagy készletfoglalás',async()=>{const h=harness();h.d.draft=draft();h.c.navigator.onLine=false;await h.d.review();assert.equal(h.calls.length,0);assert.match(h.d.feedback.textContent,/internetkapcsolat/);});
 test('Visszavont hozzáférésnél a helyi gyorsítótár sem ad régi nézetet',async()=>{const h=harness();h.storage.set(h.d.key()+'/context',JSON.stringify({owner:person,org:'org',scope:h.d.scope,...materialView()}));const p=h.d.load();h.calls[0].reject(Object.assign(Error('Nincs jog'),{status:403}));await p;assert.equal(h.d.view,undefined);});
+
+
+test('Munkalapról nyitott anyagkezelés szűri a naplót, és az új szállítmány dátumát előtölti',async()=>{const h=harness();const p=h.d.show(person,'org',{project_id:project,role:'office'},undefined,'2026-11-04');assert.equal(h.calls[0].args.filter.work_date,'2026-11-04');h.calls[0].resolve(materialView());await p;h.d.start('receive_site',{line_id:sheet,lot_id:sheet,work_date:'2026-11-03'});assert.equal(h.d.draft.work_date,'2026-11-04');});

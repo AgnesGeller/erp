@@ -1,7 +1,7 @@
-const { quoteNumber, quoteInput, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.14.0', import.meta.url).href);
-const { materialActions, materialSearch, materialCsv } = await import(new URL('./erp-material-model.js?v=0.14.0', import.meta.url).href);
-const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.14.0', import.meta.url).href);
-const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.14.0', import.meta.url).href);
+const { quoteNumber, quoteInput, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.14.1', import.meta.url).href);
+const { materialActions, materialSearch, materialCsv } = await import(new URL('./erp-material-model.js?v=0.14.1', import.meta.url).href);
+const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.14.1', import.meta.url).href);
+const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.14.1', import.meta.url).href);
 const node = (tag, text = '') => { const e = document.createElement(tag); e.textContent = text; return e; };
 const num = (v) => quoteNumber(v);
 const names = { init: 'Anyagterv betöltése', extra: 'Extra anyag felvétele', line: 'Anyagsor hozzárendelése', link: 'Extra hozzárendelése az elfogadott ajánlathoz', material: 'Anyagtörzs mentése', vendor: 'Beszállító mentése', policy: 'Költségsúlyok mentése', ...materialActions };
@@ -25,6 +25,7 @@ export class MaterialDesk {
     feedback = node('p');
     owner;
     org;
+    workDay;
     scope = { project_id: null, role: 'office' };
     generation = 0;
     view;
@@ -88,8 +89,8 @@ export class MaterialDesk {
     error(e) { this.message(e instanceof Error ? e.message : 'Az anyagkezelés nem sikerült.'); if (e && typeof e === 'object' && 'status' in e && e.status === 401)
         this.onError(e); }
     args() { return { organization_id: this.org, ...this.scope }; }
-    async show(owner, org, scope = { project_id: null, role: 'office' }, line) { if (this.open && !this.leave())
-        return; this.cancelRead(); this.setOwner(owner, org); this.scope = { ...scope }; this.filter = line ? { line_id: line } : {}; this.draft = undefined; this.preview = undefined; this.pending = undefined; try {
+    async show(owner, org, scope = { project_id: null, role: 'office' }, line, day) { if (this.open && !this.leave())
+        return; this.cancelRead(); this.setOwner(owner, org); this.scope = { ...scope }; this.workDay = day; this.filter = line ? { line_id: line } : {}; this.draft = undefined; this.preview = undefined; this.pending = undefined; try {
         const p = JSON.parse(localStorage.getItem(this.key()) ?? '{}').pending;
         if (p?.organization_id === org && p.project_id === this.scope.project_id && p.role === this.scope.role && typeof p.request_id === 'string')
             this.pending = p;
@@ -98,7 +99,7 @@ export class MaterialDesk {
         this.dialog.showModal(); await this.load(); }
     async load(append) { if (this.busy || !this.owner || !this.org)
         return; const gen = ++this.generation, old = this.view; this.busy = true; this.reading = true; this.body.replaceChildren(); this.message('Anyagadatok betöltése…'); try {
-        const r = await this.api.material('material_read', { ...this.args(), filter: this.filter });
+        const r = await this.api.material('material_read', { ...this.args(), filter: { ...this.filter, ...(this.workDay ? { work_date: this.workDay } : {}) } });
         if (gen !== this.generation)
             return;
         if (append && old) {
@@ -160,7 +161,7 @@ export class MaterialDesk {
     start(kind, data = {}) { if (this.busy || !this.view || !this.discard())
         return; const office = this.scope.role === 'office', can = this.view.context.can_write === true; if (!office && !can)
         return; if (!office && ['material', 'vendor', 'policy', 'init', 'line', 'link', 'price'].includes(kind))
-        return; this.conflict = false; this.draft = { kind, plan_revision: this.view.plan?.revision, reason: '', ...data }; this.history.reset(this.draft); this.persist(); this.render(); this.dialog.scrollTop = 0; }
+        return; this.conflict = false; this.draft = { kind, plan_revision: this.view.plan?.revision, reason: '', ...data, ...(data.work_date !== undefined && this.workDay ? { work_date: this.workDay } : {}) }; this.history.reset(this.draft); this.persist(); this.render(); this.dialog.scrollTop = 0; }
     resume() { try {
         const d = JSON.parse(localStorage.getItem(this.key()) ?? '{}').draft;
         if (!d || typeof d.kind !== 'string' || JSON.stringify(d).length > 60000)
@@ -194,7 +195,16 @@ export class MaterialDesk {
         const v = this.view;
         if (!v)
             return;
+        const folds = new Map(Array.from(this.body.querySelectorAll('details')).map(d => [d.querySelector('summary')?.textContent, d.open]));
         this.body.replaceChildren();
+        if (this.workDay) {
+            this.body.append(node('strong', 'Kertépítési munkanap: ' + this.workDay), node('p', 'A mozgásnapló erre a napra szűr. A készlet és az anyagterv a teljes kertépítést mutatja.'));
+            button(this.body, 'Minden munkanap anyagmozgásai', () => { if (this.discard()) {
+                this.workDay = undefined;
+                this.filter = {};
+                void this.load();
+            } });
+        }
         if (v.context.project)
             this.body.append(node('h3', v.context.project.name), node('p', v.context.project.address));
         if (this.pending) {
@@ -236,6 +246,7 @@ export class MaterialDesk {
             if (this.scope.role === 'office')
                 button(this.body, 'Anyagtörzs és beszállítók', () => { if (this.discard()) {
                     this.scope = { project_id: null, role: 'office' };
+                    this.workDay = undefined;
                     this.filter = {};
                     void this.load();
                 } });
@@ -261,6 +272,11 @@ export class MaterialDesk {
         if (this.draft)
             this.renderDraft();
         this.closeButton();
+        for (const d of Array.from(this.body.querySelectorAll('details'))) {
+            const key = d.querySelector('summary')?.textContent;
+            if (folds.has(key))
+                d.open = folds.get(key);
+        }
     }
     page(parent, key, text) { const c = this.view.cursors?.[key]; if (!c)
         return; button(parent, text, () => { if (!this.discard())
@@ -303,7 +319,7 @@ export class MaterialDesk {
                     if (v.context.can_write && l.active && !l.linked_line_id) {
                         for (const kind of ['order', 'receive_depot', 'receive_site'])
                             if (this.scope.role === 'office' || l.owner === 'crew')
-                                button(d, names[kind] + ' – új szállítmány', () => this.start(kind, { line_id: l.id, lot_id: crypto.randomUUID(), revision: 0, quantity: '', actual_price: null, place: l.supplier, work_date: todayBudapest() }));
+                                button(d, names[kind] + ' – új szállítmány', () => this.start(kind, { line_id: l.id, lot_id: crypto.randomUUID(), revision: 0, quantity: '', actual_price: null, place: l.supplier, work_date: this.workDay ?? todayBudapest() }));
                     }
                     if (v.context.can_plan) {
                         button(d, 'Törzsanyag és beszerzési felelős', () => this.start('line', { line_id: l.id, revision: l.revision, material_id: l.material_id, owner: l.owner }));
@@ -333,10 +349,10 @@ export class MaterialDesk {
                 const line = v.lines.find((r) => r.id === l.line_id);
                 if (this.scope.role !== 'office' && line?.owner === 'office' && ['order', 'receive_depot', 'receive_site'].includes(kind))
                     continue;
-                button(d, names[kind], () => this.start(kind, { line_id: l.line_id, lot_id: l.id, revision: l.revision, quantity: '', work_date: todayBudapest() }));
+                button(d, names[kind], () => this.start(kind, { line_id: l.line_id, lot_id: l.id, revision: l.revision, quantity: '', work_date: this.workDay ?? todayBudapest() }));
             }
             if (this.scope.role === 'office')
-                button(d, 'Tényleges egységár javítása', () => this.start('price', { line_id: l.line_id, lot_id: l.id, revision: l.revision, actual_price: l.actual_price, work_date: todayBudapest() }));
+                button(d, 'Tényleges egységár javítása', () => this.start('price', { line_id: l.line_id, lot_id: l.id, revision: l.revision, actual_price: l.actual_price, work_date: this.workDay ?? todayBudapest() }));
         }
         button(d, 'Szállítmány előzményei', () => { if (this.discard()) {
             this.filter = { line_id: l.line_id, lot_id: l.id };
@@ -354,7 +370,7 @@ export class MaterialDesk {
         if (v.context.can_write && !e.reversed_by) {
             const lot = v.lots.find((l) => l.id === e.lot_id);
             if (lot)
-                button(d, e.kind === 'reverse' ? 'Mozgás visszaállítása' : 'Mozgás visszavonása', () => this.start('reverse', { line_id: e.line_id, lot_id: e.lot_id, revision: lot.revision, reverses_id: e.id, work_date: todayBudapest() }));
+                button(d, e.kind === 'reverse' ? 'Mozgás visszaállítása' : 'Mozgás visszavonása', () => this.start('reverse', { line_id: e.line_id, lot_id: e.lot_id, revision: lot.revision, reverses_id: e.id, work_date: this.workDay ?? todayBudapest() }));
         }
     } this.page(root, 'event', 'Korábbi mozgások'); }
     renderCost() { const c = this.view.cost, d = fold(this.body, 'Belső anyagköltség – csak iroda'); d.append(node('p', 'Jóváhagyott ajánlati anyagérték: ' + num(c.quoted) + ' Ft'), node('p', 'Tényleges beszerzési költség: ' + num(c.purchased) + ' Ft'), node('p', 'Elszámolt tényleges költség: ' + num(c.charged) + ' Ft')); if (!c.complete)

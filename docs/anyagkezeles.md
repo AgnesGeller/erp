@@ -4,7 +4,7 @@ ERP 0.10.0 · 2026. november 3. · [Jóváhagyott adatbázisterv](anyagmozgas-an
 
 ## Megnyitás
 
-Irodai belépés után felül **Anyagbeszerzés**. Válaszd ki a kertépítést. A munkatervből az **Anyagbeszerzés és előrehaladás** gomb ugyanezt a munkát nyitja meg, az aktív munkaszereppel.
+Irodai belépés után **Iroda és beállítások → Anyagok és anyagtörzs**. Válaszd ki a kertépítést. A munkatervből az **Anyagbeszerzés és előrehaladás** gomb ugyanezt a munkát nyitja meg, az aktív munkaszereppel.
 
 A már meglévő kertépítésnél az iroda az **Anyagterv betöltése az elfogadott ajánlatból** gombbal készíti el az induló anyaglistát: **Mentési előnézet ellenőrzése → Anyagterv betöltése**. Új elfogadott ajánlatból létrejövő munkánál a terv automatikusan keletkezik. A későbbi, jóváhagyott ajánlatváltozás atomikusan frissíti a mennyiségi tervet, az eredeti terv és a mozgások megőrzésével.
 
@@ -48,3 +48,8 @@ Minden ablak felül × gombbal zárható. Helyi **Visszavonás / Újra**, szemé
 A megjelenített, jogosultság szerint szűrt listák CSV/JSON formában letölthetők és helyben PDF-be nyomtathatók. Nagy listánál a **További… / Korábbi…** gombokkal lehet lapozni. Másik eszköz frissítéskor, a megnyitott anyagablak automatikusan percenként kap friss adatot, szerkesztés közben megszakítás nélkül.
 
 ![A beépítés követése mobilon – helyi, szintetikus ellenőrző próba](kepek/anyag-elorehaladas-mobil.png)
+
+
+## Közvetlenül a kertépítési munkanapról
+
+0.14.1-től a **Napi munkalap → Anyagok – beszállítás és beépítés** rész az adott nap tényleges mennyiségeit mutatja. Onnan az iroda az anyagtörzset is megnyithatja. Az anyagkezelő átveszi a munkanapot; a készlet/terv továbbra is a teljes munkát, a napló a kijelölt napot mutatja. A **Minden munkanap anyagmozgásai** feloldja a napszűrést. Frissítéskor a lenyitott anyagrészek nem csukódnak be. [Rövid használat és megőrzési szabály](munkalap-munkaido.md#munkanapi-anyagok--0141).

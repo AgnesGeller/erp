@@ -1,5 +1,5 @@
-const { calendarOffset, calendarWeek, calendarSearch, normalizeCalendarPlan, calendarRecurrenceDates } = await import(new URL('./erp-calendar-model.js?v=0.14.0', import.meta.url).href);
-const { CalendarPlanEditor, calNode: n, calButton: button, calField: field, calSelect: select, calCheck: check, calFold: fold, calPick: pick } = await import(new URL('./erp-calendar-editor.js?v=0.14.0', import.meta.url).href);
+const { calendarOffset, calendarWeek, calendarSearch, normalizeCalendarPlan, calendarRecurrenceDates } = await import(new URL('./erp-calendar-model.js?v=0.14.1', import.meta.url).href);
+const { CalendarPlanEditor, calNode: n, calButton: button, calField: field, calSelect: select, calCheck: check, calFold: fold, calPick: pick } = await import(new URL('./erp-calendar-editor.js?v=0.14.1', import.meta.url).href);
 const roleNames = { office: 'Iroda', construction_lead: 'Építésvezető', maintenance_lead: 'Karbantartásvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
 const today = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const uid = () => crypto.randomUUID();

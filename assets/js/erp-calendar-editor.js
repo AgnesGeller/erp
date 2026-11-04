@@ -1,4 +1,4 @@
-const { calendarIntensityDescriptions, calendarQualityDescriptions } = await import(new URL('./erp-calendar-model.js?v=0.14.0', import.meta.url).href);
+const { calendarIntensityDescriptions, calendarQualityDescriptions } = await import(new URL('./erp-calendar-model.js?v=0.14.1', import.meta.url).href);
 export const calNode = (tag, text = '') => { const el = document.createElement(tag); el.textContent = text; return el; };
 export function calButton(parent, label, run, quiet = true) { const b = calNode('button', label); b.type = 'button'; if (quiet)
     b.className = 'quiet'; b.addEventListener('click', run); parent.append(b); return b; }

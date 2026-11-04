@@ -1,7 +1,7 @@
-const { normalizeWorksheet, clockMinute, sheetUuid, worksheetCsv } = await import(new URL('./erp-worksheet-model.js?v=0.14.0', import.meta.url).href);
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.14.0', import.meta.url).href);
-const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.14.0', import.meta.url).href);
-const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.14.0', import.meta.url).href);
+const { normalizeWorksheet, clockMinute, sheetUuid, worksheetCsv } = await import(new URL('./erp-worksheet-model.js?v=0.14.1', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.14.1', import.meta.url).href);
+const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.14.1', import.meta.url).href);
+const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.14.1', import.meta.url).href);
 const n = (tag, text = '') => { const el = document.createElement(tag); el.textContent = text; return el; };
 const hour = (v) => v == null ? '—' : quoteNumber(Number(v) / 60) + ' óra';
 const clock = (v) => String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0');
@@ -17,6 +17,13 @@ export class WorksheetDesk {
     api;
     onError;
     onSaved;
+    materialDesk;
+    materialSection;
+    materialArea;
+    materialDayLabel;
+    materialRows = [];
+    materialCursor;
+    materialRequest = 0;
     dialog = document.createElement('dialog');
     body = n('div');
     feedback = n('p');
@@ -178,7 +185,8 @@ export class WorksheetDesk {
     } if (this.draft && !confirm('Elveted a még nem mentett munkalapszerkesztést?'))
         return false; this.draft = undefined; this.preview = undefined; this.acknowledged = false; this.persist(); return true; }
     touch(group) { if (!this.draft)
-        return; this.preview = undefined; this.acknowledged = false; this.history.remember(this.draft, group); this.persist(); this.updateDurations(); const review = this.body.querySelector('[data-sheet-review]'); review?.replaceChildren(n('p', 'A módosított adatokhoz kérj friss előnézetet.')); this.buttons(); }
+        return; this.preview = undefined; this.acknowledged = false; this.history.remember(this.draft, group); this.persist(); this.updateDurations(); const review = this.body.querySelector('[data-sheet-review]'); review?.replaceChildren(n('p', 'A módosított adatokhoz kérj friss előnézetet.')); this.buttons(); if (group === 'date')
+        void this.refreshMaterials(); }
     buttons() { const undo = this.body.querySelector('[data-sheet-undo]'), redo = this.body.querySelector('[data-sheet-redo]'), save = this.body.querySelector('[data-sheet-save]'); if (undo)
         undo.disabled = !this.history.canUndo; if (redo)
         redo.disabled = !this.history.canRedo; if (save)
@@ -262,12 +270,106 @@ export class WorksheetDesk {
             this.renderDraft();
         else if (v.sheet)
             this.renderSheet();
+        if (this.draft || v.sheet)
+            this.renderMaterials();
         this.closeButton();
         for (const d of Array.from(this.body.querySelectorAll('details'))) {
             if (folds.has(d.dataset.sheetFoldKey))
                 d.open = folds.get(d.dataset.sheetFoldKey);
         }
     }
+    setMaterialDesk(desk) { this.materialDesk = desk; }
+    materialDay() { return String(this.draft?.document?.work_date ?? this.view?.sheet?.document?.work_date ?? ''); }
+    validMaterialDay(day) { return /^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(Date.parse(day + 'T12:00:00Z')) && new Date(day + 'T12:00:00Z').toISOString().slice(0, 10) === day; }
+    renderMaterials() {
+        this.materialRequest++;
+        this.materialRows = [];
+        this.materialCursor = undefined;
+        const section = fold(this.body, 'Anyagok – beszállítás és beépítés'), area = n('div'), day = n('p', 'Munkanap: ' + this.materialDay());
+        section.dataset.sheetFoldKey = 'worksheet-materials';
+        this.materialSection = section;
+        this.materialArea = area;
+        this.materialDayLabel = day;
+        section.append(day, n('p', 'A kertépítés aznapi anyagmozgásai. Az anyagokat külön mentjük; a munkaidő piszkozata közben megmarad.'));
+        if (this.materialDesk) {
+            btn(section, ['office', 'construction_lead'].includes(this.scope.role) ? 'Beszállítás és beépítés rögzítése' : 'Anyagok megtekintése', () => this.openMaterials());
+            if (this.scope.role === 'office')
+                btn(section, 'Anyagtörzs és beszállítók', () => this.openMaterials(true));
+        }
+        btn(section, 'Aznapi anyagok frissítése', () => { void this.refreshMaterials(); });
+        section.append(area);
+        section.addEventListener('toggle', () => { if (section.open)
+            void this.refreshMaterials(); });
+    }
+    openMaterials(catalog = false) { if (!this.materialDesk || !this.owner || !this.org || this.busy || this.pending)
+        return; if (catalog && this.scope.role !== 'office')
+        return; const day = this.materialDay(); if (!catalog && !this.validMaterialDay(day)) {
+        this.message('Előbb válassz érvényes munkanapot.');
+        return;
+    } void this.materialDesk.show(this.owner, this.org, catalog ? { project_id: null, role: 'office' } : { ...this.scope }, undefined, catalog ? undefined : day); }
+    async refreshMaterials(cursor) {
+        const area = this.materialArea, day = this.materialDay(), section = this.materialSection;
+        if (!area || !section?.open || !this.open || !this.owner || !this.view || this.mode !== 'work')
+            return;
+        const request = ++this.materialRequest, gen = this.generation;
+        if (this.materialDayLabel)
+            this.materialDayLabel.textContent = 'Munkanap: ' + day;
+        if (!this.validMaterialDay(day)) {
+            this.materialRows = [];
+            area.replaceChildren(n('p', 'Válassz érvényes munkanapot az anyagmozgásokhoz.'));
+            return;
+        }
+        if (!['office', 'construction_lead'].includes(this.scope.role)) {
+            area.replaceChildren(n('p', 'Az engedélyezett anyagtervet és beépített mennyiségeket az Anyagok megtekintése gombbal nézheted meg.'));
+            return;
+        }
+        if (!cursor) {
+            this.materialRows = [];
+            this.materialCursor = undefined;
+        }
+        area.replaceChildren(n('p', 'Aznapi anyagmozgások betöltése…'));
+        try {
+            const data = await this.api.material('material_read', { organization_id: this.org, ...this.scope, filter: { work_date: day, ...(cursor ? { before_event: cursor } : {}) } });
+            if (request !== this.materialRequest || gen !== this.generation || area !== this.materialArea || !this.open || day !== this.materialDay())
+                return;
+            const ids = new Set(this.materialRows.map(e => e.id));
+            this.materialRows.push(...(data.events ?? []).filter((e) => e.work_date === day && !ids.has(e.id)));
+            this.materialCursor = data.cursors?.event ?? undefined;
+            this.renderMaterialRows();
+        }
+        catch (e) {
+            if (request !== this.materialRequest || gen !== this.generation || area !== this.materialArea || !this.open)
+                return;
+            this.materialRows = [];
+            this.materialCursor = undefined;
+            area.replaceChildren(n('p', 'Az aznapi anyagadatok nem tölthetők be. Ellenőrizd a kapcsolatot, majd próbáld újra.'));
+            if (e && typeof e === 'object' && 'status' in e && e.status === 401)
+                this.onError(e);
+        }
+    }
+    renderMaterialRows() { const area = this.materialArea; if (!area)
+        return; area.replaceChildren(); const grouped = new Map(); for (const e of this.materialRows) {
+        const delivered = Number(e.delta?.site ?? 0) + Number(e.delta?.installed ?? 0), installed = Number(e.delta?.installed ?? 0);
+        if (!delivered && !installed)
+            continue;
+        const key = e.line_id + '|' + e.unit;
+        const r = grouped.get(key) ?? { name: e.name, unit: e.unit, delivered: 0, installed: 0 };
+        r.delivered += delivered;
+        r.installed += installed;
+        grouped.set(key, r);
+    } if (!grouped.size)
+        area.append(n('p', this.materialCursor ? 'A betöltött mozgások között nincs beszállítás vagy beépítés.' : 'Erre a munkanapra még nincs beszállított vagy beépített anyag rögzítve.'));
+    else {
+        area.append(n('strong', this.materialCursor ? 'Betöltött aznapi mozgások összesítése – van még további oldal' : 'Aznapi összesítés – visszavonásokkal és visszaszállításokkal együtt'));
+        for (const r of grouped.values())
+            area.append(n('p', r.name + ' · Beszállított: ' + quoteNumber(r.delivered) + ' ' + r.unit + ' · Beépített: ' + quoteNumber(r.installed) + ' ' + r.unit));
+    } for (const e of this.materialRows) {
+        const delivered = Number(e.delta?.site ?? 0) + Number(e.delta?.installed ?? 0), installed = Number(e.delta?.installed ?? 0);
+        if (!delivered && !installed)
+            continue;
+        area.append(n('p', e.name + ' · ' + e.actor_name + ' · ' + when(e.created_at) + (delivered ? ' · Beszállítás változása: ' + quoteNumber(delivered) + ' ' + e.unit : '') + (installed ? ' · Beépítés változása: ' + quoteNumber(installed) + ' ' + e.unit : '') + (e.reversed_by ? ' · Visszavont esemény' : '') + (e.reason ? ' · ' + e.reason : '')));
+    } if (this.materialCursor)
+        btn(area, 'További aznapi anyagmozgások', () => { void this.refreshMaterials(this.materialCursor); }); }
     closeButton() { btn(this.body, 'Bezárás', () => { if (this.leave()) {
         this.cancelRead();
         this.dialog.close();

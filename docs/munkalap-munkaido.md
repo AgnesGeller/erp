@@ -29,3 +29,16 @@ Az iroda és a vezető a projekt munkalapjait láthatja. A dolgozó csak a sajá
 A kiválasztott, jogosultság szerint szűrt változat CSV/JSON formában letölthető, és **Nyomtatás / mentés PDF-ként** gombbal menthető. Ezek a fájlok helyben maradnak. Ez a modul még nem pénzügyi könyvelés, dolgozói bérszámítás vagy karbantartási elszámolás; régi munkalapokat nem importál és más alkalmazást nem módosít.
 
 [Az elfogadott műszaki terv](munkalap-munkaido-terv.md)
+
+
+## Munkanapi anyagok – 0.14.1
+
+A kertépítés **Napi munkalap** ablakában nyiss meg egy munkalapot, vagy válaszd az **Új kertépítési munkalap** gombot. Add meg a munkanapot, majd nyisd le az **Anyagok – beszállítás és beépítés** részt.
+
+- Az adott kertépítés kiválasztott napján beszállított és beépített mennyiségek, valamint a rögzítők és a korrekciók jelennek meg. A telephelyi átvétel nem helyszíni beszállítás. Százon túli napló is lapozható; a részösszesítés egyértelműen jelzett.
+- **Beszállítás és beépítés rögzítése**: az adott munkát és napot nyitja meg a meglévő anyagkezelőben. Válassz anyagot/szállítmányt, műveletet, mennyiséget; ellenőrzött előnézet után külön mentsd. A készlet továbbra sem lehet negatív. Új részszállítmány külön felvehető.
+- **Anyagtörzs és beszállítók**: közvetlen irodai elérés. A dolgozó műszaki anyagadatot tekinthet meg; a meglévő jogosultságok változatlanok.
+- Az anyagmentés után az összesítő frissül, a munkaidőpiszkozat megmarad. Az anyagmozgás a kertépítéshez és naphoz tartozik, nem egy dolgozó idősortételéhez: ugyanazon nap több munkalapja nem hoz létre dupla készletmozgást. A munkaidő mentése/visszavonása nem ment és nem von vissza anyagot; azt az anyagnaplóban külön kell intézni.
+- Régi munkalapváltozatnál is a nap jelenlegi, korrekciókkal együtt számolt anyagnaplója látszik; ez nem a régi időváltozat befagyasztott anyagmelléklete. A meglévő munkaidő-PDF/CSV/JSON export ebben a javításban nem bővült anyagnaplóval. A részletes anyagkimutatás az anyagkezelő saját letöltésével érhető el.
+
+![Munkanapi anyagok – helyi szintetikus próba](kepek/munkanapi-anyagok.png)

@@ -375,3 +375,14 @@ Az éles saját ERP-adatbázis tíz táblája és ajánlatváltozási triggere t
 - ERP-migrációk: erp_maintenance_worksheets_settlement és erp_maintenance_scope_guard; saját erp-gateway v24. Kilenc tábla FORCE RLS-szel, közvetlen anon/authenticated/service_role táblajog nélkül; öt service-only RPC. Auth/előfizetés és más alkalmazás változatlan.
 - Szintetikus irodai és ügyfél-böngészőpróba, mobilos táblázattördelés, többoldalas árakat tartalmazó és ár nélküli dolgozói PDF ellenőrzése. Éles munkalap és pénzmozgás nem készült. A README rövidült; részletes használat külön dokumentumban.
 - Végső kiadási ellenőrzés: 449/449 teszt sikeres, frontend-build és szigorú kiszolgáló-típusellenőrzés sikeres. Külön ellenőrzés igazolta, hogy az új karbantartási ág mellett a kertépítés nettó/áfa-, előleg- és címszűrése működik. A 19. fejezet naptári/Napi feladatok integrációja a következő egység.
+
+## 2026. november 4. – 0.13.0 munkacsomag és navigáció
+
+- A felhasználó jóváhagyása szerint az eredeti PDF üzleti működése maradt; a Kiss Csaba-minta kizárólag a munkacsomag szerkezetét és zöld-fehér megjelenését adja.
+- Saját, csak olvasó workpack_pdf kiszolgálóág a meglévő munkaterv-, anyag-, bejegyzés-, munkalap- és pénzügyi olvasókon. Teljes lapozás, hosszú bejegyzések, forrásváltozás felismerése; munkaterv nélkül nincs rejtett inicializálás.
+- Külön csapat/megrendelő/irodai adatmodell, szerveroldali szerep- és munkakapcsolat-ellenőrzés. A csapatcsomagban nincs pénzügyi adat; ügyfél nem kérhet belső csomagot. A PDF új tárolót vagy adatbázisobjektumot nem igényel.
+- Munkacsomag: négyszintű részfeladatos átvétel, háromoszlopos lista, anyag- és változástörténet, tényleges idő, öt üres nap/lap; külön ügyfélpénzügy és belső eredménylap. Üres lap nem számít mentett munkalapnak.
+- Négy irodai kezdőlapi feladat; ritkább adminműveletek lenyithatóan; három munkatervnézet. Meglévő mentésvédelmek és funkciók megmaradnak. Mobilpróba 390 × 844 méreten, vízszintes kilógás nélkül; felső ×/Esc működik.
+- Új függőség, adatbázis-, Auth- vagy szerepkörmódosítás nincs. Kizárólag ERP-fájlok változtak. A tesztadatokra megkapott engedély szerint szükség esetén Teszt vagy Geller Ágnes ügyfél használható, árakkal és megőrzött adatokkal; e kiadás ellenőrzése szintetikus helyi adatokkal történt.
+- 463/463 teszt sikeres, build és check:edge sikeres. Szintetikus csapat-PDF 18, ügyfél-PDF 15, belső eredménylap 1 oldal; tördelés, adatleválasztás és 20 üres nap ellenőrizve. Rövid magyar README és használati útmutató képekkel.
+- ERP-kiszolgáló: v24-ről v25-re telepítve, 25 saját fájllal, előző verzió helyi mentésével. Engedélyezett webes eredetről belépés nélkül az új PDF és a munkaterv is 401-et ad; idegen eredet 403-at kap. Az adatbázis, meglévő belépések és más appok változatlanok. A közös projekt meglévő általános biztonsági jelzései nem változtak; új RPC vagy hozzáférési engedély nem készült.

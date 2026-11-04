@@ -44,6 +44,7 @@ export class ErpApi {
       return data as T;
     } finally {clearTimeout(timer);}
   }
+  async workpack<T=unknown>(action:'workpack_pdf',body:Record<string,unknown>):Promise<T>{return this.feature<T>(action,body);}
   async maintenance<T=unknown>(action:string,body:Record<string,unknown>={}):Promise<T>{return this.feature<T>(action,body);}
   async finance<T=unknown>(action:string,body:Record<string,unknown>={}):Promise<T>{return this.feature<T>(action,body);}
   async emailOptions():Promise<{email_enabled:boolean}> {return this.request({action:'auth_options'});}

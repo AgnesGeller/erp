@@ -23,16 +23,16 @@
 <link rel="canonical" href="https://agnesgeller.github.io/erp/">
 <link rel="icon" type="image/png" href="./assets/favicon-d-v1.png">
 <link rel="apple-touch-icon" href="./assets/apple-touch-icon-d-v1.png">
-<link rel="manifest" href="./manifest.webmanifest?v=0.12.0"><link rel="stylesheet" href="./assets/style.css?v=0.12.0">
-<script type="module" src="./assets/js/main.js?v=0.12.0"></script>
-<script type="module" src="./assets/js/erp-dialogs.js?v=0.12.0"></script>
-<script type="module" src="./assets/js/erp-office.js?v=0.12.0"></script>
+<link rel="manifest" href="./manifest.webmanifest?v=0.13.0"><link rel="stylesheet" href="./assets/style.css?v=0.13.0">
+<script type="module" src="./assets/js/main.js?v=0.13.0"></script>
+<script type="module" src="./assets/js/erp-dialogs.js?v=0.13.0"></script>
+<script type="module" src="./assets/js/erp-office.js?v=0.13.0"></script>
 
-<script type="module" src="./assets/js/erp-office-setup.js?v=0.12.0"></script>
+<script type="module" src="./assets/js/erp-office-setup.js?v=0.13.0"></script>
 </head>
 <body>
 <header><a class="brand" href="./" aria-label="Díszkertek kezdőlap"><img src="./assets/logo.png" width="52" height="52" alt=""><span>DÍSZKERTEK</span></a>
-<nav class="app-menu" aria-label="Alkalmazás menü">
+<nav id="app-menu" class="app-menu" aria-label="Alkalmazás menü">
 <button id="install" type="button" title="Díszkertek telepítése erre az eszközre" aria-describedby="install-help">↓ <span>Telepítés</span></button>
 <button id="update" class="secondary" type="button" title="Az alkalmazás frissítéseinek ellenőrzése" aria-describedby="update-help">↻ <span>Frissítés</span></button>
 <button id="show-materials" class="secondary" type="button" hidden>Anyagbeszerzés</button>
@@ -86,7 +86,8 @@
 <section id="office-app" class="workspace" hidden aria-labelledby="workspace-title">
 <div class="workspace-heading"><div><p class="eyebrow" id="workspace-role">Irodai munkatér</p><h1 id="workspace-title">DÍSZKERTEK</h1></div><button type="button" id="staff-admin-open" class="quiet" hidden>Dolgozói hozzáférések</button><button type="button" id="client-recovery-requests" class="quiet">Ügyfél-jelszókérések</button><button type="button" id="reload-workspace" class="secondary">Lista frissítése</button></div>
 <label id="organization-label" hidden>Szervezet<select id="organization-select"></select></label>
-<nav id="people-navigation" class="workspace-tabs" aria-label="Irodai menü" hidden><span>Irodai menü</span><button type="button" id="show-customers" aria-pressed="true">Ügyfelek</button><button type="button" id="show-team" aria-pressed="false">Munkatársak és megbízások</button><button type="button" id="show-works" aria-pressed="false">Munkák</button><button type="button" id="show-surveys" aria-pressed="false" hidden>Felmérések</button><button type="button" id="show-quotes" aria-pressed="false">Árajánlatok</button><button type="button" id="show-prices" aria-pressed="false">Árlisták és sablonok</button></nav>
+<nav id="people-navigation" class="workspace-tabs office-navigation" aria-label="Irodai menü" hidden><button type="button" id="office-home-open" aria-pressed="true">Kezdőlap</button><button type="button" id="show-customers" aria-pressed="false">Ügyfelek</button><button type="button" id="show-quotes" aria-pressed="false">Árajánlatok</button><button type="button" id="office-construction-open">Kertépítések</button><button type="button" id="office-maintenance-open">Karbantartások</button><details class="office-admin-menu"><summary>Iroda és beállítások</summary><div id="office-admin-actions"><button type="button" id="show-works" aria-pressed="false">Munkák létrehozása és indítása</button><button type="button" id="show-team" aria-pressed="false">Munkatársak és megbízások</button><button type="button" id="show-surveys" aria-pressed="false" hidden>Felmérések</button><button type="button" id="show-prices" aria-pressed="false">Árlisták és sablonok</button></div></details></nav>
+<section id="office-home" aria-labelledby="office-home-title" hidden><h2 id="office-home-title">Mit szeretnél intézni?</h2><p class="field-help">Válassz egy feladatot. A kertépítésen belül eléred a hozzá tartozó napi munkalapot, anyagokat, átvételeket, pénzügyeket és a nyomtatható munkacsomagot.</p><ol class="office-start-list"><li><button type="button" id="home-customers">Ügyfelek</button><p>Ügyfél keresése vagy felvétele, munkavégzési cím és új munka.</p></li><li><button type="button" id="home-quotes">Árajánlat készítése</button><p>Ajánlat szerkesztése, PDF megnyitása és az elfogadott ajánlat kezelése.</p></li><li><button type="button" id="home-construction">Kertépítés folytatása</button><p>Válaszd ki a munkát, és nézd meg a feladatokat, átvételeket, anyagokat vagy munkalapokat.</p></li><li><button type="button" id="home-maintenance">Karbantartás intézése</button><p>Igény jóváhagyása, napi karbantartási munkalap és elszámolás.</p></li></ol><p class="field-help">Munkatársakat, megbízásokat és árlistákat az <strong>Iroda és beállítások</strong> részben találsz.</p></section>
 <section id="customer-view" hidden aria-labelledby="customers-title">
 <div class="customer-toolbar"><h2 id="customers-title">Ügyfelek</h2><div><button type="button" id="customer-new">+ Új ügyfél</button><button type="button" id="customer-refresh" class="secondary">Adatok frissítése</button></div></div>
 <p id="customer-directory-total" class="field-help"></p><p id="customer-status" class="office-status" role="status" aria-live="polite"></p><div id="customer-pending"></div>

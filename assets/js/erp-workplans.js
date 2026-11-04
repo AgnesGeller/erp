@@ -1,5 +1,5 @@
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.12.0', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.12.0', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.13.0', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.13.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
@@ -14,6 +14,14 @@ function field(parent, label, value, change, type = 'text') { const l = node('la
 export class WorkPlanDesk {
     api;
     onError;
+    workTab = 'tasks';
+    workpack;
+    setWorkpackDesk(desk) { this.workpack = desk; }
+    openWorkpack() { if (this.busy || !this.owner || !this.organization || !this.view || !this.workpack)
+        return; if (this.dirty) {
+        this.message('Előbb mentsd vagy fejezd be a szerkesztést.');
+        return;
+    } this.workpack.show(this.owner, this.organization, this.scope()); }
     materials;
     sheets;
     organization;
@@ -107,7 +115,7 @@ export class WorkPlanDesk {
             catch { /* A hálózati újrapróbálás ebben a munkamenetben továbbra is elérhető. */ }
         }
     } this.organization = organization; this.isClient = isClient; this.materials?.setOwner(owner, organization); this.sheets?.setOwner(owner, organization); this.entries?.setOwner(owner); el('show-workplan').hidden = !owner; }
-    reset() { this.materials?.setOwner(undefined); this.sheets?.setOwner(undefined); this.organization = undefined; this.isClient = false; this.entries?.setOwner(undefined); this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
+    reset() { this.workTab = 'tasks'; this.workpack?.reset(); this.materials?.setOwner(undefined); this.sheets?.setOwner(undefined); this.organization = undefined; this.isClient = false; this.entries?.setOwner(undefined); this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
     cancelRead() { if (this.reading) {
         this.epoch++;
         this.request++;
@@ -324,12 +332,19 @@ export class WorkPlanDesk {
         const v = this.view, root = el('plan-view'), opened = new Set(Array.from(root.querySelectorAll('details[data-task-id][open]')).map(d => d.dataset.taskId));
         root.replaceChildren();
         root.append(node('h2', v.context.project.name), node('p', v.context.project.address));
+        if (this.workpack)
+            button(root, 'Munkacsomag / PDF', () => this.openWorkpack());
+        if (['office', 'client'].includes(v.context.role))
+            button(root, 'Pénzügyek', () => { if (!this.busy && !this.dirty)
+                this.financeHandler?.(v.context.project.id, v.context.role);
+            else
+                this.message('Előbb fejezd be vagy mentsd a szerkesztést.'); });
         if (this.entries)
-            button(root, 'Bejegyzések és változások', () => this.openEntries());
+            button(root, 'Változások és kérések', () => this.openEntries());
         if (this.sheets && v.context.role !== 'client')
-            button(root, 'Munkalapok és munkaidő', () => this.openSheets());
+            button(root, 'Napi munkalap', () => this.openSheets());
         if (this.materials)
-            button(root, 'Anyagbeszerzés és előrehaladás', () => this.openMaterials());
+            button(root, 'Anyagok', () => this.openMaterials());
         if (!v.plan) {
             this.renderTime(root);
             root.append(node('p', 'A részletes munkaterv még nincs összeállítva.'));
@@ -337,6 +352,18 @@ export class WorkPlanDesk {
                 button(root, 'Munkaterv létrehozása az elfogadott ajánlatból', () => { void this.send('plan_init', { ...this.scope(), request_id: crypto.randomUUID() }); });
             return;
         }
+        const taskPanel = node('div'), progressPanel = node('div'), historyPanel = node('div'), tabs = node('nav');
+        tabs.className = 'plan-view-tabs';
+        tabs.setAttribute('aria-label', 'A kiválasztott kertépítés részei');
+        const panels = { tasks: taskPanel, progress: progressPanel, history: historyPanel };
+        for (const [key, title] of [['tasks', 'Feladatok és átvétel'], ['progress', 'Előrehaladás és munkaidő'], ['history', 'Előzmények és statisztika']]) {
+            const b = button(tabs, title, () => { this.workTab = key; for (const [id, panel] of Object.entries(panels))
+                panel.hidden = id !== key; for (const x of Array.from(tabs.querySelectorAll('button')))
+                x.setAttribute('aria-pressed', String(x === b)); });
+            b.setAttribute('aria-pressed', String(key === this.workTab));
+            panels[key].hidden = key !== this.workTab;
+        }
+        root.append(tabs, taskPanel, progressPanel, historyPanel);
         const bands = node('div');
         bands.className = 'plan-bands';
         for (const b of v.bands) {
@@ -360,10 +387,10 @@ export class WorkPlanDesk {
             row.append(track, node('small', 'Teljesített tervidő: ' + hours(b.completed_minutes) + ' · Hátralévő: ' + hours(b.remaining_minutes) + (b.zero_total ? ' · Nullás munkadíjú fázisok: ' + b.zero_done + '/' + b.zero_total : '')));
             bands.append(row);
         }
-        root.append(bands);
-        this.renderTime(root);
+        progressPanel.append(bands);
+        this.renderTime(progressPanel);
         if (v.context.role !== 'client') {
-            const people = fold(root, 'Személyenkénti teljesítés és színek');
+            const people = fold(progressPanel, 'Személyenkénti teljesítés és színek');
             for (const b of v.bands)
                 for (const s of b.segments) {
                     const row = node('p', levels[b.level] + ' · ' + s.name + ': ' + quoteNumber(s.percent) + '%');
@@ -379,9 +406,10 @@ export class WorkPlanDesk {
                     button(people, 'Szín mentése – ' + p.name, () => { void this.send('plan_color', { organization_id: this.projects.find(p => p.id === v.context.project.id)?.organization_id, person_id: p.id, color: x.value, revision: p.color_revision ?? 0 }); });
                 }
         }
-        root.append(node('p', v.context.can_act ? 'Az átvétel a kiválasztott munkaszerepeddel történik.' : 'A kertépítés még nem indult el; átvétel most nem rögzíthető.'));
-        this.graphControls(root);
-        const timeline = fold(root, 'Idővonal és párhuzamos munkafázisok');
+        taskPanel.append(node('p', v.context.can_act ? 'Az átvétel a kiválasztott munkaszerepeddel történik.' : 'A kertépítés még nem indult el; átvétel most nem rögzíthető.'));
+        const editPanel = fold(taskPanel, 'Munkasorrend és ütemezés szerkesztése');
+        this.graphControls(editPanel);
+        const timeline = fold(taskPanel, 'Idővonal és párhuzamos munkafázisok');
         this.calendar(timeline);
         for (const t of this.draft.slice().sort((a, b) => a.sort - b.sort)) {
             const depth = v.layout.find((x) => x.id === t.id)?.lane ?? 0;
@@ -432,11 +460,11 @@ export class WorkPlanDesk {
             if (v.context.can_act)
                 this.taskActions(d, t);
         }
-        root.append(tasks);
-        this.renderHistory(root);
+        taskPanel.append(tasks);
+        this.renderHistory(historyPanel);
         if (v.context.role !== 'client')
-            this.statistics(root);
-        const media = fold(root, 'Fotók átvitele másik eszközre');
+            this.statistics(historyPanel);
+        const media = fold(historyPanel, 'Fotók átvitele másik eszközre');
         media.append(node('p', 'A fotók ezen az eszközön maradnak. A csomag a megjelenített előzményekhez tartozó, számodra látható fotókat viszi át. A régebbi fotókhoz előbb töltsd be a korábbi előzményeket.'));
         button(media, 'Munkaterv és fotók letöltése', () => { void this.transfer(); });
         const upload = field(media, 'Munkatervcsomag megnyitása', '', () => { }, 'file');

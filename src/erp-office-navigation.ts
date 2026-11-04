@@ -1,0 +1,12 @@
+/** Egyszerű irodai indulás: a meglévő, mentésvédett menüpontokra vezet. */
+export class OfficeNavigation{
+ private owner:string|undefined;private org:string|undefined;
+ constructor(private canLeave:()=>Promise<boolean>,private construction:()=>void,private maintenance:()=>void){const get=(id:string)=>document.getElementById(id)!;get('office-home-open').addEventListener('click',()=>{void this.home();});get('office-construction-open').addEventListener('click',()=>this.construction());get('office-maintenance-open').addEventListener('click',()=>this.maintenance());const routes:Record<string,string>={'home-customers':'show-customers','home-quotes':'show-quotes','home-construction':'office-construction-open','home-maintenance':'office-maintenance-open'};for(const [source,target]of Object.entries(routes))get(source).addEventListener('click',()=>get(target).click());for(const id of ['show-customers','show-team','show-works','show-surveys','show-quotes','show-prices'])get(id).addEventListener('click',e=>{if(e.defaultPrevented)return;get('office-home').hidden=true;get('office-app').classList.remove('office-home-active');get('office-home-open').setAttribute('aria-pressed','false');});}
+ setOwner(owner:string|undefined,org:string|undefined,office:boolean){document.body.dataset.erpOffice=String(office);const get=(id:string)=>document.getElementById(id)!;for(const id of ['staff-admin-open','client-recovery-requests','reload-workspace']){if(office)get('office-admin-actions').append(get(id));}
+ for(const id of ['show-finance','show-materials']){if(office)get('office-admin-actions').append(get(id));else get('app-menu').insertBefore(get(id),get('logout'));}
+ if(!office){this.owner=undefined;this.org=undefined;get('office-home').hidden=true;get('office-app').classList.remove('office-home-active');return;}
+ if(this.owner!==owner||this.org!==org){this.owner=owner;this.org=org;this.showHome();}}
+ private showHome(){document.getElementById('office-home')!.hidden=false;document.getElementById('office-app')!.classList.add('office-home-active');for(const b of Array.from(document.querySelectorAll('#people-navigation button[aria-pressed]')))b.setAttribute('aria-pressed',String(b.id==='office-home-open'));}
+ async home(){if(this.owner&&await this.canLeave())this.showHome();}
+ reset(){this.owner=undefined;this.org=undefined;document.body.dataset.erpOffice='false';document.getElementById('office-home')!.hidden=true;document.getElementById('office-app')!.classList.remove('office-home-active');}
+}

@@ -1,10 +1,10 @@
 import type {ErpApi} from './erp-api.js';
 import type {SurveyDocument,SurveySection,SurveyMedia} from './erp-survey-model.js';
 import type {LocalSurvey} from './erp-survey-store.js';
-const {validateSurvey,surveyToQuote,surveyMime}=await import(new URL('./erp-survey-model.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-survey-model.js');
-const {SurveyStore}=await import(new URL('./erp-survey-store.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-survey-store.js');
-const {surveyHash,downloadSurveyFile,exportSurvey,importSurvey}=await import(new URL('./erp-survey-archive.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-survey-archive.js');
-const {quoteNumber}=await import(new URL('./erp-quote-tools.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-quote-tools.js');
+const {validateSurvey,surveyToQuote,surveyMime}=await import(new URL('./erp-survey-model.js?v=0.13.0',import.meta.url).href) as typeof import('./erp-survey-model.js');
+const {SurveyStore}=await import(new URL('./erp-survey-store.js?v=0.13.0',import.meta.url).href) as typeof import('./erp-survey-store.js');
+const {surveyHash,downloadSurveyFile,exportSurvey,importSurvey}=await import(new URL('./erp-survey-archive.js?v=0.13.0',import.meta.url).href) as typeof import('./erp-survey-archive.js');
+const {quoteNumber}=await import(new URL('./erp-quote-tools.js?v=0.13.0',import.meta.url).href) as typeof import('./erp-quote-tools.js');
 export const surveysEnabled=true;
 type Obj=Record<string,any>;
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;

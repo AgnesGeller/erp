@@ -1,7 +1,7 @@
-const { quoteNumber, quoteInput, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.12.0', import.meta.url).href);
-const { materialActions, materialSearch, materialCsv } = await import(new URL('./erp-material-model.js?v=0.12.0', import.meta.url).href);
-const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.12.0', import.meta.url).href);
-const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.12.0', import.meta.url).href);
+const { quoteNumber, quoteInput, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.13.0', import.meta.url).href);
+const { materialActions, materialSearch, materialCsv } = await import(new URL('./erp-material-model.js?v=0.13.0', import.meta.url).href);
+const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.13.0', import.meta.url).href);
+const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.13.0', import.meta.url).href);
 const node = (tag, text = '') => { const e = document.createElement(tag); e.textContent = text; return e; };
 const num = (v) => quoteNumber(v);
 const names = { init: 'Anyagterv betöltése', extra: 'Extra anyag felvétele', line: 'Anyagsor hozzárendelése', link: 'Extra hozzárendelése az elfogadott ajánlathoz', material: 'Anyagtörzs mentése', vendor: 'Beszállító mentése', policy: 'Költségsúlyok mentése', ...materialActions };

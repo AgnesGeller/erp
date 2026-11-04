@@ -1,6 +1,6 @@
 # A fejlesztői PDF teljesítési állapota
 
-Ellenőrzés: **2026. november 4. – ERP 0.12.0**. Alap: a 15 oldalas teljes fejlesztői specifikáció, a kiegészítés és az azóta jóváhagyott döntések. Ez állapotfelmérés, nem készre jelentés. A teljes megbízásból az alábbi hátralévő részek is megvalósítandók.
+Ellenőrzés: **2026. november 4. – ERP 0.13.0**. Alap: a 15 oldalas teljes fejlesztői specifikáció, a kiegészítés és az azóta jóváhagyott döntések. Ez állapotfelmérés, nem készre jelentés. A teljes megbízásból az alábbi hátralévő részek is megvalósítandók.
 
 | Terület / PDF-fejezet | Jelenlegi állapot | Mi hiányzik még? |
 | --- | --- | --- |
@@ -30,3 +30,7 @@ Ellenőrzés: **2026. november 4. – ERP 0.12.0**. Alap: a 15 oldalas teljes fe
 **Következő nagy fejlesztési egység:** a PDF 19. fejezete szerinti Naptár és Napi feladatok integrációja, majd a 20. fejezet referenciamunkái és WordPress-kapcsolata. A 18. fejezet karbantartási munkalapja és elszámolása 0.12.0-ban elkészült; [használata](kertkarbantartas.md). A 16–17. fejezet saját ERP-pénzügyei 0.11.0-ban elkészültek; [használat](penzugyi-elszamolas.md). Az anyagbeszerzés, részszállítás és anyagelőrehaladás 0.10.0-ban elkészült; [használata](anyagkezeles.md). A saját kertépítési munkalap és az ötödik időjelző sáv 0.9.0-ban elkészült; [használata](munkalap-munkaido.md). A 13. fejezet bejegyzés- és változáskezelése 0.8.0-ban elkészült; [használata](bejegyzesek.md). A munkaterv és négyszintű átvétel 0.7.0-ban elkészült; [használata](munkaterv-es-atvetel.md). Az ügyfélportálhoz az öt saját ERP-nyilvántartást és a kézi meghívót/visszaállítást a felhasználó jóváhagyta; saját migráció és gateway telepítve. [Ügyfélportál használata](ugyfelbelepes.md).
 
 Pénzügyi pontosítás: éven átnyúló kertépítés jutaléka a lezárás évéhez tartozik; addig előzetes. A teljes vezetői áttekintés, külön csoportosított Teendőim, push értesítés, Adataim és önálló dolgozói projektcsatlakozás továbbra is nyitott feladat. A meglévő típusonkénti 100-as anyagkorlát eltér a PDF korlátlan igényétől.
+
+## 0.13.0 – Munkacsomag és áttekinthetőbb navigáció
+
+Az eredeti üzleti szabályok megtartásával elkészült a Kiss Csaba-minta szerinti munkacsomag: külön ár nélküli csapat-, saját ügyféláras megrendelői és belső irodai PDF. A részfeladatok négyszintű átvétele változatlan. Négy kezdőlapi út és három munkatervnézet segíti a használatot; [rövid útmutató](munkacsomag.md). Az előző táblázat további hiányai és a teljes üzleti átadás még nyitottak.

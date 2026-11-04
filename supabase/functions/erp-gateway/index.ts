@@ -1,3 +1,5 @@
+import {createWorkpack} from './workpack.ts';
+import {makeWorkpackPdf} from './workpack-pdf.ts';
 import {createMaintenance} from './maintenance.ts';
 import {createFinance} from './finance.ts';
 import {createMaterials} from './materials.ts';
@@ -23,4 +25,5 @@ const maintenance=createMaintenance({url,key,context:(org,customer,token,actor,m
 const finance=createFinance({url,key});
 const entries=createEntries({url,key});
 const sheets=createWorksheets({url,key});
-Deno.serve(createGateway({maintenance,finance,materials,sheets,entries,staff:staff.handle,plans,clients:clients.handle,clientSession:async token=>{await clients.check(token);await staff.check(token);},clientLogout:async(token,actor)=>{await clients.close(token,actor);await staff.close(token,actor);},url,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',serviceKey:key,emailFlowsEnabled:false,customers,quotes,surveys}));
+const workpack=createWorkpack({plans,entries,sheets,materials,finance,pdf:makeWorkpackPdf});
+Deno.serve(createGateway({workpack,maintenance,finance,materials,sheets,entries,staff:staff.handle,plans,clients:clients.handle,clientSession:async token=>{await clients.check(token);await staff.check(token);},clientLogout:async(token,actor)=>{await clients.close(token,actor);await staff.close(token,actor);},url,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',serviceKey:key,emailFlowsEnabled:false,customers,quotes,surveys}));

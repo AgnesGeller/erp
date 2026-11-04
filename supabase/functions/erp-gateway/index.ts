@@ -1,3 +1,6 @@
+import {createCalendar} from './calendar.ts';
+import {createCalendarSource} from './calendar-source.ts';
+import {makeCalendarPdf} from './calendar-pdf.ts';
 import {createWorkpack} from './workpack.ts';
 import {makeWorkpackPdf} from './workpack-pdf.ts';
 import {createMaintenance} from './maintenance.ts';
@@ -26,4 +29,5 @@ const finance=createFinance({url,key});
 const entries=createEntries({url,key});
 const sheets=createWorksheets({url,key});
 const workpack=createWorkpack({plans,entries,sheets,materials,finance,pdf:makeWorkpackPdf});
-Deno.serve(createGateway({workpack,maintenance,finance,materials,sheets,entries,staff:staff.handle,plans,clients:clients.handle,clientSession:async token=>{await clients.check(token);await staff.check(token);},clientLogout:async(token,actor)=>{await clients.close(token,actor);await staff.close(token,actor);},url,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',serviceKey:key,emailFlowsEnabled:false,customers,quotes,surveys}));
+const calendar=createCalendar({url,key,source:createCalendarSource({key:Deno.env.get('KASSZA_SERVICE_ROLE_KEY')??'',allowedOrganization:'f262d2e3-8c54-40d9-9591-309a2e0d952c'}),pdf:makeCalendarPdf,site:(org,customer,token,actor,memberships)=>customers({action:'work_sites',organization_id:org,customer_id:customer},token,actor,memberships)});
+Deno.serve(createGateway({calendar,workpack,maintenance,finance,materials,sheets,entries,staff:staff.handle,plans,clients:clients.handle,clientSession:async token=>{await clients.check(token);await staff.check(token);},clientLogout:async(token,actor)=>{await clients.close(token,actor);await staff.close(token,actor);},url,anonKey:Deno.env.get('SUPABASE_ANON_KEY')??'',serviceKey:key,emailFlowsEnabled:false,customers,quotes,surveys}));

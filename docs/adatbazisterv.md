@@ -313,3 +313,10 @@ A munkánként több, időben változó vezető már az alap része. Az ügyfél
 ## Kertkarbantartási bővítés – 0.12.0
 
 A jóváhagyott [részletes karbantartási terv](kertkarbantartas-munkalap-terv.md) kilenc saját ERP-táblával és két saját ERP-triggerrel megvalósult. A mentett piszkozat és a közzétett változat külön mutatót kap; az előzményekhez az API csak hozzáfűz. A pénzügyi modul a közzétett aktív lapok végleges ügyfélárát összegzi, újabb áfa nélkül. A fizetési jelzés nem pénzbeérkezés: kizárólag az iroda igazolhat tényleges pénzt. A közvetlen táblajog minden alkalmazásszerepnél tiltott, az RPC csak saját hitelesített kiszolgálón keresztül elérhető. A munkaválasztás nélküli vezetői árlistanézet is érvényes vezetői megbízáshoz kötött. Más app vagy Auth nem módosult. [Használat és ellenőrzési határ](kertkarbantartas.md).
+
+
+## Naptár és Napi feladatok – 0.14.0
+
+A jóváhagyott [naptárterv](naptar-napi-feladatok-terv.md) 15 saját ERP-táblával, nyolc service_role számára elérhető RPC-vel és két saját triggerrel megvalósult. Közvetlen táblajog anon/authenticated/service_role számára nincs, minden új táblán ENABLE/FORCE RLS van. A szerverrel elérhető SECURITY DEFINER RPC-k rögzített search_path mellett ellenőrzik az aktív saját ERP-személyt, munkamenetet és szerepet; ez a karbantartási/pénzügyi modul meglévő kiszolgálómintáját követi. A korábbi szűk végrehajtói szerepre vonatkozó alapleírás nem jelenti, hogy minden későbbi RPC ugyanannak a szerepnek a tulajdona.
+
+A napiterv és változatai, foglalások/kapacitás, blokkok, törzsek/színek, értesítések és saját új push-eszközök külön nyilvántartások. Nyers forrásarchívum, importmanifest és idempotens parancsok az erp_private sémában maradnak. A régi Napi két tábláját csak olvassuk; kezdeti teljes import 40/197/16 aktív terv/feladat/előjegyzés és öt törlési jel. Saját cron/Vault/Edge szolgálja az emlékeztetőket, meglévő titok/Auth/forrásobjektum nem változott. Az induló naptár csak irodai; ügyfélfoglalás és szabad dátumkérés kikapcsolva. [Használat, korlátok és tesztek](naptar-napi-feladatok.md).

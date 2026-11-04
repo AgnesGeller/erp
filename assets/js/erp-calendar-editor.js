@@ -1,0 +1,146 @@
+const { calendarIntensityDescriptions, calendarQualityDescriptions } = await import(new URL('./erp-calendar-model.js?v=0.14.0', import.meta.url).href);
+export const calNode = (tag, text = '') => { const el = document.createElement(tag); el.textContent = text; return el; };
+export function calButton(parent, label, run, quiet = true) { const b = calNode('button', label); b.type = 'button'; if (quiet)
+    b.className = 'quiet'; b.addEventListener('click', run); parent.append(b); return b; }
+export function calFold(parent, label, open = false) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.open = open; d.append(calNode('summary', label)); parent.append(d); return d; }
+export function calField(parent, label, value, change, type = 'text') { const l = calNode('label', label), x = document.createElement(type === 'textarea' ? 'textarea' : 'input'); if (type !== 'textarea')
+    x.type = type; x.value = String(value ?? ''); x.addEventListener('input', () => change(x.value)); l.append(x); parent.append(l); return x; }
+export function calSelect(parent, label, value, rows, change) { const l = calNode('label', label), s = document.createElement('select'); s.replaceChildren(...rows.map(([v, t]) => new Option(t, v))); s.value = value; s.addEventListener('change', () => change(s.value)); l.append(s); parent.append(l); return s; }
+export function calCheck(parent, label, value, change) { const l = calNode('label', label), x = document.createElement('input'); x.type = 'checkbox'; x.className = 'inline-check'; x.checked = value; x.addEventListener('change', () => change(x.checked)); l.prepend(x); parent.append(l); return x; }
+export function calPick(parent, label, selected, rows, change) { const fold = calFold(parent, label + ' (' + selected.length + ')'); let current = [...selected]; for (const row of [...rows].sort((a, b) => a.name.localeCompare(b.name, 'hu'))) {
+    const l = calCheck(fold, row.name, current.includes(row.id), checked => { current = checked ? [...current, row.id] : current.filter(id => id !== row.id); change([...current]); fold.querySelector('summary').textContent = label + ' (' + current.length + ')'; });
+    if (row.color)
+        l.style.accentColor = row.color;
+} return fold; }
+export class CalendarPlanEditor {
+    api;
+    organization;
+    data;
+    change;
+    redraw;
+    error;
+    constructor(api, organization, data, change, redraw, error) {
+        this.api = api;
+        this.organization = organization;
+        this.data = data;
+        this.change = change;
+        this.redraw = redraw;
+        this.error = error;
+    }
+    catalog(kind) { return (this.data.catalog ?? []).filter((c) => c.kind === kind && c.active).map((c) => c.document); }
+    render(parent, doc) {
+        const shared = calFold(parent, 'Találkozó, megállók és közös megjegyzés');
+        for (const [key, label] of [['meeting', 'Találkozó'], ['stops', 'Megállók'], ['generalNote', 'Irodai napimegjegyzés']])
+            calField(shared, label, doc[key], v => this.change(() => doc[key] = v), key === 'generalNote' ? 'textarea' : 'text');
+        const tasks = calNode('section');
+        tasks.className = 'calendar-tasks';
+        parent.append(tasks);
+        for (const [index, t] of doc.tasks.entries()) {
+            const box = calFold(tasks, (index + 1) + '. ' + (t.customerName || t.jobs?.[0]?.name || 'Új feladat') + (t.startTime ? ' · ' + t.startTime : ''), false);
+            const actions = calNode('div');
+            actions.className = 'calendar-actions';
+            box.append(actions);
+            calButton(actions, 'Feladat kivétele', () => { this.change(() => doc.tasks.splice(index, 1)); this.redraw(); });
+            if (index > 0)
+                calButton(actions, 'Feljebb', () => { this.change(() => { [doc.tasks[index - 1], doc.tasks[index]] = [doc.tasks[index], doc.tasks[index - 1]]; }); this.redraw(); });
+            if (index < doc.tasks.length - 1)
+                calButton(actions, 'Lejjebb', () => { this.change(() => { [doc.tasks[index + 1], doc.tasks[index]] = [doc.tasks[index], doc.tasks[index + 1]]; }); this.redraw(); });
+            calSelect(box, 'Bejegyzés', t.entryType ?? 'customer', [['customer', 'Ügyfélnél végzett munka'], ['todo', 'Belső feladat']], v => { this.change(() => { t.entryType = v; if (v === 'todo') {
+                t.customerId = null;
+                t.locationId = null;
+                t.project_id = null;
+            } }); this.redraw(); });
+            if (t.entryType === 'todo')
+                calField(box, 'Feladat / helyszín', t.customerName, v => this.change(() => t.customerName = v));
+            else
+                this.customer(box, t);
+            const projects = (this.data.projects ?? []).filter((p) => p.source_customer_id === t.customerId && p.source_location_id === t.locationId);
+            calSelect(box, 'Kapcsolódó ERP-munka', t.project_id ?? '', [['', 'Nincs kiválasztva'], ...projects.map((p) => [p.id, p.name + ' · ' + (p.work_type === 'maintenance' ? 'Karbantartás' : 'Kertépítés')])], v => { this.change(() => { t.project_id = v || null; const p = projects.find((p) => p.id === v); if (p)
+                t.work_type = p.work_type; }); this.redraw(); });
+            calSelect(box, 'Munkaterület', t.work_type ?? 'internal', [['internal', 'Belső / nem besorolt'], ['maintenance', 'Kertkarbantartás · 1+1 óra kapacitáspuffer'], ['construction', 'Kertépítés']], v => this.change(() => t.work_type = v));
+            const visits = (this.data.visits ?? []).filter((v) => v.project_id === t.project_id);
+            if (visits.length)
+                calSelect(box, 'Jóváhagyott karbantartási alkalom', t.booking_id ?? '', [['', 'Automatikus, ha egyértelmű'], ...visits.map((v) => [v.id, new Date(v.start).toLocaleString('hu-HU')])], v => this.change(() => t.booking_id = v || null));
+            const timing = calFold(box, 'Időbeosztás és csapat');
+            calField(timing, 'Kezdés', t.startTime, v => this.change(() => t.startTime = v), 'time');
+            calField(timing, 'Befejezés – kapacitáshoz szükséges', t.endTime, v => this.change(() => t.endTime = v), 'time');
+            calField(timing, 'Befejezés napja', t.endDate ?? doc.date, v => this.change(() => t.endDate = v), 'date');
+            const teams = [...new Set(doc.tasks.map((x) => x.teamId))];
+            calSelect(timing, 'Csapat', t.teamId, teams.map((id, i) => [id, (i + 1) + '. csapat']), v => { this.change(() => { const other = doc.tasks.find((x) => x.teamId === v); t.teamId = v; if (other) {
+                t.workerIds = [...other.workerIds];
+                t.vehicleIds = [...other.vehicleIds];
+            } }); this.redraw(); });
+            calButton(timing, 'Külön új csapat', () => { this.change(() => t.teamId = crypto.randomUUID()); this.redraw(); });
+            for (const [kind, key, label] of [['workers', 'workerIds', 'Munkatársak'], ['vehicles', 'vehicleIds', 'Autók']])
+                calPick(timing, label, t[key] ?? [], this.catalog(kind), values => { this.change(() => { for (const x of doc.tasks.filter((x) => x.teamId === t.teamId))
+                    x[key] = values; }); this.redraw(); });
+            const jobs = calFold(box, 'Feladatok és munkalépések (' + t.jobs.length + ')');
+            for (const [ji, j] of t.jobs.entries()) {
+                const jb = calFold(jobs, j.name || 'Új munkarész');
+                calField(jb, 'Munkarész neve', j.name, v => this.change(() => j.name = v));
+                calField(jb, 'Munkautasítás', j.note, v => this.change(() => j.note = v), 'textarea');
+                calField(jb, 'Lépések – soronként egy', j.steps.join('\n'), v => this.change(() => j.steps = v.split('\n').filter(x => x.trim())), 'textarea');
+                calButton(jb, 'Munkarész kivétele', () => { this.change(() => t.jobs.splice(ji, 1)); this.redraw(); });
+                if (ji > 0)
+                    calButton(jb, 'Munkarész feljebb', () => { this.change(() => { [t.jobs[ji - 1], t.jobs[ji]] = [t.jobs[ji], t.jobs[ji - 1]]; }); this.redraw(); });
+            }
+            calButton(jobs, 'Új munkarész', () => { this.change(() => t.jobs.push({ id: crypto.randomUUID(), templateId: null, name: '', note: '', steps: [] })); this.redraw(); });
+            calSelect(jobs, 'Sablon hozzáadása', '', [['', 'Válassz sablont'], ...this.catalog('templates').map((p) => [p.id, p.name])], id => { const p = this.catalog('templates').find((p) => p.id === id); if (!p)
+                return; this.change(() => { t.jobs.push({ id: crypto.randomUUID(), templateId: id, name: p.name, note: p.note ?? '', steps: structuredClone(p.steps ?? []) }); t.toolIds = [...new Set([...(t.toolIds ?? []), ...(p.toolIds ?? [])])]; for (const id of t.toolIds)
+                t.toolQuantities[id] ??= '1'; t.materials.push(...structuredClone(p.materials ?? [])); }); this.redraw(); });
+            const supplies = calFold(box, 'Eszközök és anyagok');
+            calPick(supplies, 'Eszközök', t.toolIds ?? [], this.catalog('tools'), values => { this.change(() => { t.toolIds = values; for (const id of values)
+                t.toolQuantities[id] ??= '1'; }); this.redraw(); });
+            for (const id of t.toolIds ?? [])
+                calField(supplies, (this.catalog('tools').find((x) => x.id === id)?.name ?? 'Korábbi eszköz') + ' · darab', t.toolQuantities[id] ?? '1', v => this.change(() => t.toolQuantities[id] = v), 'number');
+            calField(supplies, 'További eszközök', t.extraTools, v => this.change(() => t.extraTools = v));
+            this.materials(supplies, t.materials);
+            const expectations = calFold(box, 'Elvárások és irodai megjegyzés');
+            calCheck(expectations, 'Munkanapló szükséges', t.workLogRequired !== false, v => this.change(() => t.workLogRequired = v));
+            for (const [key, label] of [['workIntensity', 'Munkaintenzitás'], ['workQuality', 'Elvárt minőség']])
+                calSelect(expectations, label, String(t[key] ?? 3), ['1', '2', '3', '4', '5'].map(v => [v, v + ' · ' + (key === 'workIntensity' ? calendarIntensityDescriptions[v] : calendarQualityDescriptions[v])]), v => this.change(() => t[key] = Number(v)));
+            calField(expectations, 'Irodai megjegyzés', t.notes, v => this.change(() => t.notes = v), 'textarea');
+        }
+        calButton(parent, 'Új napi feladat', () => { const id = crypto.randomUUID(); this.change(() => doc.tasks.push({ id, teamId: id, entryType: 'customer', customerId: null, locationId: null, customerName: '', address: '', startTime: '', endTime: '', endDate: doc.date, workerIds: [], vehicleIds: [], jobs: [], toolIds: [], toolQuantities: {}, extraTools: '', materials: [], workLogRequired: true, workIntensity: 3, workQuality: 3, notes: '', work_type: 'internal' })); this.redraw(); }, false);
+        const appointments = calFold(parent, 'Előjegyzések (' + doc.workItems.length + ')');
+        for (const [i, w] of doc.workItems.entries()) {
+            const row = calFold(appointments, w.customerName || 'Új előjegyzés');
+            calSelect(row, 'Típus', w.type, [['work', 'Munka'], ['survey', 'Felmérés'], ['meeting', 'Megbeszélés'], ['personal', 'Személyes']], v => this.change(() => { w.type = v; w.private = v === 'personal'; }));
+            this.customer(row, w);
+            calField(row, 'Találkozó tervezett időpontja', w.appointmentTime, v => this.change(() => w.appointmentTime = v), 'time');
+            calField(row, 'További emlékeztetők – például 08:30, 09:00', (w.reminderTimes ?? []).join(', '), v => this.change(() => w.reminderTimes = v.split(',').map(x => x.trim()).filter(Boolean)));
+            calField(row, 'Megjegyzés', w.note, v => this.change(() => w.note = v), 'textarea');
+            calPick(row, 'Érintett munkatársak', w.personIds ?? [], this.data.people ?? [], v => { this.change(() => w.personIds = v); this.redraw(); });
+            calButton(row, 'Előjegyzés kivétele', () => { this.change(() => { doc.deletedWorkItemIds.push(w.id); doc.workItems.splice(i, 1); }); this.redraw(); });
+            if (w.type === 'work')
+                calButton(row, 'Napi feladattá alakítás', () => { const id = crypto.randomUUID(); this.change(() => { doc.tasks.push({ id, teamId: id, entryType: 'customer', customerId: w.customerId, locationId: w.locationId, customerName: w.customerName, address: w.address, startTime: w.appointmentTime, endTime: '', endDate: doc.date, workerIds: [], vehicleIds: [], jobs: [], toolIds: [], toolQuantities: {}, extraTools: '', materials: [], workLogRequired: true, workIntensity: 3, workQuality: 3, notes: w.note, work_type: 'internal' }); doc.deletedWorkItemIds.push(w.id); doc.workItems.splice(i, 1); }); this.redraw(); });
+        }
+        calButton(appointments, 'Új előjegyzés', () => { this.change(() => doc.workItems.push({ id: crypto.randomUUID(), type: 'meeting', customerId: null, locationId: null, customerName: '', address: '', note: '', appointmentTime: '', reminderTimes: [], personIds: [] })); this.redraw(); });
+    }
+    materials(parent, items) { for (const [i, m] of items.entries()) {
+        const d = calFold(parent, m.name || 'Új anyag');
+        for (const [key, label] of [['name', 'Anyag neve'], ['source', 'Beszerzési hely'], ['quantity', 'Mennyiség'], ['unit', 'Mértékegység']])
+            calField(d, label, m[key], v => this.change(() => m[key] = v));
+        calButton(d, 'Anyag kivétele', () => { this.change(() => items.splice(i, 1)); this.redraw(); });
+    } calSelect(parent, 'Anyag a törzsből', '', [['', 'Válassz anyagot'], ...this.catalog('materials').map((m) => [m.id, m.name])], id => { const m = this.catalog('materials').find((x) => x.id === id); if (m) {
+        this.change(() => items.push({ materialId: id, name: m.name, source: m.source ?? '', quantity: '', unit: m.unit ?? '' }));
+        this.redraw();
+    } }); calButton(parent, 'Egyedi anyag', () => { this.change(() => items.push({ materialId: null, name: '', source: '', quantity: '', unit: '' })); this.redraw(); }); }
+    customer(parent, item) { const search = calField(parent, 'Ügyfél keresése – legalább 2 betű', item.customerName, () => { }); const results = document.createElement('select'); results.setAttribute('aria-label', 'Lehetséges ügyfelek'); results.hidden = true; parent.append(results); let timer, epoch = 0; search.addEventListener('input', () => { const q = search.value.trim(), seq = ++epoch; if (timer)
+        clearTimeout(timer); if (q.normalize('NFD').replace(/\p{M}/gu, '').length < 2) {
+        results.hidden = true;
+        return;
+    } timer = setTimeout(() => { void this.api.customers('customers_list', { organization_id: this.organization, query: q, page: 0, include_archived: false, field: 'all' }).then(data => { if (seq !== epoch || !results.isConnected)
+        return; const rows = (data.rows ?? []).sort((a, b) => a.full_name.localeCompare(b.full_name, 'hu')); results.replaceChildren(new Option('Válassz ügyfelet', ''), ...rows.map((c) => new Option(c.full_name, c.id))); results.hidden = false; results.onchange = () => { const c = rows.find((c) => c.id === results.value); if (!c)
+        return; this.change(() => { item.customerId = c.id; item.customerName = c.full_name; item.locationId = null; item.address = ''; item.project_id = null; }); void this.api.customers('work_sites', { organization_id: this.organization, customer_id: c.id }).then(data => { if (!parent.isConnected)
+        return; const s = document.createElement('select'); s.setAttribute('aria-label', 'Munkavégzési cím'); s.replaceChildren(new Option('Válassz munkavégzési címet', ''), ...(data.sites ?? []).filter((x) => x.active !== false).map((x) => new Option(x.address, x.id))); parent.append(s); s.onchange = () => { const site = (data.sites ?? []).find((x) => x.id === s.value); if (site) {
+        this.change(() => { item.locationId = site.id; item.address = site.address; });
+        chosen.textContent = item.customerName + ' · ' + item.address;
+        search.value = item.customerName;
+        results.hidden = true;
+        this.redraw();
+    } }; }).catch(this.error); }; }).catch(this.error); }, 300); }); const chosen = calNode('p', item.address ? item.customerName + ' · ' + item.address : 'Még nincs munkavégzési cím kiválasztva.'); parent.append(chosen); if (item.type === 'personal') {
+        calField(parent, 'Személyes megnevezés', item.customerName, v => this.change(() => item.customerName = v));
+        calField(parent, 'Helyszín', item.address, v => this.change(() => item.address = v));
+    } }
+}

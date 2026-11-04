@@ -1,0 +1,783 @@
+const { calendarOffset, calendarWeek, calendarSearch, normalizeCalendarPlan, calendarRecurrenceDates } = await import(new URL('./erp-calendar-model.js?v=0.14.0', import.meta.url).href);
+const { CalendarPlanEditor, calNode: n, calButton: button, calField: field, calSelect: select, calCheck: check, calFold: fold, calPick: pick } = await import(new URL('./erp-calendar-editor.js?v=0.14.0', import.meta.url).href);
+const roleNames = { office: 'Iroda', construction_lead: 'Építésvezető', maintenance_lead: 'Karbantartásvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
+const today = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const uid = () => crypto.randomUUID();
+export class CalendarDesk {
+    api;
+    onError;
+    owner;
+    org;
+    office = false;
+    roles = [];
+    role = 'office';
+    epoch = 0;
+    busy = false;
+    writing = false;
+    changed = false;
+    adminChanged = false;
+    optionsRequest = 0;
+    launchFromLink = new URLSearchParams(location.search).has('calendar');
+    day = today();
+    mode = 'day';
+    query = '';
+    data = { plans: [], catalog: [] };
+    draft;
+    revision = 0;
+    undo = [];
+    redo = [];
+    pending;
+    dialog = document.createElement('dialog');
+    launcher = document.createElement('button');
+    status = document.createElement('p');
+    main = document.createElement('div');
+    toolbar = document.createElement('div');
+    dateInput = document.createElement('input');
+    modeSelect = document.createElement('select');
+    roleSelect = document.createElement('select');
+    retry = document.createElement('button');
+    locked = new Map();
+    child;
+    urls = [];
+    constructor(api, onError) {
+        this.api = api;
+        this.onError = onError;
+        this.launcher.id = 'show-calendar';
+        this.launcher.type = 'button';
+        this.launcher.textContent = 'Naptár és napi feladatok';
+        this.launcher.hidden = true;
+        document.getElementById('app-menu').insertBefore(this.launcher, document.getElementById('logout'));
+        this.launcher.onclick = () => { void this.open(); };
+        this.dialog.id = 'calendar-dialog';
+        this.dialog.className = 'workspace calendar-dialog';
+        this.dialog.setAttribute('aria-label', 'Naptár és napi feladatok');
+        const head = n('div');
+        head.className = 'calendar-heading';
+        head.append(n('h1', 'Naptár és napi feladatok'));
+        const close = button(head, '×', () => this.close());
+        close.setAttribute('aria-label', 'Naptár bezárása');
+        close.title = 'Bezárás';
+        this.dialog.append(head, this.toolbar, this.status, this.main);
+        this.status.className = 'office-status';
+        this.status.setAttribute('role', 'status');
+        document.body.append(this.dialog);
+        this.dialog.addEventListener('cancel', e => { e.preventDefault(); this.close(); });
+        this.dateInput.type = 'date';
+        this.dateInput.setAttribute('aria-label', 'Kiválasztott nap');
+        this.dateInput.value = this.day;
+        this.dateInput.onchange = () => { if (this.leave()) {
+            this.day = this.dateInput.value;
+            void this.load();
+        }
+        else
+            this.dateInput.value = this.day; };
+        this.modeSelect.setAttribute('aria-label', 'Naptári nézet');
+        this.modeSelect.replaceChildren(new Option('Napi', 'day'), new Option('Heti · péntek–csütörtök', 'week'), new Option('Havi', 'month'));
+        this.modeSelect.onchange = () => { if (this.leave()) {
+            this.mode = this.modeSelect.value;
+            void this.load();
+        }
+        else
+            this.modeSelect.value = this.mode; };
+        this.roleSelect.setAttribute('aria-label', 'Naptári munkaszerep');
+        this.roleSelect.onchange = () => { if (this.leave()) {
+            this.role = this.roleSelect.value;
+            void this.load();
+        }
+        else
+            this.roleSelect.value = this.role; };
+        this.toolbar.className = 'calendar-toolbar';
+        this.toolbar.append(this.dateInput, this.modeSelect, this.roleSelect);
+        button(this.toolbar, '←', () => this.move(-1)).setAttribute('aria-label', 'Előző időszak');
+        button(this.toolbar, 'Ma', () => { if (this.leave()) {
+            this.day = today();
+            void this.load();
+        } });
+        button(this.toolbar, '→', () => this.move(1)).setAttribute('aria-label', 'Következő időszak');
+        button(this.toolbar, 'Frissítés', () => { if (this.leave())
+            void this.load(); });
+        this.retry.type = 'button';
+        this.retry.textContent = 'Függő mentés újrapróbálása';
+        this.retry.hidden = true;
+        this.retry.onclick = () => { if (this.pending)
+            void this.perform(this.pending.action, this.pending.args, true); };
+        this.dialog.append(this.retry);
+        window.addEventListener('beforeunload', e => { if (this.dirty || this.writing) {
+            e.preventDefault();
+            e.returnValue = '';
+        } });
+        window.addEventListener('erp:before-update', e => { if (this.writing || this.dirty && !confirm('Frissíted a még nem mentett naptári szerkesztés mellett?'))
+            e.preventDefault(); });
+        navigator.serviceWorker?.addEventListener('message', event => { if (event.data?.type === 'ERP_CALENDAR_OPEN')
+            void this.open(); });
+        setInterval(() => { if (this.owner && !document.hidden && navigator.onLine) {
+            void this.options();
+            if (this.dialog.open && !this.dirty && !this.busy)
+                void this.load();
+        } }, 60000);
+    }
+    get dirty() { return this.changed || this.adminChanged || !!this.pending; }
+    get saving() { return this.writing; }
+    setOwner(owner, org, office = false) { if (this.owner !== owner || this.org !== org) {
+        this.reset();
+        this.owner = owner;
+        this.org = org;
+    } this.office = office; const target = office ? document.getElementById('office-admin-actions') : document.getElementById('app-menu'); target.append(this.launcher); if (owner && org)
+        void this.options().then(() => { if (this.launchFromLink && this.roles.length) {
+            this.launchFromLink = false;
+            void this.open();
+        } }); }
+    reset() { this.epoch++; this.optionsRequest++; this.owner = undefined; this.org = undefined; this.roles = []; this.launcher.hidden = true; this.dialog.close(); this.child?.close(); this.child?.remove(); this.child = undefined; this.changed = false; this.adminChanged = false; this.pending = undefined; this.busy = false; this.writing = false; this.draft = undefined; this.data = { plans: [], catalog: [] }; this.undo = []; this.redo = []; for (const u of this.urls)
+        URL.revokeObjectURL(u); this.urls = []; this.main.replaceChildren(); }
+    leave() { if (this.writing) {
+        this.message('A mentés még folyamatban van. Várd meg a visszajelzést.');
+        return false;
+    } if (this.pending) {
+        this.message('A mentés eredménye még nem ismert. Előbb próbáld újra az eredeti kérést.');
+        return false;
+    } return !this.dirty || confirm('Elhagyod a még nem mentett naptári szerkesztést?'); }
+    close() { if (this.writing) {
+        this.message('A mentés még folyamatban van.');
+        return;
+    } if (this.dirty && !confirm('Bezárod a naptárt? A nem mentett adatok csak ebben a munkamenetben maradnak.'))
+        return; this.epoch++; this.busy = false; this.dialog.close(); }
+    async options() { if (!this.owner || !this.org)
+        return; const epoch = this.epoch, seq = ++this.optionsRequest; try {
+        const v = await this.api.calendar('calendar_options', { organization_id: this.org, role: 'office' });
+        if (epoch !== this.epoch || seq !== this.optionsRequest)
+            return;
+        this.roles = v.roles ?? [];
+        this.launcher.textContent = 'Naptár és napi feladatok' + (v.unread ? ' (' + v.unread + ')' : '');
+        this.launcher.hidden = this.roles.length === 0;
+        if (!this.roles.includes(this.role))
+            this.role = this.roles[0] ?? 'office';
+        this.roleSelect.replaceChildren(...this.roles.map(r => new Option(roleNames[r], r)));
+        this.roleSelect.value = this.role;
+        this.roleSelect.hidden = this.roles.length < 2;
+        if (this.dialog.open && !this.roles.length) {
+            this.dialog.close();
+            this.draft = undefined;
+            this.changed = false;
+            this.message('A naptári hozzáférés megváltozott.');
+        }
+    }
+    catch (e) {
+        if (epoch === this.epoch) {
+            if ([401, 403].includes(e?.status))
+                this.launcher.hidden = true;
+            if (e?.status === 401)
+                this.onError(e);
+        }
+    } }
+    message(text, ok = false) { this.status.textContent = (ok ? '✓ ' : '') + text; this.status.className = 'office-status' + (ok ? ' success' : ''); if (this.child?.open) {
+        let childStatus = this.child.querySelector('.calendar-child-status');
+        if (!childStatus) {
+            childStatus = n('p');
+            childStatus.className = 'calendar-child-status';
+            childStatus.setAttribute('role', 'status');
+            this.child.insertBefore(childStatus, this.child.children[1] ?? null);
+        }
+        childStatus.textContent = (ok ? '✓ ' : '') + text;
+        childStatus.classList.toggle('success', ok);
+    } this.retry.hidden = !this.pending; }
+    error(e) { this.message(e instanceof Error ? e.message : 'A naptári művelet nem sikerült.'); if (e?.status === 401 || !this.api.signedIn)
+        this.onError(e); }
+    range() { if (this.mode === 'week') {
+        const from = calendarWeek(this.day);
+        return { from, to: calendarOffset(from, 6) };
+    } if (this.mode === 'month') {
+        const from = this.day.slice(0, 7) + '-01', d = new Date(from + 'T12:00:00Z');
+        d.setUTCMonth(d.getUTCMonth() + 1);
+        d.setUTCDate(0);
+        return { from, to: d.toISOString().slice(0, 10) };
+    } return { from: this.day, to: this.day }; }
+    move(direction) { if (!this.leave())
+        return; if (this.mode === 'month') {
+        const d = new Date(this.day.slice(0, 7) + '-01T12:00:00Z');
+        d.setUTCMonth(d.getUTCMonth() + direction);
+        this.day = d.toISOString().slice(0, 10);
+    }
+    else
+        this.day = calendarOffset(this.day, direction * (this.mode === 'week' ? 7 : 1)); void this.load(); }
+    async open() { if (!this.owner || !this.org || this.busy)
+        return; await this.options(); if (!this.roles.length)
+        return; if (!this.dialog.open)
+        this.dialog.showModal(); if (this.draft && (this.dirty || !navigator.onLine)) {
+        this.draw();
+        if (!navigator.onLine)
+            this.message('Offline: a betöltött adatokkal dolgozhatsz; mentéshez kapcsolódj újra.');
+    }
+    else
+        await this.load(); }
+    lock(value) { if (value) {
+        for (const root of [this.dialog, this.child])
+            if (root)
+                for (const e of Array.from(root.querySelectorAll('input,button,select,textarea'))) {
+                    if (e.getAttribute('aria-label')?.endsWith('bezárása'))
+                        continue;
+                    if (!this.locked.has(e))
+                        this.locked.set(e, e.disabled);
+                    e.disabled = true;
+                }
+    }
+    else {
+        for (const [e, disabled] of this.locked)
+            e.disabled = disabled;
+        this.locked.clear();
+    } }
+    async load() { if (!this.owner || !this.org || this.busy)
+        return; const epoch = this.epoch; this.busy = true; this.lock(true); this.message('Naptár betöltése…'); try {
+        const data = await this.api.calendar('calendar_read', { organization_id: this.org, role: this.role, filter: this.range() });
+        if (epoch !== this.epoch)
+            return;
+        this.data = data;
+        this.dateInput.value = this.day;
+        const p = data.plans?.find((p) => p.day === this.day);
+        this.draft = p ? structuredClone(p.document) : { id: uid(), date: this.day, meeting: '', stops: '', generalNote: '', tasks: [], workItems: [], deletedWorkItemIds: [] };
+        this.revision = p?.version ?? 0;
+        this.changed = false;
+        this.undo = [];
+        this.redo = [];
+        this.draw();
+        this.message(navigator.onLine ? 'A naptár adatai naprakészek.' : 'Offline: a betöltött adatok láthatók, mentéshez kapcsolódj újra.', true);
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.busy = false;
+            this.lock(false);
+        }
+    } }
+    edit(run) { if (this.busy || this.pending || !this.draft)
+        return; this.undo.push(structuredClone(this.draft)); if (this.undo.length > 50)
+        this.undo.shift(); this.redo = []; run(); this.changed = true; const u = this.main.querySelector('[data-cal-undo]'), r = this.main.querySelector('[data-cal-redo]'); if (u)
+        u.disabled = false; if (r)
+        r.disabled = true; this.message('Nem mentett módosítások.'); }
+    draw() {
+        const opened = new Set(Array.from(this.main.querySelectorAll('details[open]>summary')).map(x => x.textContent));
+        this.main.replaceChildren();
+        const actions = n('div');
+        actions.className = 'calendar-actions';
+        this.main.append(actions);
+        const summary = this.data.import_summary;
+        if (this.role === 'office' && summary?.state === 'conflict') {
+            const warning = n('p', 'A Napi importban ' + (summary.conflicts?.length ?? 0) + ' eltérő adat rendezésre vár. Az ERP-változatok megmaradtak.');
+            this.main.append(warning);
+            if (summary.can_resume)
+                button(this.main, 'Importütközések rendezése', () => this.importPreview(summary));
+        }
+        if (this.role !== 'client')
+            button(actions, 'Napiterv / PDF', () => { void this.pdf(); });
+        if (this.role === 'office')
+            button(actions, 'Mentés saját gépre', () => { void this.exportData(); });
+        if (this.role === 'office') {
+            const admin = fold(actions, 'Naptári adatok és beállítások');
+            button(admin, 'Adatok átvétele a Napi appból', () => { void this.importSource(); });
+            button(admin, 'Adatfájl beolvasása', () => this.importFile());
+            button(admin, 'Törzsek és sablonok', () => this.catalog());
+            button(admin, 'Kapacitás és kapcsolók', () => this.settings());
+            button(admin, 'Időtiltások', () => this.blocks());
+            button(admin, 'Ismétlődő munkák', () => this.recurrences());
+        }
+        button(actions, 'Értesítések', () => { void this.notifications(); });
+        if (this.role !== 'client')
+            button(actions, 'Telefonos emlékeztető', () => { void this.push(); });
+        if (this.role === 'client') {
+            this.booking(this.main);
+            return;
+        }
+        const search = field(this.main, 'Keresés névben, címben vagy feladatban', this.query, v => { this.query = v; this.drawList(); });
+        search.autocomplete = 'off';
+        const list = n('div');
+        list.id = 'calendar-period-list';
+        this.main.append(list);
+        this.drawList();
+        if (this.mode === 'day' && this.draft) {
+            const head = n('div');
+            head.className = 'calendar-actions';
+            this.main.append(head);
+            if (this.role === 'office') {
+                button(head, 'Napiterv mentése', () => { void this.save(); }, false);
+                const undo = button(head, 'Visszavonás', () => { if (!this.undo.length || !this.draft)
+                    return; this.redo.push(structuredClone(this.draft)); this.draft = this.undo.pop(); this.changed = true; this.draw(); });
+                undo.dataset.calUndo = 'true';
+                undo.disabled = !this.undo.length;
+                const redo = button(head, 'Mégis', () => { if (!this.redo.length || !this.draft)
+                    return; this.undo.push(structuredClone(this.draft)); this.draft = this.redo.pop(); this.changed = true; this.draw(); });
+                redo.dataset.calRedo = 'true';
+                redo.disabled = !this.redo.length;
+                button(head, 'Másolás másik napra', () => { const d = this.childDialog('Napiterv másolása'); let date = this.day; field(d, 'Célnap', date, v => date = v, 'date'); button(d, 'Másolat előkészítése', () => { if (date === this.day) {
+                    this.message('Másik napot válassz.');
+                    return;
+                } this.draft = { ...structuredClone(this.draft), id: uid(), date, tasks: this.draft.tasks.map((t) => ({ ...structuredClone(t), id: uid(), endDate: date })), workItems: this.draft.workItems.map((w) => ({ ...structuredClone(w), id: uid() })) }; this.day = date; this.mode = 'day'; this.modeSelect.value = 'day'; this.revision = 0; this.changed = true; d.close(); this.draw(); this.message('Másolat előkészítve; meglévő célnapot a mentés nem ír felül.'); }); });
+                if (this.revision) {
+                    button(head, 'Előzmények', () => { void this.history(); });
+                    const state = this.data.plans?.find((p) => p.day === this.day)?.state;
+                    button(head, state === 'withdrawn' ? 'Napiterv visszaállítása' : 'Napiterv visszavonása', () => { if (confirm(state === 'withdrawn' ? 'Visszaállítod a napitervet?' : 'Visszavonod a napitervet? Az előzmény megmarad.'))
+                        void this.perform('calendar_write', { command: { kind: state === 'withdrawn' ? 'restore_plan' : 'withdraw_plan', day: this.day, revision: this.revision }, request_id: uid() }); });
+                }
+                const editor = new CalendarPlanEditor(this.api, this.org, this.data, run => this.edit(run), () => this.draw(), e => this.error(e));
+                editor.render(this.main, this.draft);
+            }
+            else
+                this.readOnly(this.main, this.draft);
+        }
+        if (this.role === 'office' && this.data.bookings?.length) {
+            const pending = fold(this.main, 'Jóváhagyandó időpontkérések (' + this.data.bookings.length + ')');
+            for (const b of this.data.bookings) {
+                const d = fold(pending, new Date(b.start_at).toLocaleString('hu-HU') + ' · ' + b.headcount + ' fő');
+                d.append(n('p', b.note));
+                for (const [kind, label] of [['approve', 'Jóváhagyás'], ['reject', 'Elutasítás']])
+                    button(d, label, () => { if (this.dirty) {
+                        this.message('Előbb mentsd a napitervet.');
+                        return;
+                    } const reason = kind === 'reject' ? prompt('Elutasítás indoka:') : ''; if (reason === null)
+                        return; void this.perform('calendar_booking', { command: { kind, booking_id: b.id, revision: b.revision, reason }, request_id: uid() }); });
+            }
+        }
+        for (const summary of Array.from(this.main.querySelectorAll('details>summary')))
+            if (opened.has(summary.textContent))
+                summary.parentElement.open = true;
+    }
+    drawList() { const list = this.main.querySelector('#calendar-period-list'); if (!list)
+        return; list.replaceChildren(); if (this.mode === 'day') {
+        for (const task of Array.from(this.main.querySelectorAll('.calendar-tasks>details')))
+            task.hidden = !!this.query && !calendarSearch(task.textContent).includes(calendarSearch(this.query));
+        return;
+    } const range = this.range(); list.append(n('p', range.from + ' – ' + range.to)); const grid = n('div'); grid.className = this.mode === 'month' ? 'calendar-month-grid' : 'calendar-week-grid'; list.append(grid); if (this.mode === 'month') {
+        for (const title of ['Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat', 'Vasárnap']) {
+            const h = n('strong', title);
+            h.className = 'calendar-weekday';
+            grid.append(h);
+        }
+        const offset = (new Date(range.from + 'T12:00:00Z').getUTCDay() + 6) % 7;
+        for (let i = 0; i < offset; i++) {
+            const blank = n('div');
+            blank.className = 'calendar-blank';
+            grid.append(blank);
+        }
+    } for (let day = range.from; day <= range.to; day = calendarOffset(day, 1)) {
+        const p = (this.data.plans ?? []).find((p) => p.day === day), cell = n('div');
+        cell.className = 'calendar-date-cell';
+        const date = day;
+        const title = new Intl.DateTimeFormat('hu-HU', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'Europe/Budapest' }).format(new Date(day + 'T12:00:00Z'));
+        button(cell, title, () => { if (this.leave()) {
+            this.day = date;
+            this.mode = 'day';
+            this.modeSelect.value = 'day';
+            void this.load();
+        } });
+        if (p?.state === 'withdrawn')
+            cell.append(n('small', 'Visszavonva'));
+        else {
+            for (const t of p?.document.tasks ?? []) {
+                if (this.query && !calendarSearch(JSON.stringify(t)).includes(calendarSearch(this.query)))
+                    continue;
+                const entry = n('div');
+                entry.className = 'calendar-overview-task';
+                entry.append(n('strong', (t.startTime ? t.startTime + ' · ' : '') + (t.customerName || t.jobs?.[0]?.name || 'Belső feladat')));
+                if (t.address)
+                    entry.append(n('small', t.address));
+                for (const kind of ['workers', 'vehicles'])
+                    for (const id of t[kind === 'workers' ? 'workerIds' : 'vehicleIds'] ?? []) {
+                        const r = this.data.catalog.find((c) => c.kind === kind && c.id === id)?.document;
+                        if (r) {
+                            const label = n('small', r.name);
+                            label.className = 'calendar-person';
+                            if (/^#[a-f0-9]{6}$/i.test(r.color))
+                                label.style.borderLeftColor = r.color;
+                            entry.append(label);
+                        }
+                    }
+                cell.append(entry);
+            }
+            for (const w of p?.document.workItems ?? []) {
+                if (this.query && !calendarSearch(JSON.stringify(w)).includes(calendarSearch(this.query)))
+                    continue;
+                cell.append(n('p', ({ work: 'Munka', survey: 'Felmérés', meeting: 'Megbeszélés', personal: 'Személyes' }[w.type]) + ' · ' + (w.appointmentTime || '') + ' ' + w.customerName));
+            }
+        }
+        grid.append(cell);
+    } }
+    readOnly(parent, doc) { if (doc.meeting)
+        parent.append(n('p', 'Találkozó: ' + doc.meeting)); for (const t of doc.tasks ?? []) {
+        const d = fold(parent, (t.startTime ? t.startTime + ' · ' : '') + t.customerName);
+        d.append(n('p', t.address));
+        for (const j of t.jobs ?? []) {
+            d.append(n('h3', j.name), n('p', j.note));
+            const ol = n('ol');
+            for (const step of j.steps ?? [])
+                ol.append(n('li', step));
+            d.append(ol);
+        }
+        for (const m of t.materials ?? [])
+            d.append(n('p', m.name + ' · ' + m.quantity + ' ' + m.unit));
+    } }
+    async save() { if (!this.draft)
+        return; try {
+        const doc = normalizeCalendarPlan(this.draft, this.day);
+        await this.perform('calendar_write', { command: { kind: 'save_plan', day: this.day, revision: this.revision, document: doc }, request_id: uid() });
+    }
+    catch (e) {
+        this.error(e);
+    } }
+    async perform(action, args, retry = false) { if (!this.owner || !this.org || this.busy)
+        return false; if (!navigator.onLine) {
+        this.message('Offline vagy. A szerkesztés ebben az ablakban megmarad; mentéshez kapcsolódj újra.');
+        return false;
+    } if (this.pending && !retry) {
+        this.message('Előbb próbáld újra a függő mentést.');
+        return false;
+    } let saved = false; const epoch = this.epoch; this.pending = { action, args: structuredClone(args) }; this.busy = true; this.writing = true; this.lock(true); this.message('Mentés…'); try {
+        await this.api.calendar(action, { organization_id: this.org, role: this.role, ...args });
+        if (epoch !== this.epoch)
+            return false;
+        this.pending = undefined;
+        this.changed = false;
+        this.adminChanged = false;
+        saved = true;
+        this.message('A módosítás mentve.', true);
+        return true;
+    }
+    catch (e) {
+        if (epoch === this.epoch) {
+            if ([400, 401, 403, 409, 422].includes(e?.status))
+                this.pending = undefined;
+            this.error(e);
+            if (this.pending && this.child?.open && !this.child.querySelector('[data-cal-retry]')) {
+                const retry = button(this.child, 'Eredeti mentés újrapróbálása', () => { if (this.pending)
+                    void this.perform(this.pending.action, this.pending.args, true); }, false);
+                retry.dataset.calRetry = 'true';
+            }
+        }
+        return false;
+    }
+    finally {
+        if (epoch === this.epoch) {
+            this.busy = false;
+            this.writing = false;
+            this.lock(false);
+            this.retry.hidden = !this.pending;
+            if (saved) {
+                this.child?.close();
+                this.child?.remove();
+                this.child = undefined;
+                void this.load();
+            }
+        }
+    } }
+    childDialog(title) { if (this.child?.open) {
+        this.child.close();
+        this.child.remove();
+    } const d = document.createElement('dialog'); d.className = 'workspace calendar-dialog calendar-child'; d.setAttribute('aria-label', title); const head = n('div'); head.className = 'calendar-heading'; head.append(n('h1', title)); const close = () => { if (this.writing)
+        return; if (this.adminChanged && !confirm('Bezárod a még nem mentett beállítást?'))
+        return; this.adminChanged = false; d.close(); d.remove(); if (this.child === d)
+        this.child = undefined; }; button(head, '×', close).setAttribute('aria-label', title + ' bezárása'); d.addEventListener('cancel', e => { e.preventDefault(); close(); }); d.append(head); document.body.append(d); this.child = d; d.showModal(); return d; }
+    catalog() {
+        if (this.changed || this.pending) {
+            this.message('Előbb mentsd vagy fejezd be a napitervet.');
+            return;
+        }
+        const d = this.childDialog('Naptári törzsek és sablonok');
+        let kind = 'workers';
+        const container = n('div');
+        select(d, 'Törzs típusa', kind, [['workers', 'Munkatársak és személyszínek'], ['vehicles', 'Autók'], ['tools', 'Eszközök'], ['materials', 'Anyagok'], ['templates', 'Sablonok'], ['recurrences', 'Ismétlődő munkák']], v => { kind = v; render(); });
+        d.append(container);
+        const edit = (existing) => {
+            if (this.adminChanged && !confirm('Elhagyod a még nem mentett törzsszerkesztést?'))
+                return;
+            this.adminChanged = false;
+            container.replaceChildren();
+            const document = structuredClone(existing?.document ?? { id: uid(), name: '', active: true, order: 0, color: '#214a35', toolIds: [], materials: [], steps: [], note: '', startDate: today(), endDate: today(), frequency: 'weekly', weekday: 1, monthDay: 1, customDates: [], customerName: '', address: '', jobName: '', startTime: '', endTime: '', workerIds: [], vehicleIds: [] });
+            let person = existing?.person_id ?? '';
+            const update = (run) => { run(); this.adminChanged = true; };
+            field(container, 'Megnevezés', document.name, v => update(() => document.name = v));
+            check(container, 'Aktív', document.active !== false, v => update(() => document.active = v));
+            field(container, 'Sorrend', document.order ?? 0, v => update(() => document.order = Number(v)), 'number');
+            if (['workers', 'vehicles'].includes(kind))
+                field(container, 'Megkülönböztető szín', document.color, v => update(() => document.color = v), 'color');
+            if (kind === 'workers') {
+                container.append(n('p', 'A megfeleltetés nem hoz létre fiókot és nem ad vezetői jogosultságot.'));
+                select(container, 'Meglévő ERP-munkatárs', person, [['', 'Még nincs megfeleltetve'], ...(this.data.people ?? []).map((p) => [p.id, p.name])], v => update(() => person = v));
+            }
+            if (kind === 'materials')
+                for (const [key, label] of [['source', 'Beszerzési hely'], ['unit', 'Mértékegység']])
+                    field(container, label, document[key], v => update(() => document[key] = v));
+            if (kind === 'templates') {
+                field(container, 'Munkautasítás', document.note, v => update(() => document.note = v), 'textarea');
+                field(container, 'Munkalépések – soronként egy', (document.steps ?? []).join('\n'), v => update(() => document.steps = v.split('\n').filter(x => x.trim())), 'textarea');
+                pick(container, 'Szükséges eszközök', document.toolIds ?? [], this.catalogRows('tools'), v => update(() => document.toolIds = v));
+                const area = n('div');
+                container.append(area);
+                const renderMaterials = () => { area.replaceChildren(); const editor = new CalendarPlanEditor(this.api, this.org, this.data, update, renderMaterials, e => this.error(e)); editor.materials(area, document.materials ??= []); };
+                renderMaterials();
+            }
+            if (kind === 'recurrences') {
+                for (const [key, label] of [['startDate', 'Kezdőnap'], ['endDate', 'Zárónap']])
+                    field(container, label, document[key], v => update(() => document[key] = v), 'date');
+                select(container, 'Ismétlődés', document.frequency, [['weekly', 'Hetente'], ['biweekly', 'Kéthetente'], ['monthly', 'Havonta'], ['custom', 'Kijelölt napokon']], v => update(() => document.frequency = v));
+                select(container, 'Hét napja', String(document.weekday ?? 1), ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'].map((v, i) => [String(i), v]), v => update(() => document.weekday = Number(v)));
+                field(container, 'Hónap napja', document.monthDay ?? 1, v => update(() => document.monthDay = Number(v)), 'number');
+                field(container, 'Kijelölt napok – soronként ÉÉÉÉ-HH-NN', (document.customDates ?? []).join('\n'), v => update(() => document.customDates = v.split('\n').map(x => x.trim()).filter(Boolean)), 'textarea');
+                const editor = new CalendarPlanEditor(this.api, this.org, this.data, update, () => { }, e => this.error(e));
+                editor.customer(container, document);
+                field(container, 'Elvégzendő munka', document.jobName, v => update(() => document.jobName = v));
+                for (const [key, label] of [['startTime', 'Kezdés'], ['endTime', 'Befejezés']])
+                    field(container, label, document[key], v => update(() => document[key] = v), 'time');
+                select(container, 'Munkaterület', document.work_type ?? 'maintenance', [['maintenance', 'Kertkarbantartás'], ['construction', 'Kertépítés'], ['internal', 'Belső munka']], v => update(() => document.work_type = v));
+                select(container, 'Sablon', document.templateId ?? '', [['', 'Nincs kiválasztva'], ...this.catalogRows('templates').map((r) => [r.id, r.name])], v => update(() => document.templateId = v || null));
+                pick(container, 'Munkatársak', document.workerIds ?? [], this.catalogRows('workers'), v => update(() => document.workerIds = v));
+                pick(container, 'Autók', document.vehicleIds ?? [], this.catalogRows('vehicles'), v => update(() => document.vehicleIds = v));
+            }
+            button(container, 'Törzsadat mentése', () => { void this.perform('calendar_write', { command: { kind: 'catalog_save', catalog_kind: kind, revision: existing?.revision ?? 0, document, person_id: kind === 'workers' ? person || null : null }, request_id: uid() }); }, false);
+            button(container, 'Vissza a listához', () => { if (!this.adminChanged || confirm('Elhagyod a nem mentett törzsadatot?')) {
+                this.adminChanged = false;
+                render();
+            } });
+        };
+        const render = () => { container.replaceChildren(); for (const c of this.data.catalog.filter((c) => c.kind === kind).sort((a, b) => a.document.name.localeCompare(b.document.name, 'hu'))) {
+            button(container, c.document.name + (c.active ? '' : ' · inaktív'), () => edit(c));
+        } button(container, 'Új bejegyzés', () => edit(), false); };
+        render();
+    }
+    catalogRows(kind) { return (this.data.catalog ?? []).filter((c) => c.kind === kind && c.active).map((c) => c.document); }
+    settings() { if (this.changed || this.pending) {
+        this.message('Előbb mentsd a napitervet.');
+        return;
+    } const d = this.childDialog('Kapacitás és naptárkapcsolók'), doc = structuredClone(this.data.context?.settings ?? { office: true, roles: {}, booking: false, date_requests: false, capacity: 0, windows: [] }); const update = (run) => { run(); this.adminChanged = true; }; d.append(n('p', 'A dolgozói nézet és az ügyfélfoglalás külön kapcsolható. Az időpontkérés csak irodai jóváhagyással válik véglegessé.')); for (const role of Object.keys(roleNames).filter(r => r !== 'office'))
+        check(d, roleNames[role] + ' naptára', doc.roles[role] === true, v => update(() => doc.roles[role] = v)); check(d, 'Megrendelői online időpontkérés', doc.booking === true, v => update(() => doc.booking = v)); check(d, 'Szabad dátumigény engedélyezése', doc.date_requests === true, v => update(() => doc.date_requests = v)); field(d, 'Rendelkezésre álló létszám', doc.capacity ?? 0, v => update(() => doc.capacity = Number(v)), 'number'); d.append(n('p', 'A karbantartás előtti és utáni 1 óra a kapacitást foglalja, az ügyfélárat nem növeli. Hiányzó befejezési időnél a szabad kapacitás nem igazolható.')); for (const [weekday, name] of ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'].entries()) {
+        const row = fold(d, name);
+        let window = doc.windows.find((w) => w.weekday === weekday);
+        check(row, 'Nyitott munkanap', !!window, v => update(() => { if (v && !window) {
+            window = { weekday, start: '', end: '' };
+            doc.windows.push(window);
+        } if (!v) {
+            doc.windows = doc.windows.filter((w) => w.weekday !== weekday);
+            window = undefined;
+        } }));
+        for (const [key, label] of [['start', 'Kapacitás kezdete'], ['end', 'Kapacitás vége']])
+            field(row, label, window?.[key] ?? '', v => update(() => { let w = doc.windows.find((w) => w.weekday === weekday); if (!w) {
+                w = { weekday, start: '', end: '' };
+                doc.windows.push(w);
+            } w[key] = v; }), 'time');
+    } button(d, 'Beállítások mentése', () => { void this.perform('calendar_write', { command: { kind: 'settings', revision: this.data.settings_revision ?? 0, document: doc }, request_id: uid() }); }, false); }
+    blocks() { if (this.changed || this.pending) {
+        this.message('Előbb mentsd a napitervet.');
+        return;
+    } const d = this.childDialog('Irodai időtiltások'); const edit = (old) => { if (this.adminChanged && !confirm('Elhagyod a még nem mentett tiltást?'))
+        return; d.querySelector('.calendar-block-editor')?.remove(); this.adminChanged = false; const area = n('div'); area.className = 'calendar-block-editor'; d.append(area); const document = structuredClone(old?.document ?? { start_date: this.day, end_date: this.day, start_time: '', end_time: '', repeat: 'once', weekdays: [], workers: [], reason: '' }); const update = (run) => { run(); this.adminChanged = true; }; for (const [key, label, type] of [['start_date', 'Kezdőnap', 'date'], ['end_date', 'Zárónap', 'date'], ['start_time', 'Kezdés', 'time'], ['end_time', 'Befejezés', 'time'], ['reason', 'Irodai megjegyzés', 'textarea']])
+        field(area, label, document[key], v => update(() => document[key] = v), type); select(area, 'Ismétlés', document.repeat, [['once', 'Egyszeri időszak'], ['weekly', 'Hetente a kijelölt napokon']], v => update(() => document.repeat = v)); for (const [day, name] of ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'].entries())
+        check(area, name, (document.weekdays ?? []).includes(day), v => update(() => document.weekdays = v ? [...(document.weekdays ?? []), day] : (document.weekdays ?? []).filter((n) => n !== day))); area.append(n('p', 'Munkatárs kijelölése nélkül a tiltás az egész cégre vonatkozik.')); pick(area, 'Érintett munkatársak', document.workers ?? [], this.catalogRows('workers'), v => update(() => document.workers = v)); button(area, 'Tiltás mentése', () => { void this.perform('calendar_write', { command: { kind: 'block_save', id: old?.id ?? uid(), revision: old?.revision ?? 0, document, active: true }, request_id: uid() }); }, false); }; for (const b of this.data.blocks ?? []) {
+        const row = fold(d, b.document.start_date + ' – ' + b.document.end_date + ' · ' + (b.document.reason || 'Időtiltás') + (b.active ? '' : ' · visszavonva'));
+        button(row, 'Szerkesztés', () => edit(b));
+        button(row, b.active ? 'Tiltás visszavonása' : 'Tiltás visszaállítása', () => { if (confirm('Módosítod az időtiltás érvényességét?'))
+            void this.perform('calendar_write', { command: { kind: 'block_save', id: b.id, revision: b.revision, document: b.document, active: !b.active }, request_id: uid() }); });
+    } button(d, 'Új időtiltás', () => edit(), false); }
+    async history() { if (this.dirty) {
+        this.message('Előbb mentsd vagy fejezd be a napitervet.');
+        return;
+    } const d = this.childDialog('Napiterv előzményei'); const more = n('div'); d.append(more); const page = async (before) => { const epoch = this.epoch; try {
+        const data = await this.api.calendar('calendar_read', { organization_id: this.org, role: this.role, filter: { from: this.day, to: this.day, history_day: this.day, ...(before ? { before_version: before } : {}) } });
+        if (epoch !== this.epoch || !d.open)
+            return;
+        for (const h of data.history ?? []) {
+            const row = n('div');
+            row.append(n('p', h.version + '. változat · ' + new Date(h.created_at).toLocaleString('hu-HU')));
+            button(row, 'E változat visszaállítása', () => { if (confirm('Új változatként visszaállítod ezt a napitervet? A korábbi előzmények megmaradnak.'))
+                void this.perform('calendar_write', { command: { kind: 'restore_version', day: this.day, revision: this.revision, version: h.version }, request_id: uid() }); });
+            d.insertBefore(row, more);
+        }
+        more.replaceChildren();
+        if (data.history_cursor)
+            button(more, 'Korábbi változatok', () => { void page(data.history_cursor); });
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    } }; await page(); }
+    async notifications() { const epoch = this.epoch; try {
+        const rows = await this.api.calendar('calendar_notifications', { organization_id: this.org, role: this.role });
+        if (epoch !== this.epoch)
+            return;
+        const d = this.childDialog('Naptári értesítések');
+        if (!rows.length)
+            d.append(n('p', 'Nincs naptári értesítés.'));
+        const labels = { booking_request: 'Új időpontkérés', booking_approved: 'Időpont jóváhagyva', booking_rejected: 'Időpontkérés elutasítva', booking_withdrawn: 'Időpont visszavonva', plan_save: 'Napi beosztás módosítva' };
+        for (const r of rows) {
+            const item = n('div');
+            item.append(n('p', (labels[r.kind] ?? 'Naptári változás') + ' · ' + new Date(r.created_at).toLocaleString('hu-HU')));
+            if (!r.read_at)
+                button(item, 'Elolvastam', () => { void this.api.calendar('calendar_notifications', { organization_id: this.org, role: this.role, notification_id: r.id }).then(() => item.remove()).catch(e => this.error(e)); });
+            d.append(item);
+        }
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    } }
+    async importSource() { if (this.dirty) {
+        this.message('Előbb fejezd be a szerkesztést.');
+        return;
+    } const epoch = this.epoch; this.message('A Napi adatok teljes, csak olvasási ellenőrzése…'); try {
+        const preview = await this.api.calendar('calendar_source_preview', { organization_id: this.org, role: this.role, request_id: uid() });
+        if (epoch === this.epoch) {
+            if (this.dirty)
+                this.message('Előbb mentsd a közben megkezdett szerkesztést, majd nyisd meg újra az importot.');
+            else
+                this.importPreview(preview);
+        }
+    }
+    catch (e) {
+        if (epoch === this.epoch)
+            this.error(e);
+    } }
+    importPreview(preview) { const d = this.childDialog('Napi adatok átvételi előnézete'); d.append(n('p', preview.plans + ' aktív terv · ' + preview.tasks + ' feladat · ' + preview.workItems + ' előjegyzés · ' + preview.deleted + ' törlési előzmény.')); d.append(n('p', 'A régi alkalmazás változatlan marad. Az ERP-ben szerkesztett napi tervet nem írjuk felül választás nélkül.')); const resolutions = {}; for (const c of preview.conflicts ?? []) {
+        select(d, (c.day ?? c.name ?? 'Eltérő adat') + ' · választás', '', [['', 'Maradjon ütközésként'], ['erp', 'Az ERP-változat maradjon'], ['source', 'A Napi-változat átvétele']], v => resolutions[c.key] = v);
+    } button(d, 'Adatok átvétele az ERP-be', () => { if (confirm('Átveszed az előnézetben szereplő adatokat a kiválasztott ütközéskezeléssel?'))
+        void this.perform('calendar_import_apply', { run_id: preview.run_id, fingerprint: preview.fingerprint, resolutions, confirmed: true }); }, false); }
+    importFile() { if (this.dirty) {
+        this.message('Előbb fejezd be a szerkesztést.');
+        return;
+    } const input = document.createElement('input'); input.type = 'file'; input.accept = '.zip,.json'; input.onchange = () => { const file = input.files?.[0]; if (!file)
+        return; void (async () => { const epoch = this.epoch; if (file.size > 6000000)
+        throw Error('Legfeljebb 6 MB méretű Napi adatcsomagot válassz.'); let json; if (file.name.toLowerCase().endsWith('.zip')) {
+        const { unzipSync } = await import(new URL('../vendor/fflate-0.8.2.js', import.meta.url).href);
+        let total = 0;
+        const files = unzipSync(new Uint8Array(await file.arrayBuffer()), { filter: (f) => { if (f.originalSize > 6000000 || total + f.originalSize > 6000000)
+                throw Error('Túl nagy kitömörített adatcsomag.'); total += f.originalSize; return f.name.endsWith('.json'); } }), names = Object.keys(files);
+        if (names.length !== 1)
+            throw Error('Egy Napi JSON-t tartalmazó ZIP-et válassz.');
+        json = new TextDecoder().decode(files[names[0]]);
+    }
+    else
+        json = await file.text(); const data = JSON.parse(json), preview = await this.api.calendar('calendar_import_preview', { organization_id: this.org, role: this.role, request_id: uid(), data }); if (epoch === this.epoch)
+        this.importPreview(preview); })().catch(e => this.error(e)); }; input.click(); }
+    download(blob, name) { const url = URL.createObjectURL(blob); this.urls.push(url); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); this.message('A letöltés elindult. A fájl a böngésző letöltései között található.', true); }
+    async exportData() { const d = this.childDialog('Napi adatok mentése saját gépre'); let period = this.mode; select(d, 'Mentendő időszak', period, [['day', 'Kiválasztott nap'], ['week', 'Kiválasztott hét'], ['month', 'Kiválasztott hónap'], ['year', 'Kiválasztott év'], ['all', 'Minden napiterv']], v => period = v); d.append(n('p', 'A ZIP a napi tervek mellett a munkatársakat, autókat, eszközöket, anyagokat, sablonokat és ismétléseket is tartalmazza. A mentetlen napi szerkesztés külön jelzéssel bekerül a saját mentésbe.')); const make = button(d, 'Adatcsomag letöltése', () => { const epoch = this.epoch; make.disabled = true; void (async () => { const index = await this.api.calendar('calendar_read', { organization_id: this.org, role: this.role, filter: { index: true } }); const ranges = []; if (period === 'all')
+        for (const year of index.years ?? [])
+            ranges.push({ from: year + '-01-01', to: year + '-12-31' });
+    else if (period === 'year')
+        ranges.push({ from: this.day.slice(0, 4) + '-01-01', to: this.day.slice(0, 4) + '-12-31' });
+    else if (period === 'week') {
+        const from = calendarWeek(this.day);
+        ranges.push({ from, to: calendarOffset(from, 6) });
+    }
+    else if (period === 'month') {
+        const from = this.day.slice(0, 7) + '-01', date = new Date(from + 'T12:00:00Z');
+        date.setUTCMonth(date.getUTCMonth() + 1);
+        date.setUTCDate(0);
+        ranges.push({ from, to: date.toISOString().slice(0, 10) });
+    }
+    else
+        ranges.push({ from: this.day, to: this.day }); let catalog = this.data.catalog, plans = []; const withdrawn = []; for (const range of ranges) {
+        const data = await this.api.calendar('calendar_read', { organization_id: this.org, role: this.role, filter: range });
+        catalog = data.catalog;
+        for (const row of data.plans ?? []) {
+            plans.push({ ...row.document, ...(row.state === 'withdrawn' ? { deleted: true, deletedPlanId: row.document.id } : {}) });
+            if (row.state === 'withdrawn')
+                withdrawn.push(row.day);
+        }
+    } const after = await this.api.calendar('calendar_read', { organization_id: this.org, role: this.role, filter: { index: true } }); if (JSON.stringify(index) !== JSON.stringify(after))
+        throw Error('Az adatok mentés közben megváltoztak. Készíts új adatcsomagot.'); if (this.changed && this.draft && (period === 'all' || ranges.some(r => this.day >= r.from && this.day <= r.to))) {
+        const at = plans.findIndex(p => p.date === this.day);
+        const draft = { ...structuredClone(this.draft), localDraft: true };
+        if (at < 0)
+            plans.push(draft);
+        else
+            plans[at] = draft;
+    } const data = { version: 4, exportType: period, exportedAt: new Date().toISOString(), plans, withdrawnDays: withdrawn }; for (const kind of ['workers', 'vehicles', 'tools', 'materials', 'templates', 'recurrences'])
+        data[kind] = catalog.filter((c) => c.kind === kind).map((c) => c.document); const { zipSync } = await import(new URL('../vendor/fflate-0.8.2.js', import.meta.url).href); const bytes = zipSync({ 'diszkertek-napi-adatok.json': new TextEncoder().encode(JSON.stringify(data, null, 2)) }, { level: 6 }); if (epoch === this.epoch && d.open) {
+        this.download(new Blob([bytes], { type: 'application/zip' }), 'Diszkertek_napi_' + period + '_' + this.day + '.zip');
+        d.append(n('p', '✓ ' + plans.length + ' napiterv adatcsomagja elkészült.'));
+    } })().catch(e => this.error(e)).finally(() => make.disabled = false); }, false); }
+    async pdf() { if (this.dirty) {
+        this.message('PDF előtt mentsd a napitervet; a PDF a mentett adatokat mutatja.');
+        return;
+    } const d = this.childDialog('Napiterv PDF és kézi kiküldés'); let audience = 'team'; if (this.role === 'office')
+        select(d, 'Tartalom', 'team', [['team', 'Csapatnapiterv – személyes és irodai megjegyzések nélkül'], ['office', 'Teljes irodai napiterv – belső használatra']], v => audience = v); const output = n('div'); const make = button(d, 'PDF elkészítése', () => { const epoch = this.epoch; make.disabled = true; void this.api.calendar('calendar_pdf', { organization_id: this.org, role: this.role, filter: this.range(), audience }).then(r => { if (epoch !== this.epoch || !d.open)
+        return; const bytes = Uint8Array.from(atob(r.pdf), (c) => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); this.urls.push(url); output.replaceChildren(); for (const [text, download] of [['PDF megnyitása', false], ['PDF letöltése', true]]) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.textContent = String(text);
+        if (download)
+            a.download = r.filename;
+        else {
+            a.target = '_blank';
+            a.rel = 'noopener';
+        }
+        output.append(a);
+    } const iframe = document.createElement('iframe'); iframe.title = 'Napiterv PDF-előnézet'; iframe.src = url; output.append(iframe); this.message('A PDF elkészült.', true); }).catch(e => this.error(e)).finally(() => make.disabled = false); }, false); d.append(output); const mail = fold(d, 'Kézi levélküldés'); let email = ''; field(mail, 'Címzett e-mail-címe', email, v => email = v, 'email'); const subject = 'Díszkertek – napi feladatok · ' + this.range().from, body = 'Kedves Munkatársak!\n\nCsatolva küldjük a napi feladatokat.\n\nÜdvözlettel:\nDíszkertek\n+36 70 634 9630'; button(mail, 'Levélszöveg másolása', () => { void navigator.clipboard.writeText(subject + '\n\n' + body).then(() => this.message('A levélszöveg másolva.', true)).catch(() => this.message('A másolás nem sikerült; jelöld ki és másold ki a szöveget.')); }); mail.append(n('p', body)); for (const [label, url] of [['Saját levelező', 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body)], ['Gmail megnyitása', 'https://mail.google.com/mail/?view=cm&fs=1&su=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body)], ['Outlook web megnyitása', 'https://outlook.live.com/mail/0/deeplink/compose?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body)]]) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.textContent = label;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.addEventListener('click', () => { a.href = label === 'Saját levelező' ? 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body) : url + (email ? '&to=' + encodeURIComponent(email) : ''); });
+        mail.append(a);
+    } mail.append(n('p', 'A letöltött PDF-et külön csatold. A levelező megnyitása még nem jelenti a küldést.')); if (this.role === 'office')
+        button(mail, 'Elküldtem a napitervet', () => { if (confirm('Megerősíted, hogy kézzel elküldted a napitervet a megadott címzettnek?'))
+            void this.perform('calendar_write', { command: { kind: 'sent', day: this.day, confirmed: true, recipients: email }, request_id: uid() }); }); }
+    recurrences() { if (this.dirty) {
+        this.message('Előbb fejezd be a szerkesztést.');
+        return;
+    } const d = this.childDialog('Ismétlődő napi munkák'); let id = '', from = this.range().from, to = this.range().to; select(d, 'Ismétlődő munka', '', [['', 'Válassz ismétlődő munkát'], ...this.catalogRows('recurrences').map((r) => [r.id, r.name])], v => id = v); field(d, 'Időszak kezdete', from, v => from = v, 'date'); field(d, 'Időszak vége', to, v => to = v, 'date'); d.append(n('p', 'A törzsekben állíthatod be az ismétlést. Az előkészítés nem duplázza a már létrehozott alkalmakat.')); const output = n('div'); d.append(output); button(d, 'Alkalmak előkészítése', () => { void (async () => { const rec = this.catalogRows('recurrences').find((r) => r.id === id); if (!rec)
+        throw Error('Válassz ismétlődő munkát.'); const dates = calendarRecurrenceDates(rec, from, to), existing = await this.api.calendar('calendar_read', { organization_id: this.org, role: this.role, filter: { from, to } }); if (!d.open)
+        return; const plans = []; for (const day of dates) {
+        const old = existing.plans.find((p) => p.day === day);
+        if (old?.state === 'withdrawn')
+            throw Error('Visszavont napitervet előbb ellenőrizz: ' + day);
+        const document = old ? structuredClone(old.document) : { id: uid(), date: day, meeting: '', stops: '', generalNote: '', tasks: [], workItems: [], deletedWorkItemIds: [] };
+        if (document.tasks.some((t) => t.recurrenceId === rec.id))
+            continue;
+        const template = this.catalogRows('templates').find((t) => t.id === rec.templateId), taskId = rec.id + ':' + day;
+        document.tasks.push({ id: taskId, teamId: taskId, recurrenceId: rec.id, entryType: rec.customerName ? 'customer' : 'todo', customerId: rec.customerId ?? null, locationId: rec.locationId ?? null, customerName: rec.customerName ?? '', address: rec.address ?? '', startTime: rec.startTime ?? '', endTime: rec.endTime ?? '', endDate: day, workerIds: rec.workerIds ?? [], vehicleIds: rec.vehicleIds ?? [], toolIds: template?.toolIds ?? [], toolQuantities: Object.fromEntries((template?.toolIds ?? []).map((id) => [id, '1'])), extraTools: '', jobs: [{ id: taskId + ':job', templateId: template?.id ?? null, name: rec.jobName || rec.name, note: template?.note ?? '', steps: template?.steps ?? [] }], materials: template?.materials ?? [], workLogRequired: true, workIntensity: 3, workQuality: 3, notes: '', work_type: rec.work_type ?? 'maintenance' });
+        plans.push({ day, revision: old?.version ?? 0, document: normalizeCalendarPlan(document, day) });
+    } output.replaceChildren(n('p', plans.length + ' új alkalom készíthető elő: ' + plans.map(p => p.day).join(', '))); if (plans.length)
+        button(output, 'Alkalmak mentése', () => { if (confirm('Létrehozod az előnézetben szereplő ' + plans.length + ' alkalmat?'))
+            void this.perform('calendar_write', { command: { kind: 'batch_plan', plans }, request_id: uid() }); }, false); })().catch(e => this.error(e)); }, false); }
+    async push() { try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window))
+            throw Error('Ez a böngésző nem támogatja a telefonos webes emlékeztetőt. Az értesítések a naptárban továbbra is elérhetők.');
+        const state = await this.api.calendar('calendar_push', { organization_id: this.org, role: this.role, command: { kind: 'read' } }), d = this.childDialog('Telefonos naptári emlékeztető');
+        d.append(n('p', 'A találkozó előtt egy órával és a külön megadott időpontokban értesítés kérhető. A hangot és a megjelenést az eszköz beállításai szabályozzák. Más alkalmazás feliratkozását nem módosítjuk.'));
+        button(d, 'Bekapcsolás ezen az eszközön', () => { void (async () => { if (!state.public_key)
+            throw Error('Az értesítési szolgáltatás most nem elérhető.'); const permission = await Notification.requestPermission(); if (permission !== 'granted')
+            throw Error('Az értesítési engedély nem lett megadva.'); const registration = await navigator.serviceWorker.ready; const raw = atob(state.public_key.replace(/-/g, '+').replace(/_/g, '/')), key = Uint8Array.from(raw, c => c.charCodeAt(0)); const subscription = await registration.pushManager.getSubscription() ?? await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }); await this.api.calendar('calendar_push', { organization_id: this.org, role: this.role, command: { kind: 'enable', subscription: subscription.toJSON() } }); d.append(n('p', '✓ Az eszköz naptári emlékeztetői bekapcsolva.')); })().catch(e => this.error(e)); }, false);
+        button(d, 'Kikapcsolás ezen az eszközön', () => { void (async () => { const registration = await navigator.serviceWorker.ready, subscription = await registration.pushManager.getSubscription(); if (subscription) {
+            await this.api.calendar('calendar_push', { organization_id: this.org, role: this.role, command: { kind: 'disable', subscription: subscription.toJSON() } });
+            await subscription.unsubscribe();
+        } d.append(n('p', '✓ Az eszköz naptári emlékeztetői kikapcsolva.')); })().catch(e => this.error(e)); });
+    }
+    catch (e) {
+        this.error(e);
+    } }
+    booking(parent) { if (!this.data.booking_enabled) {
+        parent.append(n('p', 'Az online időpontkérés jelenleg nem elérhető. Karbantartást vagy visszahívást a saját munkáidnál kérhetsz.'));
+    }
+    else {
+        const form = fold(parent, 'Karbantartási időpont kérése', true);
+        let customer = '', location = '', from = this.day, to = this.day, minutes = '60', headcount = '1', note = '';
+        const result = n('div');
+        form.append(result);
+        void this.api.maintenance('maintenance_read', { organization_id: this.org, role: 'client' }).then(data => { if (!form.isConnected)
+            return; select(form, 'Saját munkavégzési cím', '', [['', 'Válassz saját címet'], ...(data.sites ?? []).map((s) => [s.location_id ?? s.id, s.address])], v => { location = v; const site = (data.sites ?? []).find((s) => (s.location_id ?? s.id) === v); customer = site?.customer_id ?? site?.source_customer_id ?? ''; }); }).catch(e => this.error(e));
+        field(form, 'Kezdőnap', from, v => from = v, 'date');
+        field(form, 'Zárónap', to, v => to = v, 'date');
+        field(form, 'Tervezett munkaidő percben', minutes, v => minutes = v, 'number');
+        field(form, 'Kért létszám', headcount, v => headcount = v, 'number');
+        field(form, 'Kért feladat / megjegyzés', note, v => note = v, 'textarea');
+        button(form, 'Szabad időpontok keresése', () => { void this.api.calendar('calendar_booking', { organization_id: this.org, role: 'client', command: { kind: 'availability', location_id: location, from, to, minutes: Number(minutes), headcount: Number(headcount) } }).then(data => { result.replaceChildren(); if (!data.slots?.length)
+            result.append(n('p', 'Nincs igazoltan szabad időpont ebben az időszakban. Kérj visszahívást az irodától.')); for (const slot of data.slots ?? [])
+            button(result, new Date(slot.start).toLocaleString('hu-HU') + ' – ' + new Date(slot.end).toLocaleTimeString('hu-HU'), () => { if (confirm('Elküldöd ezt az időpontkérést? Az időpont az iroda jóváhagyása után végleges.'))
+                void this.perform('calendar_booking', { command: { kind: 'request', location_id: location, customer_id: customer, start: slot.start, end: slot.end, headcount: Number(headcount), note, confirmed: true }, request_id: uid() }); }); }).catch(e => this.error(e)); }, false);
+    } for (const b of this.data.bookings ?? []) {
+        const row = fold(parent, new Date(b.start_at).toLocaleString('hu-HU') + ' · ' + { requested: 'Irodai döntésre vár', approved: 'Jóváhagyva', rejected: 'Elutasítva', withdrawn: 'Visszavonva' }[b.state]);
+        row.append(n('p', b.note));
+        if (b.state === 'requested')
+            button(row, 'Időpontkérés visszavonása', () => { const reason = prompt('Visszavonás indoka:'); if (reason)
+                void this.perform('calendar_booking', { command: { kind: 'withdraw', booking_id: b.id, revision: b.revision, reason }, request_id: uid() }); });
+    } }
+}

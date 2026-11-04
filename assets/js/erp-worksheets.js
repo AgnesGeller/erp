@@ -1,7 +1,7 @@
-const { normalizeWorksheet, clockMinute, sheetUuid, worksheetCsv } = await import(new URL('./erp-worksheet-model.js?v=0.13.0', import.meta.url).href);
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.13.0', import.meta.url).href);
-const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.13.0', import.meta.url).href);
-const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.13.0', import.meta.url).href);
+const { normalizeWorksheet, clockMinute, sheetUuid, worksheetCsv } = await import(new URL('./erp-worksheet-model.js?v=0.14.0', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.14.0', import.meta.url).href);
+const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.14.0', import.meta.url).href);
+const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.14.0', import.meta.url).href);
 const n = (tag, text = '') => { const el = document.createElement(tag); el.textContent = text; return el; };
 const hour = (v) => v == null ? '—' : quoteNumber(Number(v) / 60) + ' óra';
 const clock = (v) => String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0');

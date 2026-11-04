@@ -188,6 +188,11 @@ export class MaintenanceDesk {
             const site = choice(r, 'Munkavégzési cím', [['', 'Válassz címet'], ...d.sites.map((s) => [s.location_id, s.address])]);
             const type = choice(r, 'Igény típusa', [['maintenance', 'Karbantartást kérek'], ['callback', 'Visszahívást kérek']]);
             const desc = field(r, 'Kért feladatok / üzenet', '', 'textarea'), day = field(r, 'Kért nap (nem kötelező)', '', 'date'), people = field(r, 'Kért létszám (nem kötelező)', '', 'number'), hours = field(r, 'Kért óraszám (nem kötelező)');
+            if (d.context.date_requests === false) {
+                day.parentElement.hidden = true;
+                day.value = '';
+                r.append(n('p', 'Az időpontot az iroda egyezteti veled.'));
+            }
             r.append(n('p', 'Az igény irodai visszaigazolás után válik egyeztetett munkává. A kért nap még nem foglalás.'));
             button(r, 'Igény előnézete', () => { if (!this.leave())
                 return; this.clearEditor(); void this.prepare({ kind: 'request', location_id: site.value, request_type: type.value, description: desc.value, day: day.value, people: people.value, hours: hours.value }, true); });

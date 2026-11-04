@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.12.0**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.14.0**
 
 ## Mi használható?
 
@@ -13,9 +13,10 @@
 - Saját munkalap, tényleges munkaidő, anyagmozgások és anyagelőrehaladás.
 - Előleg, részfizetés, irodai pénzigazolás, kertépítési eredmény és éves jutalék.
 - **Kertkarbantartás:** igény, irodai jóváhagyás, napi munkalap, közzétett PDF és elszámolás.
+- **Naptár és Napi feladatok:** napi/heti/havi nézet, szerkesztés, PDF, saját mentés és ellenőrzött adatátvétel.
 - Telepítés/frissítés a felső menüből; mobilon is használható felület.
 
-A teljes ERP fejlesztése folyamatban van. [Elkészült és hátralévő részek](docs/specifikacio-allapot.md).
+A teljes ERP fejlesztése folyamatban van. [Állapot](docs/specifikacio-allapot.md) · [Naptár – rövid használat](docs/naptar-napi-feladatok.md).
 
 Az irodai kezdőlapon négy feladat közül választhatsz; a ritkább műveletek az **Iroda és beállítások** alatt találhatók.
 
@@ -33,7 +34,7 @@ HTML, CSS, TypeScript; Supabase saját ERP-sémákkal. Az eredeti fejlesztői PD
 
 Az ERP saját mappájában: `npm run build`, `npm test`, `npm run check:edge`.
 
-Legutóbbi ellenőrzés: **2026. november 4., 463 sikeres teszt**, fordítás, kiszolgáló-típusellenőrzés és szintetikus böngésző-/PDF-próba.
+Legutóbbi ellenőrzés: **2026. november 4., 500 sikeres teszt**, fordítás, kiszolgáló-típusellenőrzés és szintetikus böngésző-/PDF-próba.
 
 [Adatbázisterv](docs/adatbazisterv.md) · [Jogosultságok](docs/szerepkorok.md) · [Fejlesztési napló](docs/fejlesztesi-naplo.md) · [Részletes dokumentáció](docs/reszletes-projektleiras.md)
 

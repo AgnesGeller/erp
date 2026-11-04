@@ -386,3 +386,22 @@ Az éles saját ERP-adatbázis tíz táblája és ajánlatváltozási triggere t
 - Új függőség, adatbázis-, Auth- vagy szerepkörmódosítás nincs. Kizárólag ERP-fájlok változtak. A tesztadatokra megkapott engedély szerint szükség esetén Teszt vagy Geller Ágnes ügyfél használható, árakkal és megőrzött adatokkal; e kiadás ellenőrzése szintetikus helyi adatokkal történt.
 - 463/463 teszt sikeres, build és check:edge sikeres. Szintetikus csapat-PDF 18, ügyfél-PDF 15, belső eredménylap 1 oldal; tördelés, adatleválasztás és 20 üres nap ellenőrizve. Rövid magyar README és használati útmutató képekkel.
 - ERP-kiszolgáló: v24-ről v25-re telepítve, 25 saját fájllal, előző verzió helyi mentésével. Engedélyezett webes eredetről belépés nélkül az új PDF és a munkaterv is 401-et ad; idegen eredet 403-at kap. Az adatbázis, meglévő belépések és más appok változatlanok. A közös projekt meglévő általános biztonsági jelzései nem változtak; új RPC vagy hozzáférési engedély nem készült.
+
+## 2026. november 4. – Naptár és Napi feladatok, terv jóváhagyásra
+
+- A PDF 19. fejezete, kapcsolódó 18. fejezete és 25/24. tesztje, valamint a Napi app napi/heti/havi, törzs-, export-, ismétlődés- és emlékeztető-funkciói célzottan, csak olvasással felmérve.
+- A forrás ellenőrzéskori állapota: 43 napi rekord, ebből 38 aktív és 5 törlési jel; 181 feladat, 16 előjegyzés; 8 munkatárs, 5 autó, 12 eszköz, 8 anyag, 17 sablon. Befejezési idők hiányoznak; szabad kapacitást nem találunk ki.
+- Elkészült a [konkrét terv](naptar-napi-feladatok-terv.md): 15 saját ERP-tábla, egyirányú forrásimport, irodai alapkapcsoló, blokkok, 1+1 órás kapacitáspuffer, karbantartási kapcsolódás és külön saját ERP-emlékeztetők. Meglévő app, adatbázisobjektum, Auth és szolgáltatás nem módosult.
+- Csak terv/dokumentáció készült; éles naptár, adatimport és új adatbázisobjektum nincs. A README verziójelzése a tényleges 0.13.0-ra javítva. Megvalósítás és tesztek utáni telepítés a 13. szabály szerinti tervjóváhagyás után.
+
+
+## 2026. november 4. – Naptár és Napi feladatok, 0.14.0
+
+- A felhasználó jóváhagyta a részletes tervet és a tesztek utáni ERP-élesítést. A korábbi tervbejegyzés akkori, nem jelenlegi állapotot ír le.
+- Napi/heti/havi nézet, csapatok, teljes napi szerkesztő, sablonok, ismétlések, eredeti színek, eszközök/anyagok/elvárások, visszavonás/előzmény, szerepszűrt PDF és teljes időszaki ZIP/JSON készült. A PDF végső vizuális próbájában javítva a szakaszcím előtti távolság.
+- 15 saját ERP-tábla, 8 védett RPC, 2 saját trigger; az ERP saját karbantartási kapacitáskapcsolata és 1+1 órás, nem számlázható puffer. Minden forrásírás tiltott. Induláskor csak office naptárszerep, booking=false; nem találunk ki régi végidőket.
+- Saját migráció és négy kapcsolati index telepítve; gateway v26, erp-calendar-reminders v1; saját cron job és három új saját Vault-titok. Régi Auth, titok, cron és app nem módosult. A teljes korábbi ERP-kiadás ZIP-mentése a Gitből kizárt helyi mappában megmarad.
+- A friss forráscsomag: 45 napi rekord, 40 aktív/5 törlési jel, 197 feladat, 16 előjegyzés; 8 munkatárs, 5 autó, 12 eszköz, 8 anyag, 17 sablon. 96 forrásrekord archiválva, import state=applied, nincs ütközés. Az eredeti tartalmak/árak/titkok nem kerülnek a GitHubra. Az összes ERP adatbázismérete az ellenőrzéskor 98 MB.
+- 500/500 teszt, build és teljes check:edge sikeres. Szintetikus böngészőben napi szerkesztés/Undo/Redo/mentés, heti/havi és 390 px-es mobilpróba, ZIP-letöltés; szerepkörös magyar PDF és 29 oldalas hosszú PDF ellenőrizve. Az indexek után célzott adatbázispróba. A külön npm: PDF-importot a helyi általános tsc nem oldja fel; a tényleges PDF-runtime és Edge-telepítés sikeres, új csomagtelepítés nem történt.
+- Éles ellenőrzés: import 40/197/16, 0 közvetlen táblajog és publikus RPC-jog; scheduler üresjáratban nem küld; érvényes saját emlékeztető-hívás 200, processed=0, hibás hitelesítés 401; új és meglévő gateway-művelet belépés nélkül 401. Új biztonsági WARN/ERROR nincs. A policy nélküli RLS INFO szándékos közvetlen tiltás; új hiányzó FK-index nem maradt. Valódi telefonos push és teljes üzleti átadás még emberi eszközpróba.
+- A főnök új munkacsomag-kérése ebben a kiadásban csak felmérés tárgya, nem megvalósítás. A következő nagy eredeti PDF-egység a referencia/WordPress-kapcsolat; a teljes állapotlista továbbra is irányadó.

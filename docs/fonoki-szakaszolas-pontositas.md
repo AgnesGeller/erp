@@ -1,6 +1,6 @@
 # A főnök szakaszolási pontosítása
 
-2026. november 4. · Követelményfeljegyzés; még nem megvalósított adatbázisterv vagy funkció.
+2026. november 4. · Követelményfeljegyzés. A [részletes terv](szakaszolas-es-huzassal-rendezes-terv.md) és a felhasználó megvalósítási jóváhagyása alapján a fejlesztés megkezdhető; a funkció még nincs kész.
 
 ## Elvárt eredmény
 

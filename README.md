@@ -16,7 +16,7 @@
 - **Naptár és Napi feladatok:** napi/heti/havi nézet, szerkesztés, PDF, saját mentés és ellenőrzött adatátvétel.
 - Telepítés/frissítés a felső menüből; mobilon is használható felület.
 
-A teljes ERP fejlesztése folyamatban van. [Állapot](docs/specifikacio-allapot.md) · [Naptár – rövid használat](docs/naptar-napi-feladatok.md).
+A teljes ERP fejlesztése folyamatban van. [Szakaszolás és rendezés – jóváhagyott irány, megvalósítás alatt](docs/szakaszolas-es-huzassal-rendezes-terv.md). [Állapot](docs/specifikacio-allapot.md) · [Naptár – rövid használat](docs/naptar-napi-feladatok.md).
 
 Az irodai kezdőlapon négy feladat közül választhatsz; a ritkább műveletek az **Iroda és beállítások** alatt találhatók.
 

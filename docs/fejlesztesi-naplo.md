@@ -417,3 +417,10 @@ A felhasználó jelezte, hogy a kertépítés Napi munkalapján hiányzik a besz
 - A teljes 506 teszt, build és check:edge sikeres; a végső lenyitásmegőrzés után 33 kapcsolódó teszt újra sikeres. Valódi kiszolgálómintájú helyi PGlite-böngészőpróba: 50 m² helyszínre érkezés, 12,5 + 2,5 m² beépítés; a munkalapon 50/15 m², a megjegyzéspiszkozat megmarad; anyagtörzs elérhető; 390 px-en nincs vízszintes túlcsordulás. Éles próbában az olvasás sikeres, anon RPC-jog nincs. Az első tesztfutás két PWA-verziópróbája jelezte az elmaradt APP_VERSION-emelést, ezt javítottuk, utána teljes futás 506/506 sikeres.
 - Az Építésvezető-választásnál jelzett tiltás oka a kiválasztott karbantartási Tesztelés munka volt; a felhasználó megerősítette. A PDF szerinti vezetői határokat nem változtattuk meg.
 - A főnök új szakaszolási pontosítása külön dokumentumba került; ebben a javításban nincs árazási/munkatervi adatmodell-átalakítás. [A következő fejlesztés követelményei](fonoki-szakaszolas-pontositas.md).
+
+
+## 2026. november 4. – Szakaszolás és rendezés: részletes terv, jóváhagyott indulás
+
+A felhasználó először részletes tervet kért, majd kifejezetten engedélyezte a leírás szerinti megvalósítást. Elkészült a [részletes műszaki és használati terv](szakaszolas-es-huzassal-rendezes-terv.md): területi nézet megőrzése, külön szakaszok/részfeladatok, kategória-/típusalapú munkafolyamatok, pontos arányosítás, hét saját ERP-nyilvántartás, hétnél nem több új RPC és megőrzött átvételi alapú átállás. A dokumentáció készítése nem módosította az alkalmazást vagy az éles adatbázist. A megvalósítás állapotát a következő bejegyzések rögzítik; addig a publikus alkalmazás 0.14.1.
+
+A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontosítás. Új előfizetés, framework vagy más app módosítása nincs tervben. Jóváhagyás után először a helyi modell és az adatbázis-ellenőrzések készülnek. Az új szakaszolás elkészülte után a felhasználó kérte a PDF szerinti korábbi fejlesztési sor folytatását, ha a rendelkezésre álló keret engedi; a teljes ERP nyitott tételei a specifikációállapot-listában maradnak követhetők.

@@ -1,5 +1,5 @@
-const { checkMediaBytes } = await import(new URL('./erp-survey-model.js?v=0.11.0', import.meta.url).href);
-const { downloadSurveyFile } = await import(new URL('./erp-survey-archive.js?v=0.11.0', import.meta.url).href);
+const { checkMediaBytes } = await import(new URL('./erp-survey-model.js?v=0.12.0', import.meta.url).href);
+const { downloadSurveyFile } = await import(new URL('./erp-survey-archive.js?v=0.12.0', import.meta.url).href);
 const hash = async (blob) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()))).map(x => x.toString(16).padStart(2, '0')).join('');
 const zip = async () => await import(new URL('../vendor/fflate-0.8.2.js', import.meta.url).href);
 export function workMediaReferences(view) { const refs = new Map(); for (const e of view.events ?? [])

@@ -1,25 +1,27 @@
 import type { OrganizationSession } from './erp-api.js';
 const clientSetupParams=new URLSearchParams(location.hash.slice(1));const clientSetupKind=clientSetupParams.has('staff_setup')?'staff':'client';let clientSetupToken=clientSetupParams.get(clientSetupKind==='staff'?'staff_setup':'client_setup');const clientSetupOpening=clientSetupToken!==null;if(clientSetupOpening)history.replaceState(null,'',location.pathname+location.search);
 const setupOpening=clientSetupOpening||new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
-const apiUrl=new URL('./erp-api.js?v=0.11.0',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.11.0',import.meta.url);
+const apiUrl=new URL('./erp-api.js?v=0.12.0',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.12.0',import.meta.url);
 const {ErpApi,ApiError}=await import(apiUrl.href) as typeof import('./erp-api.js');
 const {projectPeriod,todayBudapest,periodLabel}=await import(datesUrl.href) as typeof import('./erp-dates.js');
-const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
+const {projectRoleNames:roleNames,selectableProjectRoles}=await import(new URL('./erp-project-roles.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-project-roles.js');
 const api=new ErpApi();
-const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-customers.js');
-const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-site-works.js');
-const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-quotes.js');
-const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-surveys.js');
-const {ClientAdmin,ClientPortal}=await import(new URL('./erp-clients.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-clients.js');
-const {StaffAdmin}=await import(new URL('./erp-staff.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-staff.js');
-const {WorkPlanDesk}=await import(new URL('./erp-workplans.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-workplans.js');
-const {MaterialDesk}=await import(new URL('./erp-materials.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-materials.js');
-const {WorksheetDesk}=await import(new URL('./erp-worksheets.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-worksheets.js');
-const {EntryDesk}=await import(new URL('./erp-entries.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-entries.js');
-const {FinanceDesk}=await import(new URL('./erp-finance.js?v=0.11.0',import.meta.url).href) as typeof import('./erp-finance.js');
+const {CustomerDirectory}=await import(new URL('./erp-customers.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-customers.js');
+const {SiteWorks}=await import(new URL('./erp-site-works.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-site-works.js');
+const {QuoteDesk}=await import(new URL('./erp-quotes.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-quotes.js');
+const {SurveyDesk,surveysEnabled}=await import(new URL('./erp-surveys.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-surveys.js');
+const {ClientAdmin,ClientPortal}=await import(new URL('./erp-clients.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-clients.js');
+const {StaffAdmin}=await import(new URL('./erp-staff.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-staff.js');
+const {WorkPlanDesk}=await import(new URL('./erp-workplans.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-workplans.js');
+const {MaterialDesk}=await import(new URL('./erp-materials.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-materials.js');
+const {WorksheetDesk}=await import(new URL('./erp-worksheets.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-worksheets.js');
+const {EntryDesk}=await import(new URL('./erp-entries.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-entries.js');
+const {FinanceDesk}=await import(new URL('./erp-finance.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-finance.js');
 const finance=new FinanceDesk(api,showError);
-const staffAdmin=new StaffAdmin(api);const workplans=new WorkPlanDesk(api,showError);workplans.setFinanceHandler((project,role)=>{void finance.showProject(project,role);});
+const {MaintenanceDesk}=await import(new URL('./erp-maintenance.js?v=0.12.0',import.meta.url).href) as typeof import('./erp-maintenance.js');
+const maintenance=new MaintenanceDesk(api,showError);maintenance.setFinanceHandler(project=>{void finance.showProject(project);});
+const staffAdmin=new StaffAdmin(api);const workplans=new WorkPlanDesk(api,showError);workplans.setMaintenanceHandler((project,role,notification)=>{void maintenance.showProject(project,role,notification);});workplans.setFinanceHandler((project,role)=>{void finance.showProject(project,role);});
 const entries=new EntryDesk(api,showError,project=>{void workplans.refreshAfterEntry();if(project?.quote_id)void quotes.refreshAfterContractChange(project.quote_id);});workplans.setEntryDesk(entries);
 const materials=new MaterialDesk(api,showError,()=>{void workplans.refreshAfterEntry();});workplans.setMaterialDesk(materials);
 const worksheets=new WorksheetDesk(api,showError,()=>{void workplans.refreshAfterEntry();});workplans.setWorksheetDesk(worksheets);
@@ -63,7 +65,7 @@ function formBusy(form:HTMLFormElement,busy:boolean):void {
 }
 function resetView():void {
  get('office-status').textContent='';get('login-feedback').textContent='';
- generation++;finance.reset();staffAdmin.reset();workplans.reset();get('show-materials').hidden=true;clientAdmin.reset();clientPortal.reset();customers.reset();works.reset();quotes.reset();surveys.reset();current=undefined;people=[];projects=[];dirty=false;workerRequest=undefined;
+ generation++;maintenance.reset();finance.reset();staffAdmin.reset();workplans.reset();get('show-materials').hidden=true;clientAdmin.reset();clientPortal.reset();customers.reset();works.reset();quotes.reset();surveys.reset();current=undefined;people=[];projects=[];dirty=false;workerRequest=undefined;
  get('staff-workspace').hidden=true;get('office-app').hidden=true;get('client-login-area').hidden=true;get('client-setup-area').hidden=true;get('login-area').hidden=false;get('public-identity').hidden=false;get('logout').hidden=true;
  for(const id of ['people-list','assignment-list','project-select','assignment-person','organization-select'])get(id).replaceChildren();
  workerForm.reset();roleForm.reset();get<HTMLInputElement>('login-password').value='';
@@ -134,6 +136,7 @@ async function loadWorkspace():Promise<void> {
   get('people-section').hidden=!current.is_office;
   if(!current.is_office){people=[];get('people-list').replaceChildren();workerForm.reset();dirty=false;}
   get('show-materials').hidden=!current.is_office;
+  maintenance.setOwner(current.person_id,current.organization_id,current.is_office?'office':current.is_client?'client':'staff');
   finance.setOwner(current.person_id,current.organization_id,current.is_office?'office':current.is_client?'client':'staff');
   workplans.setOwner(current.person_id,current.organization_id,current.is_client===true&&!current.is_office);staffAdmin.setOrganization(current.is_office?current.organization_id:undefined);get('staff-workspace').hidden=true;
   if(current.is_staff&&!current.is_office){clientAdmin.setOrganization(undefined);clientPortal.reset();customers.reset();works.reset();quotes.reset();surveys.reset();get('office-app').hidden=true;get('login-area').hidden=true;get('client-login-area').hidden=true;get('client-setup-area').hidden=true;get('public-identity').hidden=true;get('logout').hidden=false;get('staff-workspace').hidden=false;return;}

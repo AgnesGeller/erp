@@ -97,6 +97,7 @@ export class ErpApi {
             clearTimeout(timer);
         }
     }
+    async maintenance(action, body = {}) { return this.feature(action, body); }
     async finance(action, body = {}) { return this.feature(action, body); }
     async emailOptions() { return this.request({ action: 'auth_options' }); }
     async requestEmail(email, kind) {

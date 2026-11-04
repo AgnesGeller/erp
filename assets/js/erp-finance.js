@@ -65,7 +65,7 @@ export class FinanceDesk {
         const toolbar = n('div');
         toolbar.className = 'finance-actions';
         this.roles.setAttribute('aria-label', 'Pénzügyi munkaszerep');
-        this.project.setAttribute('aria-label', 'Kertépítés kiválasztása');
+        this.project.setAttribute('aria-label', 'Munka kiválasztása');
         toolbar.append(this.roles, this.project);
         btn(toolbar, 'Frissítés', () => { if (this.leave())
             void this.load(); });
@@ -169,10 +169,10 @@ export class FinanceDesk {
             return;
         const selected = this.project.value;
         this.projectRows = rows;
-        this.project.replaceChildren(new Option('Válassz kertépítést', ''), ...rows.map(p => new Option(p.name + ' · ' + p.address, p.id)));
+        this.project.replaceChildren(new Option('Válassz munkát', ''), ...rows.map(p => new Option((p.work_type === 'maintenance' ? 'Karbantartás · ' : 'Kertépítés · ') + p.name + ' · ' + p.address, p.id)));
         this.project.value = rows.some(p => p.id === selected) ? selected : rows[0]?.id ?? '';
         this.roles.hidden = this.roles.options.length === 1;
-        this.message(rows.length ? 'Válassz kertépítést vagy nyisd meg az éves jutalékot.' : 'Nincs elérhető pénzügyi kertépítés.');
+        this.message(rows.length ? 'Válassz munkát vagy nyisd meg az éves jutalékot.' : 'Nincs elérhető pénzügyi munka.');
     }
     catch (e) {
         if (epoch === this.epoch)
@@ -229,14 +229,14 @@ export class FinanceDesk {
         if (this.role === 'office')
             btn(this.body, 'Pénzügyi beállítások', () => this.policyForm());
         if (!v.account) {
-            this.body.append(n('p', 'Ehhez a kertépítéshez még nincs pénzügyi nyilvántartás.'));
+            this.body.append(n('p', 'Ehhez a munkához még nincs pénzügyi nyilvántartás.'));
             if (this.role === 'office')
                 btn(this.body, 'Pénzügyi nyilvántartás indítása', () => { void this.prepare({ kind: 'init' }); });
             return;
         }
         if (v.context.can_finance) {
             const a = v.account, c = a.contract;
-            for (const [label, value] of [['Teljes megrendelés – bruttó', c.gross], ['Ügyfél által átvett munkák – bruttó', c.accepted_gross], ['Igazolt befizetések, visszafizetésekkel', a.paid], ['Előlegként rögzített összeg', a.advance], ['Átvett munkák egyenlege', a.balance], ['Teljes megrendelés egyenlege', a.total_outstanding]]) {
+            for (const [label, value] of [[c.price_basis === 'gross' ? 'Közzétett munkalapok végösszege' : 'Teljes megrendelés – bruttó', c.gross], [c.price_basis === 'gross' ? 'Elszámolható munkalapok végösszege' : 'Ügyfél által átvett munkák – bruttó', c.accepted_gross], ['Igazolt befizetések, visszafizetésekkel', a.paid], ['Előlegként rögzített összeg', a.advance], ['Átvett munkák egyenlege', a.balance], ['Teljes megrendelés egyenlege', a.total_outstanding]]) {
                 const row = n('p');
                 row.className = 'finance-total';
                 row.append(n('span', label), n('strong', money(value)));
@@ -245,11 +245,14 @@ export class FinanceDesk {
             this.body.append(n('p', 'A negatív egyenleg azt jelzi, hogy az ügyfél többet fizetett be, mint az eddig átvett munkák értéke.'));
             btn(this.body, this.role === 'office' ? 'Új pénzügyi tétel / igény' : 'Fizetési szándék jelzése', () => this.paymentForm());
             const composition = fold(this.body, 'A megrendelés összetétele');
-            composition.append(n('p', 'Anyagköltség – nettó: ' + money(c.material)), n('p', 'Munkadíj – nettó: ' + money(c.labor)), n('p', 'ÁFA: ' + money(c.vat)));
+            if (c.price_basis === 'gross')
+                composition.append(n('p', 'Anyag és egyéb – végleges ügyfélár: ' + money(c.material)), n('p', 'Munkadíj – végleges ügyfélár: ' + money(c.labor)), n('p', 'Az egységárak véglegesek, újabb áfa nem kerül rájuk.'));
+            else
+                composition.append(n('p', 'Anyagköltség – nettó: ' + money(c.material)), n('p', 'Munkadíj – nettó: ' + money(c.labor)), n('p', 'ÁFA: ' + money(c.vat)));
             const lines = fold(this.body, 'Elszámolható és még át nem vett tételek');
             for (const l of c.lines) {
                 const d = fold(lines, l.section + ' · ' + l.title);
-                d.append(n('p', (l.accepted ? 'Ügyfél által átvéve' : 'Még nincs ügyfélátvétel') + ' · ' + money(l.gross) + ' bruttó'));
+                d.append(n('p', (c.price_basis === 'gross' ? 'Közzétett munkalap' : l.accepted ? 'Ügyfél által átvéve' : 'Még nincs ügyfélátvétel') + ' · ' + money(l.gross) + ' bruttó'));
             }
             const docs = fold(this.body, 'Fizetési jelzések és igények (' + v.documents.length + ')');
             for (const d of v.documents) {
@@ -295,8 +298,11 @@ export class FinanceDesk {
         }
         if (this.role === 'office') {
             const d = fold(this.body, 'Átadás és fizetettség');
-            d.append(n('p', v.account.closed ? 'A kertépítés lezárva.' : 'A kertépítés még nincs lezárva.'), n('p', v.account.paid_marked ? 'A teljes munka kifizetve.' : 'A teljes kifizetés még nincs megjelölve.'));
-            if (v.account.closed) {
+            d.append(n('p', v.context.project.work_type === 'maintenance' ? 'Karbantartási elszámolás.' : v.account.closed ? 'A kertépítés lezárva.' : 'A kertépítés még nincs lezárva.'), n('p', v.account.paid_marked ? 'A teljes munka kifizetve.' : 'A teljes kifizetés még nincs megjelölve.'));
+            if (v.context.project.work_type === 'maintenance') {
+                d.append(n('p', 'A közzétett karbantartási munkalapok és az igazolt befizetések alapján.'));
+            }
+            else if (v.account.closed) {
                 btn(d, 'Kertépítés újranyitása', () => this.reasonCommand('reopen'));
                 btn(d, 'Zárási eredmény korrigálása', () => this.reasonCommand('correct'));
             }

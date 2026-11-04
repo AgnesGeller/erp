@@ -1,5 +1,5 @@
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.11.0', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.11.0', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.12.0', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.12.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
@@ -254,16 +254,21 @@ export class WorkPlanDesk {
         const p = this.projects.find(p => p.id === n.project_id);
         const row = node('div');
         row.className = 'plan-note';
-        const labels = { review: 'Átvételre vár', repair: 'Javítás szükséges', attribution: 'Résztvevők pontosítása', assignment: 'Munkatársi hozzárendelés szükséges', info: 'Változás a munkán', entry: 'Bejegyzés feldolgozásra vár', material: 'Anyag átvehető a telephelyen', finance: 'Pénzügyi teendő' };
-        button(row, (labels[n.kind] ?? 'Értesítés') + ' · ' + (p?.name ?? 'Korábbi munka') + (n.completed_at ? ' · Elintézve' : ''), () => { if (!p || !this.leave())
+        const labels = { review: 'Átvételre vár', repair: 'Javítás szükséges', attribution: 'Résztvevők pontosítása', assignment: 'Munkatársi hozzárendelés szükséges', info: 'Változás a munkán', entry: 'Bejegyzés feldolgozásra vár', material: 'Anyag átvehető a telephelyen', finance: 'Pénzügyi teendő', maintenance: 'Karbantartási teendő' };
+        button(row, (labels[n.kind] ?? 'Értesítés') + ' · ' + (p?.name ?? n.title ?? 'Korábbi munka') + (n.completed_at ? ' · Elintézve' : ''), () => { if ((!p && !['maintenance', 'finance'].includes(n.kind)) || !this.leave())
             return; void this.goNote(n); });
         row.append(node('small', new Date(n.created_at).toLocaleString('hu-HU')));
         d.append(row);
     } if (!notes.length)
         d.append(node('p', 'Nincs új értesítés.')); }
+    maintenanceHandler;
+    setMaintenanceHandler(fn) { this.maintenanceHandler = fn; }
     financeHandler;
     setFinanceHandler(fn) { this.financeHandler = fn; }
-    async goNote(n) { if (n.kind === 'finance') {
+    async goNote(n) { if (n.kind === 'maintenance') {
+        this.maintenanceHandler?.(n.project_id, n.role, n.id);
+        return;
+    } if (n.kind === 'finance') {
         this.financeHandler?.(n.project_id, n.role);
         return;
     } const epoch = this.epoch; try {

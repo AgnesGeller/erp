@@ -1,0 +1,141 @@
+const uuid = (s) => typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+function fail(s) { throw Error(s); }
+function text(value, max, label) { if (typeof value !== 'string' || value.length > max)
+    fail('Ellenőrizd: ' + label + '.'); return value.trim(); }
+export function maintenanceDecimal(value, places = 6) { if (typeof value !== 'string' && typeof value !== 'number')
+    fail('Pontos, nem negatív szám szükséges.'); const s = String(value).trim().replace(/[\s\u00a0\u202f]/g, '').replace(',', '.'); if (!/^[0-9]{1,16}(?:\.[0-9]+)?$/.test(s))
+    fail('Pontos, nem negatív szám szükséges.'); const [a, b = ''] = s.split('.'); if (b.length > places)
+    fail('Túl sok tizedesjegy.'); return BigInt(a) * 10n ** BigInt(places) + BigInt(b.padEnd(places, '0')); }
+const decimal = (v, p) => { const scale = 10n ** BigInt(p); return (v / scale).toString() + (v % scale ? '.' + (v % scale).toString().padStart(p, '0').replace(/0+$/, '') : ''); };
+const cents = (v) => (v / 100n).toString() + '.' + (v % 100n).toString().padStart(2, '0');
+const minute = (v) => { if (typeof v !== 'string' || !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(v))
+    fail('Az érkezés és távozás óra:perc alakú legyen.'); return Number(v.slice(0, 2)) * 60 + Number(v.slice(3)); };
+export function calculateMaintenance(input, catalog, role, previous) {
+    if (!['office', 'maintenance_lead'].includes(role))
+        fail('A munkalapot iroda vagy Karbantartásvezető készítheti.');
+    if (!input || !Array.isArray(input.teams) || input.teams.length > 3 || !Array.isArray(input.lines) || input.lines.length > 200)
+        fail('Legfeljebb három csapat és 200 tétel rögzíthető.');
+    const description = text(input.description ?? '', 4000, 'feladatleírás'), note = text(input.note ?? '', 4000, 'megjegyzés'), issues = [];
+    if (!description)
+        issues.push('Írd le az elvégzett feladatot.');
+    const prices = new Map(catalog.map(p => [p.code, p]));
+    if (prices.size !== catalog.length)
+        fail('Ismétlődő katalóguskód.');
+    const old = new Map((previous?.calculation?.lines ?? []).map((l) => [l.id, l]));
+    const seen = new Set();
+    const lines = [];
+    let peopleMinutes = 0;
+    function add(id, code, name, unit, quantity, divisor, custom, kind) {
+        if (seen.has(id))
+            fail('Ugyanaz a tétel kétszer szerepel.');
+        seen.add(id);
+        const q = maintenanceDecimal(quantity), master = code ? prices.get(code) : undefined, prior = old.get(id);
+        let price;
+        let confirmed = true;
+        let revision = null;
+        if (code) {
+            if (!master)
+                fail('A kiválasztott tétel nincs a katalógusban.');
+            name = (kind === 'labor' ? name + ' · ' : '') + text(master.label, 200, 'tételnév');
+            unit = text(master.unit, 40, 'mértékegység');
+            const frozen = prior?.code === code ? prior : undefined;
+            price = frozen?.unit_price ?? master.unit_price;
+            confirmed = frozen?.confirmed ?? master.confirmed;
+            revision = frozen?.catalog_revision ?? master.revision;
+            if (master.active === false)
+                issues.push(name + ': a törzstétel inaktív; irodai ellenőrzés szükséges.');
+            if (custom?.unit_price !== undefined) {
+                const offered = maintenanceDecimal(custom.unit_price, 2), known = maintenanceDecimal(price, 2);
+                if (role !== 'office' && offered !== known)
+                    fail('Meglévő egységárat csak az iroda módosíthat.');
+                if (role === 'office') {
+                    price = custom.unit_price;
+                    if (custom.price_confirmed === true)
+                        confirmed = true;
+                }
+            }
+        }
+        else {
+            price = custom?.unit_price;
+            if (price === undefined || price === '') {
+                issues.push(name + ': hiányzó egyedi egységár.');
+                price = '0';
+            }
+        }
+        if (price == null || price === '') {
+            issues.push(name + ': hiányzó egységár.');
+            price = '0';
+        }
+        const p = maintenanceDecimal(price, 2);
+        if (!confirmed)
+            issues.push(name + ': az egységár még nincs jóváhagyva.');
+        lines.push({ id, code, kind, name, unit: kind === 'labor' ? 'főperc' : unit, quantity: decimal(q, 6), unit_price: cents(p), divisor, confirmed, catalog_revision: revision, amount: '', exact: q * p * BigInt(60 / divisor) });
+    }
+    const teams = input.teams.map((t, i) => {
+        if (!t || !uuid(t.id))
+            fail('Érvénytelen csapatazonosító.');
+        const members = t.people ?? [];
+        if (!Array.isArray(members) || members.length > 1000 || members.some(p => !uuid(p)) || new Set(members).size !== members.length)
+            fail('Érvénytelen résztvevőlista.');
+        const size = String(t.size ?? '');
+        if (!/^[1-9][0-9]{0,2}$/.test(size))
+            fail('A csapat létszáma 1–999 fő lehet.');
+        const from = minute(t.arrival), to = minute(t.departure);
+        if (to <= from)
+            fail('A távozás legyen az érkezés után; külön munkanapot külön lapon rögzíts.');
+        if (members.length && members.length !== Number(size))
+            fail('A kijelölt személyek száma egyezzen a csapat létszámával.');
+        const minutes = Number(size) * (to - from);
+        peopleMinutes += minutes;
+        const labor = prices.get('labor');
+        if (!labor)
+            issues.push('A munkadíj hiányzik a katalógusból.');
+        else
+            add('team:' + t.id, 'labor', 'Csapat ' + (i + 1), 'főperc', String(minutes), 60, t, 'labor');
+        return { id: t.id, size: Number(size), arrival: t.arrival, departure: t.departure, people: members, minutes, ...(role === 'office' && t.unit_price !== undefined ? { unit_price: String(t.unit_price), price_confirmed: t.price_confirmed === true } : {}) };
+    });
+    const usedPeople = teams.flatMap((t) => t.people);
+    if (new Set(usedPeople).size !== usedPeople.length)
+        fail('Egy munkatárs ugyanazon a munkalapon nem szerepelhet két csapatban.');
+    const cleanLines = input.lines.map((l) => {
+        if (!l || !uuid(l.id))
+            fail('Érvénytelen sorazonosító.');
+        if (l.kind === 'other') {
+            const name = text(l.name ?? '', 200, 'egyedi tétel neve'), unit = text(l.unit ?? '', 40, 'egyedi mértékegység');
+            if (!name || !unit)
+                fail('Az Egyéb tétel neve és mértékegysége kötelező.');
+            add(l.id, null, name, unit, String(l.quantity ?? ''), 1, l, 'other');
+            return { id: l.id, kind: 'other', name, unit, quantity: decimal(maintenanceDecimal(l.quantity), 6), unit_price: l.unit_price == null ? '' : String(l.unit_price) };
+        }
+        const code = text(l.code ?? '', 100, 'katalóguskód');
+        if (code === 'labor')
+            fail('A munkadíj a csapatidőből számolódik; ne add hozzá még egyszer.');
+        if (!code)
+            fail('Válassz tételt.');
+        add(l.id, code, '', '', String(l.quantity ?? ''), 1, l, 'catalog');
+        return { id: l.id, kind: 'catalog', code, quantity: decimal(maintenanceDecimal(l.quantity), 6), ...(role === 'office' && l.unit_price !== undefined ? { unit_price: String(l.unit_price), price_confirmed: l.price_confirmed === true } : {}) };
+    });
+    if (!lines.length)
+        issues.push('Legalább egy csapatot vagy tételt adj meg.');
+    let exact = 0n, rounded = 0n, labor = 0n, materials = 0n;
+    const denominator = 60000000n;
+    for (const l of lines) {
+        exact += l.exact;
+        const next = (exact + denominator / 2n) / denominator, amount = next - rounded;
+        rounded = next;
+        if (rounded >= 10n ** 22n)
+            fail('Túl nagy végösszeg.');
+        l.amount = cents(amount);
+        if (l.kind === 'labor')
+            labor += amount;
+        else
+            materials += amount;
+        delete l.exact;
+    }
+    const rentals = input.rentals ?? [];
+    if (!Array.isArray(rentals) || rentals.length > 3)
+        fail('Legfeljebb három gépbérlési megjegyzés adható.');
+    const document = { description, note, teams, lines: cleanLines, subcontractor: text(input.subcontractor ?? '', 500, 'alvállalkozó'), rentals: rentals.map((v) => text(v, 500, 'gépbérlés')) };
+    return { document, calculation: { version: '1', rounding: 'exact-sum-divisor-then-2', price_basis: 'gross', vat: null, net: null, people_minutes: String(peopleMinutes), material: issues.length ? null : cents(materials), labor: issues.length ? null : cents(labor), gross: issues.length ? null : cents(rounded), lines, issues, ready: issues.length === 0 } };
+}
+export function maintenanceView(version, role) { const full = ['office', 'maintenance_lead', 'client'].includes(role), doc = version.document ?? {}, calc = version.calculation ?? {}; return { document: { description: doc.description, note: doc.note, teams: (doc.teams ?? []).map((t) => ({ size: t.size, arrival: t.arrival, departure: t.departure, minutes: t.minutes, ...(role === 'client' ? {} : { people: t.people }) })), subcontractor: doc.subcontractor, rentals: doc.rentals }, calculation: { price_basis: 'gross', people_minutes: calc.people_minutes, lines: (calc.lines ?? []).map((l) => ({ id: l.id, name: l.name, unit: l.unit, quantity: l.quantity, kind: l.kind, ...(full ? { unit_price: l.unit_price, divisor: l.divisor, amount: l.amount } : {}) })), ...(full ? { material: calc.material, labor: calc.labor, gross: calc.gross, ready: calc.ready, issues: calc.issues } : {}) } }; }

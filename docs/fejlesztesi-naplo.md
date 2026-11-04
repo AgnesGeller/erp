@@ -362,3 +362,16 @@ Az éles saját ERP-adatbázis tíz táblája és ajánlatváltozási triggere t
 - Helyi, szintetikus böngészőpróba: valódi RPC/gateway mellett indítás, 10 000,50 Ft előleg magyar bevitellel, mentési előnézet, sikerjelzés, negatív ügyfélegyenleg, külön ügyfélnézet és felső bezárás. Mobil 390 × 844: oldal 391, ablak 366,6, tartalom 350 px; nincs vízszintes kilógás. A böngészőpróba nem éles pénzügyi adat.
 - Élesítés előtti saját mentés: .local/pre-finance-release-20261104.json, korábbi gateway v22 (19 fájl) és saját munkatábla-korlátok. Tranzakciós erp_financial_settlement_profit_commission migráció sikeres; saját gateway v23 ACTIVE, 20 fájl. Éles ellenőrzés: 12 FORCE RLS tábla, közvetlen anon/authenticated jog nélkül; hét service-only pénzügyi RPC; hat saját ERP-forrástrigger; nulla új pénzügyi számla és nulla pénzmozgás. Jogosult irodai olvasás működik, egy saját kertépítés elérhető; bejelentkezés nélküli pénzügyi API 401. Új objektumokra csak szándékos alapból tiltó RLS és még nem használt index INFO-jelzés, új WARN/ERROR nem volt.
 - A README rövid magyar összefoglaló maradt; használati részletek: penzugyi-elszamolas.md. Nincs új függőség, előfizetés, Auth-módosítás, régi alkalmazásba vagy közös ügyféladatba írás. Teljes valós üzleti átadási próba továbbra is szükséges.
+
+
+## 2026. november 4. – 0.12.0, kertkarbantartási munkalap és elszámolás
+
+- A felhasználó jóváhagyta a kilenc saját ERP-táblát, két saját ERP-triggert és a tesztek utáni élesítést. Megerősítette: a Munkalap árai végleges ügyfélárak.
+- Elkészült az ügyféligény/visszahívás, irodai elfogadás, három csapat érkezése–távozása, pontos mennyiség-/árszámítás, védett törzsár és szabad Egyéb tétel.
+- Kötelező teljes áras előnézet és kifejezett közzététel; külön megőrzött piszkozat/közzétett változat, ügyfél-PDF, javítás/visszavonás/helyreállítás, helyi piszkozat és változatlan kéréses újrapróbálás.
+- A készpénzátvételi/átutalási jelzés különül az igazolt befizetéstől; részbeni igazolás és ellenesemény követhető. A karbantartási végösszeg saját pénzügyi ág, nettó/áfa kitalálása nélkül; a kertépítési eredmény/jutalék változatlan.
+- A régi Munkalap 83 katalógustételének kezdeti olvasásos másolása védett ERP-táblába, valódi árak Gitbe mentése nélkül. 82 aktív, 57 ellenőrzött, 25 aktív ár ellenőrzésre vár. Más régi adat nem került át.
+- Az élesítési ellenőrzés globális vezetői szerep választásánál árlistajogosultsági rést talált. Külön megbízásellenőrzés és célzott regressziós teszt készült; a javított saját ERP-függvény települt.
+- ERP-migrációk: erp_maintenance_worksheets_settlement és erp_maintenance_scope_guard; saját erp-gateway v24. Kilenc tábla FORCE RLS-szel, közvetlen anon/authenticated/service_role táblajog nélkül; öt service-only RPC. Auth/előfizetés és más alkalmazás változatlan.
+- Szintetikus irodai és ügyfél-böngészőpróba, mobilos táblázattördelés, többoldalas árakat tartalmazó és ár nélküli dolgozói PDF ellenőrzése. Éles munkalap és pénzmozgás nem készült. A README rövidült; részletes használat külön dokumentumban.
+- Végső kiadási ellenőrzés: 449/449 teszt sikeres, frontend-build és szigorú kiszolgáló-típusellenőrzés sikeres. Külön ellenőrzés igazolta, hogy az új karbantartási ág mellett a kertépítés nettó/áfa-, előleg- és címszűrése működik. A 19. fejezet naptári/Napi feladatok integrációja a következő egység.

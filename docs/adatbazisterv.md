@@ -308,3 +308,8 @@ A terv nem bizonyítja a majdani rendszer működését. A teljes alkalmazás, m
 Az organizations, persons, user_accounts, person_roles, garden_projects, project_assignments és audit_events táblák létrejöttek. Mindegyiken FORCE RLS védi az adatokat. A szervezeti tagságot és a munkánkénti szerepeket az adatbázis ellenőrzi; a frontend elrejtett gombja nem biztonsági védelem. Az ERP-függvények szűk, NOLOGIN/NOBYPASSRLS szerep tulajdonában vannak. Az ERP-kiszolgáló a tényleges felhasználó JWT-jével dolgozik, általános service_role nélkül.
 
 A munkánként több, időben változó vezető már az alap része. Az ügyfélfiókhoz pipálható több munkavégzési cím követelmény; ennek felülete és adatszűrése a későbbi ügyfélmodulban készül el. Az ügyfélportál most még nem használható. A Munkalap és Napi feladatok az elfogadott adatforrások; a KAP/Árajánlat tesztüzleti adatait nem importáljuk. A forráshoz írás ebben a lépésben nincs.
+
+
+## Kertkarbantartási bővítés – 0.12.0
+
+A jóváhagyott [részletes karbantartási terv](kertkarbantartas-munkalap-terv.md) kilenc saját ERP-táblával és két saját ERP-triggerrel megvalósult. A mentett piszkozat és a közzétett változat külön mutatót kap; az előzményekhez az API csak hozzáfűz. A pénzügyi modul a közzétett aktív lapok végleges ügyfélárát összegzi, újabb áfa nélkül. A fizetési jelzés nem pénzbeérkezés: kizárólag az iroda igazolhat tényleges pénzt. A közvetlen táblajog minden alkalmazásszerepnél tiltott, az RPC csak saját hitelesített kiszolgálón keresztül elérhető. A munkaválasztás nélküli vezetői árlistanézet is érvényes vezetői megbízáshoz kötött. Más app vagy Auth nem módosult. [Használat és ellenőrzési határ](kertkarbantartas.md).

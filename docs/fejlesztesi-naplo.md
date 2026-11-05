@@ -455,3 +455,11 @@ A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontos
 - Mind a hét új tábla RLS/FORCE RLS védelemmel, közvetlen anon/authenticated/service_role táblajog nélkül működik. A védett katalógus olvasási próbája sikeres, a belépés nélküli HTTP-kérés 401-et kapott.
 - A [RLS-ellenőrző tájékoztatója](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) szerinti policy nélküli jelzés itt a kizárólag védett saját függvényekre épülő modell része; a táblák közvetlen jogai külön ellenőrizve tiltottak. A friss indexek használatlansága tájékoztató jelzés, új hiányzó idegenkulcs-indexet nem jelzett az ellenőrző.
 - A korábbi helyi kiadásjelöltről szóló bejegyzés történeti mentési pont; a mobilos akadály megszűnt. A rövid README és a képes használat aktualizálva.
+
+
+### Online ellenőrzés és a következő PDF-fejezet előkészítése
+
+- A 0.15.0 kiadás a main ágra pusholva: `94b4ee832c840f3205646435140220819d296d5f`. A GitHub Pages [42021574637 futása](https://github.com/AgnesGeller/erp/actions/runs/42021574637) sikeres, a publikus alkalmazás és version.json is 0.15.0-t ad vissza.
+- A PDF 20. fejezetéhez elkészült a [referencia-/WordPress-terv](referenciamunkak-wordpress-terv.md). A nyilvános REST-felmérés hagyományos, Elementor-tartalmú bemutatócikket, külön mintatermék-típust és SEOPress-útvonalakat talált; a végleges szerkesztői illesztés hitelesített olvasási ellenőrzést igényel.
+- A terv külön kezeli a helyi képeket, a három független platformváltozatot, a ténylegesen beépített anyagokat, a már publikált oldal változatlanul hagyását az új szerkesztés alatt, valamint a piszkozat képfájljainak esetleges nyilvánosságát. Kilenc saját ERP-nyilvántartás a javaslat, még nincs telepítve.
+- A tervhez csak nyilvános GET-kérés történt; WordPress-feltöltés, publikálás, új szolgáltatás vagy további adatbázismódosítás nincs. Csak dokumentáció változott, ezért a már sikeres 553 tesztet nem futtattuk újra; hivatkozás- és diffellenőrzés készült.

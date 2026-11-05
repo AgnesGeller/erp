@@ -97,6 +97,7 @@ export class ErpApi {
             clearTimeout(timer);
         }
     }
+    async reference(action, body = {}) { return this.feature(action, body); }
     async calendar(action, body = {}) { return this.feature(action, body); }
     async execution(action, body = {}) { return this.feature(action, body); }
     async workpack(action, body) { return this.feature(action, body); }

@@ -2,7 +2,7 @@ const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const button = (text, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'quiet'; b.textContent = text; b.addEventListener('click', run); return b; };
 const statuses = { waiting_start: 'Indításra vár', running: 'Kertépítés folyamatban', closed: 'Lezárt kertépítés', requested: 'Időpontigény beérkezett', confirmed: 'Visszaigazolt munka', cancelled: 'Visszavont munka', sent: 'Kiküldött ajánlat', accepted: 'Elfogadott ajánlat', rejected: 'Elutasított ajánlat', withdrawn: 'Visszavont ajánlat' };
-const { quoteNumber } = await import(new URL('./erp-quote-tools.js?v=0.15.0', import.meta.url).href);
+const { quoteNumber } = await import(new URL('./erp-quote-tools.js?v=0.16.0', import.meta.url).href);
 const money = (v) => quoteNumber(v) + ' Ft';
 export class ClientAdmin {
     api;

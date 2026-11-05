@@ -1,3 +1,4 @@
+await writeFile(new URL('../supabase/functions/erp-gateway/reference-model.ts',import.meta.url),'// Generált másolat: src/erp-reference-model.ts.\n'+await readFile(new URL('../src/erp-reference-model.ts',import.meta.url),'utf8'));
 import {readFile,writeFile} from 'node:fs/promises';import {spawnSync} from 'node:child_process';
 await writeFile(new URL('../supabase/functions/erp-gateway/quote-engine.ts',import.meta.url),'// Generált másolat. Forrás: src/erp-quote-engine.ts; frissítés: build.\n'+(await readFile(new URL('../src/erp-quote-engine.ts',import.meta.url),'utf8')).replace("'./erp-execution-model.js'","'./execution-model.ts'"));
 await writeFile(new URL('../supabase/functions/erp-gateway/survey-model.ts',import.meta.url),'// Generált másolat. Forrás: src/erp-survey-model.ts; frissítés: build.\n'+await readFile(new URL('../src/erp-survey-model.ts',import.meta.url),'utf8'));

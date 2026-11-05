@@ -5,29 +5,31 @@ const clientSetupOpening = clientSetupToken !== null;
 if (clientSetupOpening)
     history.replaceState(null, '', location.pathname + location.search);
 const setupOpening = clientSetupOpening || new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.15.0', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.15.0', import.meta.url);
+const apiUrl = new URL('./erp-api.js?v=0.16.0', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.16.0', import.meta.url);
 const { ErpApi, ApiError } = await import(apiUrl.href);
 const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
-const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.15.0', import.meta.url).href);
+const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.16.0', import.meta.url).href);
 const api = new ErpApi();
-const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.15.0', import.meta.url).href);
-const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.15.0', import.meta.url).href);
-const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.15.0', import.meta.url).href);
-const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.15.0', import.meta.url).href);
-const { ClientAdmin, ClientPortal } = await import(new URL('./erp-clients.js?v=0.15.0', import.meta.url).href);
-const { StaffAdmin } = await import(new URL('./erp-staff.js?v=0.15.0', import.meta.url).href);
-const { WorkPlanDesk } = await import(new URL('./erp-workplans.js?v=0.15.0', import.meta.url).href);
-const { MaterialDesk } = await import(new URL('./erp-materials.js?v=0.15.0', import.meta.url).href);
-const { WorksheetDesk } = await import(new URL('./erp-worksheets.js?v=0.15.0', import.meta.url).href);
-const { EntryDesk } = await import(new URL('./erp-entries.js?v=0.15.0', import.meta.url).href);
-const { FinanceDesk } = await import(new URL('./erp-finance.js?v=0.15.0', import.meta.url).href);
+const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.16.0', import.meta.url).href);
+const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.16.0', import.meta.url).href);
+const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.16.0', import.meta.url).href);
+const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.16.0', import.meta.url).href);
+const { ClientAdmin, ClientPortal } = await import(new URL('./erp-clients.js?v=0.16.0', import.meta.url).href);
+const { StaffAdmin } = await import(new URL('./erp-staff.js?v=0.16.0', import.meta.url).href);
+const { WorkPlanDesk } = await import(new URL('./erp-workplans.js?v=0.16.0', import.meta.url).href);
+const { MaterialDesk } = await import(new URL('./erp-materials.js?v=0.16.0', import.meta.url).href);
+const { WorksheetDesk } = await import(new URL('./erp-worksheets.js?v=0.16.0', import.meta.url).href);
+const { EntryDesk } = await import(new URL('./erp-entries.js?v=0.16.0', import.meta.url).href);
+const { FinanceDesk } = await import(new URL('./erp-finance.js?v=0.16.0', import.meta.url).href);
 const finance = new FinanceDesk(api, showError);
-const { WorkpackDesk } = await import(new URL('./erp-workpack.js?v=0.15.0', import.meta.url).href);
+const { WorkpackDesk } = await import(new URL('./erp-workpack.js?v=0.16.0', import.meta.url).href);
 const workpack = new WorkpackDesk(api, showError);
-const { CalendarDesk } = await import(new URL('./erp-calendar.js?v=0.15.0', import.meta.url).href);
+const { CalendarDesk } = await import(new URL('./erp-calendar.js?v=0.16.0', import.meta.url).href);
 const calendar = new CalendarDesk(api, showError);
-const { MaintenanceDesk } = await import(new URL('./erp-maintenance.js?v=0.15.0', import.meta.url).href);
+const { ReferenceDesk } = await import(new URL('./erp-references.js?v=0.16.0', import.meta.url).href);
+const references = new ReferenceDesk(api, showError);
+const { MaintenanceDesk } = await import(new URL('./erp-maintenance.js?v=0.16.0', import.meta.url).href);
 const maintenance = new MaintenanceDesk(api, showError);
 maintenance.setFinanceHandler(project => { void finance.showProject(project); });
 const staffAdmin = new StaffAdmin(api);
@@ -52,11 +54,11 @@ const works = new SiteWorks(api, error => { if (!api.signedIn)
     showError(error); }, loadWorkspace, () => { customers.open(); get('customer-search').focus(); });
 const quotes = new QuoteDesk(api, error => { if (!api.signedIn)
     showError(error); }, () => { customers.open(); get('customer-search').focus(); }, loadWorkspace, media => surveys.showMedia(media));
-const { OfficeNavigation } = await import(new URL('./erp-office-navigation.js?v=0.15.0', import.meta.url).href);
+const { OfficeNavigation } = await import(new URL('./erp-office-navigation.js?v=0.16.0', import.meta.url).href);
 let officeNavigation;
 const surveys = new SurveyDesk(api, error => { if (!api.signedIn)
     showError(error); }, () => { customers.open(); get('customer-search').focus(); }, async (payload) => { await quotes.selectSurvey(payload); });
-officeNavigation = new OfficeNavigation(async () => { if (mutations || loading || !quotes.leave() || !customers.leave() || !works.leave() || !workplans.leave() || !calendar.leave())
+officeNavigation = new OfficeNavigation(async () => { if (mutations || loading || !quotes.leave() || !customers.leave() || !works.leave() || !workplans.leave() || !calendar.leave() || !references.leave())
     return false; if (!await surveys.leave())
     return false; if (dirty && !confirm('Visszalépsz a kezdőlapra a még nem mentett űrlapadatok mellett?'))
     return false; return true; }, () => { if (!quotes.dirty && !surveys.dirty && !dirty)
@@ -95,7 +97,7 @@ document.getElementById('show-works').addEventListener('click', event => { if (!
     event.stopImmediatePropagation();
 } }, { capture: true });
 const get = (id) => document.getElementById(id);
-document.getElementById('logout').addEventListener('click', e => { if (!calendar.leave()) {
+document.getElementById('logout').addEventListener('click', e => { if (!calendar.leave() || !references.leave()) {
     e.preventDefault();
     e.stopImmediatePropagation();
 } }, { capture: true });
@@ -129,6 +131,7 @@ function resetView() {
     get('office-status').textContent = '';
     get('login-feedback').textContent = '';
     generation++;
+    references.reset();
     calendar.reset();
     officeNavigation.reset();
     workpack.reset();
@@ -286,6 +289,7 @@ async function loadWorkspace() {
         finance.setOwner(current.person_id, current.organization_id, current.is_office ? 'office' : current.is_client ? 'client' : 'staff');
         officeNavigation.setOwner(current.person_id, current.organization_id, current.is_office);
         calendar.setOwner(current.person_id, current.organization_id, current.is_office);
+        references.setOwner(current.person_id, current.organization_id, current.is_office);
         workplans.setOwner(current.person_id, current.organization_id, current.is_client === true && !current.is_office);
         staffAdmin.setOrganization(current.is_office ? current.organization_id : undefined);
         get('staff-workspace').hidden = true;

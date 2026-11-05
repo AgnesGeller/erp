@@ -44,6 +44,7 @@ export class ErpApi {
       return data as T;
     } finally {clearTimeout(timer);}
   }
+  async reference<T=unknown>(action:string,body:Record<string,unknown>={}):Promise<T>{return this.feature<T>(action,body);}
   async calendar<T=unknown>(action:string,body:Record<string,unknown>={}):Promise<T>{return this.feature<T>(action,body);}
   async execution<T=unknown>(action:string,body:Record<string,unknown>={}):Promise<T>{return this.feature<T>(action,body);}
   async workpack<T=unknown>(action:'workpack_pdf',body:Record<string,unknown>):Promise<T>{return this.feature<T>(action,body);}

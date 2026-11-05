@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.15.0**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.0**
 
 ## Mi használható?
 
@@ -14,9 +14,10 @@
 - Előleg, részfizetés, irodai pénzigazolás, kertépítési eredmény és éves jutalék.
 - **Kertkarbantartás:** igény, irodai jóváhagyás, napi munkalap, közzétett PDF és elszámolás.
 - **Naptár és Napi feladatok:** napi/heti/havi nézet, szerkesztés, PDF, saját mentés és ellenőrzött adatátvétel.
+- Referenciamunkák, négy helyi képcsoport, külön web/Facebook/Instagram-változat és letölthető posztcsomag.
 - Telepítés/frissítés a felső menüből; mobilon is használható felület.
 
-A teljes ERP fejlesztése folyamatban van. [Szakaszolás és rendezés – rövid használat](docs/szakaszolas-hasznalat.md). [Állapot](docs/specifikacio-allapot.md) · [Következő modul terve: referenciák](docs/referenciamunkak-wordpress-terv.md).
+A teljes ERP fejlesztése folyamatban van. [Szakaszolás és rendezés – rövid használat](docs/szakaszolas-hasznalat.md). [Állapot](docs/specifikacio-allapot.md) · [Referenciák használata](docs/referenciamunkak.md) · [Keddi bemutató](docs/bemutato-2026-11-10.md).
 
 Az irodai kezdőlapon négy feladat közül választhatsz; a ritkább műveletek az **Iroda és beállítások** alatt találhatók.
 
@@ -34,7 +35,7 @@ HTML, CSS, TypeScript; Supabase saját ERP-sémákkal. Az eredeti fejlesztői PD
 
 Az ERP saját mappájában: `npm run build`, `npm test`, `npm run check:edge`.
 
-Legutóbbi ellenőrzés: **2026. november 5., 553 sikeres helyi teszt**, fordítás, kiszolgáló-típusellenőrzés és asztali/mobil szintetikus böngésző-/PDF-próba.
+Legutóbbi ellenőrzés: **2026. november 5., 576 sikeres helyi teszt**, fordítás, kiszolgáló-típusellenőrzés és asztali/mobil szintetikus böngésző-/PDF-próba.
 
 [Adatbázisterv](docs/adatbazisterv.md) · [Jogosultságok](docs/szerepkorok.md) · [Fejlesztési napló](docs/fejlesztesi-naplo.md) · [Részletes dokumentáció](docs/reszletes-projektleiras.md)
 

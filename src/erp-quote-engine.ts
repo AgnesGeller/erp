@@ -1,3 +1,4 @@
+import {normalizeExecutionProcess,normalizeExecutionCatalog} from './erp-execution-model.js';
 export type Obj=Record<string,any>;
 const SCALE=1000000n;
 export function decimal(value:unknown,label='Érték'):bigint{
@@ -21,7 +22,7 @@ export function formula(source:string,variables:Record<string,bigint>):bigint{
  const result=expression();if(at!==tokens.length||result<0n)throw Error('Érvénytelen vagy negatív képleteredmény.');return result;
 }
 export function validateType(raw:Obj):Obj{
- const type=structuredClone(raw);type.name=text(type.name,200,'Típus');type.category=text(type.category,150,'Kategória');type.unit=text(type.unit,30,'Mértékegység');decimal(type.main,'Anyag egységár');decimal(type.labor,'Munka egységár');if(!type.name||!type.category||!type.unit)throw Error('A kategória, típus és mértékegység kötelező.');
+ const type=structuredClone(raw);if(type.work_process!=null)type.work_process=normalizeExecutionProcess(type.work_process);type.name=text(type.name,200,'Típus');type.category=text(type.category,150,'Kategória');type.unit=text(type.unit,30,'Mértékegység');decimal(type.main,'Anyag egységár');decimal(type.labor,'Munka egységár');if(!type.name||!type.category||!type.unit)throw Error('A kategória, típus és mértékegység kötelező.');
  if(!['excel','area','volume','density','layered','custom'].includes(type.mode))throw Error('Ismeretlen számítási mód.');
  for(const key of ['main','auxiliary','transport','labor','material_cm','labor_cm','material_min','labor_min','total_min'])decimal(type[key]??'0',key);
  if(!Array.isArray(type.materials)||type.materials.length>100)throw Error('Legfeljebb 100 anyag kapcsolható egy típushoz.');
@@ -36,6 +37,7 @@ export function validateBook(raw:Obj):Obj{
  if(!Array.isArray(book.info_templates)||book.info_templates.length>100)throw Error('Érvénytelen információsablonok.');for(const info of book.info_templates){text(info.name,200,'Sablonnév');text(info.body,20000,'Információsablon');}return book;
 }
 export function calculateQuote(input:Obj){
+ if(input?.execution_catalog)normalizeExecutionCatalog(input.execution_catalog.document);
  if(!input||!Array.isArray(input.sections)||input.sections.length>100)throw Error('Legfeljebb 100 főtétel rögzíthető.');
  if(!['0','27','aam'].includes(String(input.vat)))throw Error('Válassz 0%, 27% vagy alanyi adómentes adózást.');
  if(!text(input.title,200,'Ajánlat megnevezése'))throw Error('Add meg az ajánlat megnevezését.');text(input.information??'',30000,'Ajánlati információk');
@@ -60,7 +62,7 @@ export function calculateQuote(input:Obj){
     const minimumApplied=mat+lab-rawMaterial-rawLabor;mat=decimal(money(mat));lab=decimal(money(lab));material+=mat;labor+=lab;
     const rate=input.hourly_rate?decimal(input.hourly_rate,'Ügyfélnek számlázott óradíj'):0n;
     const minutes=rate>0n?formatted(div(mul(lab,60n*SCALE),rate)):null;
-    return {id:line.id,label:cleanName(t.category)+' – '+cleanName(t.name),quantity:formatted(displayQuantity??quantity),unit:t.unit,parameter_note:second>0n?'Második mennyiség: '+money(second).replace(/\.?0+$/,'')+' '+t.unit2:'',material_unit:money(line.agreement?.material_unit!==undefined?materialUnit:second>0n?mul(materialUnit,second):materialUnit),labor_unit:money(line.agreement?.labor_unit!==undefined?laborUnit:second>0n?mul(laborUnit,second):laborUnit),material:money(mat),labor:money(lab),net:money(mat+lab),minimum_adjustment:money(minimumApplied),public_note:text(line.public_note??'',4000,'Egyéb megjegyzés'),materials,planned_minutes:minutes,internal_info:t.internal_info,trace:{raw_material:money(rawMaterial),raw_labor:money(rawLabor),area:formatted(area),volume:formatted(volume),thickness_cm:formatted(thickness)}};
+    return {id:line.id,label:cleanName(t.category)+' – '+cleanName(t.name),quantity:formatted(displayQuantity??quantity),unit:t.unit,parameter_note:second>0n?'Második mennyiség: '+money(second).replace(/\.?0+$/,'')+' '+t.unit2:'',material_unit:money(line.agreement?.material_unit!==undefined?materialUnit:second>0n?mul(materialUnit,second):materialUnit),labor_unit:money(line.agreement?.labor_unit!==undefined?laborUnit:second>0n?mul(laborUnit,second):laborUnit),material:money(mat),labor:money(lab),net:money(mat+lab),minimum_adjustment:money(minimumApplied),public_note:text(line.public_note??'',4000,'Egyéb megjegyzés'),materials,planned_minutes:minutes,internal_info:t.internal_info,trace:{quantity:formatted(quantity),length:formatted(length),count:formatted(countQty),raw_material:money(rawMaterial),raw_labor:money(rawLabor),area:formatted(area),volume:formatted(volume),thickness_cm:formatted(thickness)}};
    }catch(error){issues.push((si+1)+'. főtétel, '+(li+1)+'. sor: '+(error instanceof Error?error.message:'Hibás tétel.'));return {id:line.id,label:String(line.unresolved??line.pricing?.name??'Hiányos tétel'),incomplete:true};}
   });if(!lines.length)issues.push((si+1)+'. főtétel: adj hozzá legalább egy sort.');totalMaterial+=material;totalLabor+=labor;return {id:section.id,name:title,material:money(material),labor:money(labor),net:money(material+labor),lines};
  });if(!sections.length)issues.push('Adj hozzá legalább egy főtételt.');const base=totalMaterial+totalLabor;const vat=input.vat==='27'?decimal(money(mul(base,270000n))):0n;

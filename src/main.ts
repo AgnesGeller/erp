@@ -1,4 +1,4 @@
-const APP_VERSION = '0.14.1';
+const APP_VERSION = '0.15.0';
 interface InstallPrompt extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;

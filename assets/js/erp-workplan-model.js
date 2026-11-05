@@ -121,7 +121,7 @@ export function effectiveAcceptance(task, level) {
     if (!source.length)
         return { accepted: false, explicit: false, shares: [] };
     const shares = level === 0 && task.shares.length ? structuredClone(task.shares) : exact.length ? equalShares(exact.flatMap(a => a.subjects)) : equalShares(source.map(a => a.actor_id));
-    return { accepted: true, explicit: exact.length > 0, shares };
+    return { accepted: true, explicit: exact.some(a => !a.reference_only), shares };
 }
 export function progressSummary(tasks) {
     const total = tasks.reduce((sum, t) => sum + decimalUnits(t.labor), 0n), known = tasks.every(t => t.planned_minutes !== null), minutes = tasks.reduce((sum, t) => sum + (t.planned_minutes === null ? 0n : decimalUnits(t.planned_minutes, 6)), 0n);
@@ -148,9 +148,9 @@ export function progressSummary(tasks) {
         return { level, percent: ratio(complete), completed_labor: amount(complete), total_labor: amount(total), completed_minutes: known ? amount(doneMinutes, 6) : null, remaining_minutes: known ? amount(minutes - doneMinutes, 6) : null, zero_done: zeroDone, zero_total: zeroTotal, people: [...perPerson].map(([person_id, numerator]) => ({ person_id, percent: total ? Number((numerator * 100n + total / 2n) / total) / 10000 : null })) };
     });
 }
-export function validateTaskGraph(tasks) {
-    if (!Array.isArray(tasks) || tasks.length > 1000)
-        fail('Egy terv legfeljebb ezer munkafázist tartalmazhat.');
+export function validateTaskGraph(tasks, maxTasks = 1000) {
+    if (!Array.isArray(tasks) || tasks.length > maxTasks)
+        fail('A munkaterv túl sok munkafázist tartalmaz.');
     const map = new Map(tasks.map(t => [t.id, t]));
     if (map.size !== tasks.length)
         fail('Ismételt munkafázis-azonosító.');

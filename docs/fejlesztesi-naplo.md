@@ -424,3 +424,24 @@ A felhasználó jelezte, hogy a kertépítés Napi munkalapján hiányzik a besz
 A felhasználó először részletes tervet kért, majd kifejezetten engedélyezte a leírás szerinti megvalósítást. Elkészült a [részletes műszaki és használati terv](szakaszolas-es-huzassal-rendezes-terv.md): területi nézet megőrzése, külön szakaszok/részfeladatok, kategória-/típusalapú munkafolyamatok, pontos arányosítás, hét saját ERP-nyilvántartás, hétnél nem több új RPC és megőrzött átvételi alapú átállás. A dokumentáció készítése nem módosította az alkalmazást vagy az éles adatbázist. A megvalósítás állapotát a következő bejegyzések rögzítik; addig a publikus alkalmazás 0.14.1.
 
 A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontosítás. Új előfizetés, framework vagy más app módosítása nincs tervben. Jóváhagyás után először a helyi modell és az adatbázis-ellenőrzések készülnek. Az új szakaszolás elkészülte után a felhasználó kérte a PDF szerinti korábbi fejlesztési sor folytatását, ha a rendelkezésre álló keret engedi; a teljes ERP nyitott tételei a specifikációállapot-listában maradnak követhetők.
+
+
+## 2026. november 5. – Kivitelezési szakaszok és közös rendezés (0.15.0)
+
+- A jóváhagyott hét saját ERP-tábla és hét védett művelet elkészült; a régi munkák külön előnézettel válthatók át.
+- Központi szakaszok, kategóriaalapok és típusszintű részfolyamatok, ajánlati pillanatképpel; pontos munkadíj-/időfelosztás és ellenőrzött bontás.
+- Szakaszos/területi nézet, fogantyús húzás, billentyűzetes sorrend, visszavonás és megőrzött elrendezés megnyitása. A bizonytalan mentés eredeti kérését a saját helyi tároló megőrzi.
+- Részfeladatos valódi átvétel és elutasítás; új ügyfélpipa csak iroda után; a korábbi tényleges átvétel hivatkozás, nem másolt pipa.
+- Napi munkalap részfeladat-kijelöléssel, egyszer számolt emberpercekkel; teljes ajánlati sorra összesített pénzügy és kanonikus személyi/jutaléksúlyok.
+- A kapcsolódó helyi teszt feltárta és javította a saját ERP pénzügyi értesítőjének munkalap-projektazonosító hibáját. A karbantartási pénzügy külön ágát az éles definícióval összevetve megőriztük és közzétett helyi lappal teszteltük.
+- Az ajánlati/sablon- és napi feladatsorrend ugyanazt a saját rendezőt használja. Nincs új függőség vagy más alkalmazásban végzett módosítás.
+- Szintetikus böngészőpróba: mentett átállás, megkülönböztethető forrástételek, húzás, fel/le és visszavonás sikeres. Mobilon talált kilógás javítva; a javítás ismételt vizuális ellenőrzését az IAB kapcsolatának elakadása megakasztotta. Ez külön nyitott ellenőrzési pont.
+- PDF: csapat-, ügyfél- és irodai változat elkészült helyi próbára; szerepszűrés ellenőrizve, üres részletezőoldal megszüntetve, szakasz/rész sorszámozás és eredeti területi lista megőrizve.
+- Élesítés előtt: teljes regresszió, végleges típusellenőrzés, a saját távoli függvények és gateway eltérésellenőrzése. E bejegyzés írásakor az új éles telepítés még nem történt meg.
+
+### Helyi ellenőrzött mentési pont
+
+- Végleges fordítás: sikeres; kiszolgáló TypeScript-ellenőrzés: sikeres; teljes regresszió: **553/553 sikeres**.
+- A kiinduló éles gateway v27 mind a 29 fájlja egyezik a korábban feltöltött Git-verzióval. Az érintett saját adatbázisfüggvények ellenőrzése megtörtént; a karbantartási kivétel megmaradt. A két saját migráció egyetlen, 13 definíció-ellenőrzéssel védett helyi csomagban is elő van készítve.
+- **Nincs új éles adatbázismódosítás, gateway-telepítés vagy push.** Az online alkalmazás továbbra is 0.14.1. A 0.15.0 helyi kiadásjelölt.
+- Következő lépés: a tesztböngésző helyreállítása után a javított mobilnézet utolsó szemrevételezése, majd ellenőrzött saját ERP-élesítés, visszaellenőrzés és main push. Más fejlesztési témát nem kezdtünk el a nyitott ellenőrzés előtt.

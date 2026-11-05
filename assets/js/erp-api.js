@@ -98,6 +98,7 @@ export class ErpApi {
         }
     }
     async calendar(action, body = {}) { return this.feature(action, body); }
+    async execution(action, body = {}) { return this.feature(action, body); }
     async workpack(action, body) { return this.feature(action, body); }
     async maintenance(action, body = {}) { return this.feature(action, body); }
     async finance(action, body = {}) { return this.feature(action, body); }

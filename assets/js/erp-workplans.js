@@ -1,5 +1,6 @@
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.14.1', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.14.1', import.meta.url).href);
+import { ExecutionDesk } from './erp-execution-editor.js';
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.15.0', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.15.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };
@@ -15,6 +16,8 @@ export class WorkPlanDesk {
     api;
     onError;
     workTab = 'tasks';
+    groupByStage = true;
+    execution;
     workpack;
     setWorkpackDesk(desk) { this.workpack = desk; }
     openWorkpack() { if (this.busy || !this.owner || !this.organization || !this.view || !this.workpack)
@@ -48,6 +51,7 @@ export class WorkPlanDesk {
     constructor(api, onError) {
         this.api = api;
         this.onError = onError;
+        this.execution = new ExecutionDesk(api, () => { void this.refreshAfterEntry(); });
         el('show-workplan').addEventListener('click', () => { void this.open(); });
         el('plan-close').addEventListener('click', () => { if (this.leave()) {
             this.cancelRead();
@@ -67,7 +71,7 @@ export class WorkPlanDesk {
             el('plan-role').value = this.view?.context.role ?? ''; });
         el('plan-refresh').addEventListener('click', () => { if (this.leave())
             void this.load(); });
-        setInterval(() => { if (el('plan-dialog').open && !document.hidden && navigator.onLine && !this.busy && !this.dirty && !this.entries?.open && !this.sheets?.open && !this.materials?.open)
+        setInterval(() => { if (el('plan-dialog').open && !document.hidden && navigator.onLine && !this.busy && !this.dirty && !this.entries?.open && !this.sheets?.open && !this.materials?.open && !this.execution.open)
             void this.load(); }, 60000);
         el('plan-retry').addEventListener('click', () => { if (this.pending)
             void this.send(this.pending.action, this.pending.args, true); });
@@ -99,7 +103,7 @@ export class WorkPlanDesk {
         return;
     } void this.entries.show(this.owner, this.scope(), entry, target); }
     get entryBusy() { return this.materials?.saving === true || this.entries?.saving === true || this.sheets?.saving === true; }
-    get dirty() { return this.materials?.open === true && this.materials?.dirty === true || this.sheets?.open === true && this.sheets?.dirty === true || this.entries?.dirty === true || this.changed || !!this.pending || this.formChanged.size > 0; }
+    get dirty() { return this.execution.dirty || this.materials?.open === true && this.materials?.dirty === true || this.sheets?.open === true && this.sheets?.dirty === true || this.entries?.dirty === true || this.changed || !!this.pending || this.formChanged.size > 0; }
     setOwner(owner, organization, isClient = false) { if (this.owner !== owner || this.organization !== organization) {
         this.reset();
         this.owner = owner;
@@ -114,8 +118,8 @@ export class WorkPlanDesk {
             }
             catch { /* A hálózati újrapróbálás ebben a munkamenetben továbbra is elérhető. */ }
         }
-    } this.organization = organization; this.isClient = isClient; this.materials?.setOwner(owner, organization); this.sheets?.setOwner(owner, organization); this.entries?.setOwner(owner); el('show-workplan').hidden = !owner; }
-    reset() { this.workTab = 'tasks'; this.workpack?.reset(); this.materials?.setOwner(undefined); this.sheets?.setOwner(undefined); this.organization = undefined; this.isClient = false; this.entries?.setOwner(undefined); this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
+    } this.organization = organization; this.execution.setOwner(owner, organization); this.isClient = isClient; this.materials?.setOwner(owner, organization); this.sheets?.setOwner(owner, organization); this.entries?.setOwner(owner); el('show-workplan').hidden = !owner; }
+    reset() { this.execution?.setOwner(undefined); this.workTab = 'tasks'; this.workpack?.reset(); this.materials?.setOwner(undefined); this.sheets?.setOwner(undefined); this.organization = undefined; this.isClient = false; this.entries?.setOwner(undefined); this.epoch++; this.request++; this.owner = undefined; this.view = undefined; this.projects = []; this.draft = []; this.changed = false; this.pending = undefined; this.busy = false; this.reading = false; this.history.reset(); this.forms.clear(); this.formChanged.clear(); this.locked.clear(); el('plan-view').replaceChildren(); el('plan-notifications').replaceChildren(); el('show-workplan').hidden = true; el('plan-dialog').close(); }
     cancelRead() { if (this.reading) {
         this.epoch++;
         this.request++;
@@ -123,7 +127,8 @@ export class WorkPlanDesk {
         this.reading = false;
         this.lock(false);
     } }
-    leave() { if (this.materials?.open && !this.materials.leave())
+    leave() { if (this.execution.open && !this.execution.leave())
+        return false; if (this.materials?.open && !this.materials.leave())
         return false; if (this.sheets?.open && !this.sheets.leave())
         return false; if (this.entries?.open && !this.entries.leave())
         return false; if (this.busy && !this.reading) {
@@ -311,7 +316,7 @@ export class WorkPlanDesk {
         if (epoch === this.epoch)
             this.error(e);
     } }
-    graphControls(parent) { if (!this.view?.context.can_edit)
+    graphControls(parent) { if (!this.view?.context.can_edit || this.view.execution)
         return; const bar = node('div'); bar.className = 'plan-actions'; button(bar, 'Munkaterv mentése', () => { void this.send('plan_graph', { ...this.scope(), request_id: crypto.randomUUID(), revision: this.view.plan.revision, tasks: this.draft }); }); button(bar, 'Visszavonás', () => { const d = this.history.undo(); if (d) {
         this.draft = d;
         this.changed = true;
@@ -332,6 +337,16 @@ export class WorkPlanDesk {
         const v = this.view, root = el('plan-view'), opened = new Set(Array.from(root.querySelectorAll('details[data-task-id][open]')).map(d => d.dataset.taskId));
         root.replaceChildren();
         root.append(node('h2', v.context.project.name), node('p', v.context.project.address));
+        if (v.context.can_edit && this.owner && this.organization) {
+            button(root, 'Szakaszok és részfeladatok', () => { if (!this.dirty && !this.busy)
+                void this.execution.showPlan(this.owner, this.organization, this.scope());
+            else
+                this.message('Előbb fejezd be vagy mentsd a szerkesztést.'); });
+            button(root, 'Szakaszok alapbeállításai', () => { if (!this.dirty && !this.busy)
+                void this.execution.showCatalog(this.owner, this.organization);
+            else
+                this.message('Előbb fejezd be vagy mentsd a szerkesztést.'); });
+        }
         if (this.workpack)
             button(root, 'Munkacsomag / PDF', () => this.openWorkpack());
         if (['office', 'client'].includes(v.context.role))
@@ -407,8 +422,19 @@ export class WorkPlanDesk {
                 }
         }
         taskPanel.append(node('p', v.context.can_act ? 'Az átvétel a kiválasztott munkaszerepeddel történik.' : 'A kertépítés még nem indult el; átvétel most nem rögzíthető.'));
-        const editPanel = fold(taskPanel, 'Munkasorrend és ütemezés szerkesztése');
-        this.graphControls(editPanel);
+        if (!v.execution) {
+            const editPanel = fold(taskPanel, 'Munkasorrend és ütemezés szerkesztése');
+            this.graphControls(editPanel);
+        }
+        else {
+            const grouping = node('label', 'Feladatok megjelenítése'), pick = document.createElement('select');
+            pick.add(new Option('Kivitelezési szakaszok szerint', 'stages'));
+            pick.add(new Option('Eredeti területek szerint', 'areas'));
+            pick.value = this.groupByStage ? 'stages' : 'areas';
+            pick.onchange = () => { this.groupByStage = pick.value === 'stages'; this.render(); };
+            grouping.append(pick);
+            taskPanel.append(grouping);
+        }
         const timeline = fold(taskPanel, 'Idővonal és párhuzamos munkafázisok');
         this.calendar(timeline);
         for (const t of this.draft.slice().sort((a, b) => a.sort - b.sort)) {
@@ -421,10 +447,17 @@ export class WorkPlanDesk {
         }
         const tasks = node('div');
         tasks.className = 'plan-tasks';
-        for (const draft of this.draft.slice().sort((a, b) => a.sort - b.sort)) {
-            const t = v.tasks.find((t) => t.id === draft.id), d = fold(tasks, t.section + ' · ' + draft.title, opened.has(t.id));
+        const ordered = this.draft.slice().sort((a, b) => v.execution && this.groupByStage ? ((v.stages.find((s) => s.id === v.tasks.find((t) => t.id === a.id)?.stage_id)?.sort ?? 0) - (v.stages.find((s) => s.id === v.tasks.find((t) => t.id === b.id)?.stage_id)?.sort ?? 0) || a.sort - b.sort) : a.sort - b.sort);
+        let lastGroup = '';
+        for (const draft of ordered) {
+            const t = v.tasks.find((t) => t.id === draft.id), stage = v.stages?.find((s) => s.id === t.stage_id), group = v.execution && this.groupByStage ? (stage?.number + '. ' + stage?.name) : t.section;
+            if (v.execution && group !== lastGroup) {
+                tasks.append(node('h3', group));
+                lastGroup = group;
+            }
+            const d = fold(tasks, t.section + ' · ' + (v.execution && t.source_title ? t.source_title + ' → ' : '') + draft.title, opened.has(t.id));
             d.dataset.taskId = t.id;
-            if (v.context.can_edit) {
+            if (v.context.can_edit && !v.execution) {
                 d.draggable = true;
                 d.addEventListener('dragstart', e => { if (e.target.closest('input,textarea,select,button')) {
                     e.preventDefault();
@@ -439,7 +472,7 @@ export class WorkPlanDesk {
             checks.className = 'plan-checks';
             for (const a of t.acceptance) {
                 const c = node('span', levels[a.level] + ': ' + (a.explicit ? '✓' : '—'));
-                c.title = a.explicit ? 'Ténylegesen rögzített átvétel' : a.accepted ? 'A számított előrehaladást a magasabb átvétel már növeli; ezen a szinten még nincs tényleges pipa.' : 'Még nincs átvétel.';
+                c.title = a.explicit ? 'Ténylegesen rögzített átvétel' : a.reference ? 'A korábbi valódi átvétel hivatkozott alapként számít; ezen a részfeladaton még nincs új pipa.' : a.accepted ? 'A számított előrehaladást a magasabb átvétel már növeli; ezen a szinten még nincs tényleges pipa.' : 'Még nincs átvétel.';
                 checks.append(c);
             }
             d.append(checks);
@@ -455,9 +488,13 @@ export class WorkPlanDesk {
                 d.append(node('p', 'Aktuális ajánlati munkautasítás: ' + t.contract_info));
             if (t.internal_info)
                 d.append(node('p', t.internal_info));
-            if (v.context.can_edit)
+            if (v.context.can_edit && !v.execution)
                 this.editTask(d, draft);
-            if (v.context.can_act)
+            if (t.baseline_active)
+                d.append(node('small', 'A számított előrehaladás a korábbi valódi átvételekre hivatkozik; új pipa csak külön átvétellel keletkezik.'));
+            if (t.needs_classification)
+                d.append(node('p', 'Az iroda még ellenőrzi és besorolja a módosított munkatartalmat. Átvétel ezután rögzíthető.'));
+            else if (v.context.can_act)
                 this.taskActions(d, t);
         }
         taskPanel.append(tasks);
@@ -616,7 +653,7 @@ export class WorkPlanDesk {
         const command = (type, extra = {}) => { if (this.changed) {
             this.message('Előbb mentsd a munkaterv szerkesztését.');
             return;
-        } void this.send('plan_task', { ...this.scope(), task_id: t.id, revision: t.revision, quote_version: v.context.project.quote_version, request_id: crypto.randomUUID(), command: { type, reason: reason.value, visibility: visibility.checked ? 'client' : 'team', media: photos.map(m => ({ ...m, visibility: visibility.checked ? 'client' : 'team' })), ...extra } }); };
+        } void this.send('plan_task', { ...this.scope(), task_id: t.id, execution_part: t.execution_part === true, revision: t.revision, quote_version: v.context.project.quote_version, request_id: crypto.randomUUID(), command: { type, reason: reason.value, visibility: visibility.checked ? 'client' : 'team', media: photos.map(m => ({ ...m, visibility: visibility.checked ? 'client' : 'team' })), ...extra } }); };
         button(form, role === 'client' ? 'Munkafázis átvétele' : 'Átvétel rögzítése', () => { const selected = Array.from(subjects.querySelectorAll('input:checked')).map(x => x.value); if (!selected.length) {
             this.message('Válaszd ki az átvételhez tartozó személyt.');
             return;
@@ -692,7 +729,7 @@ export class WorkPlanDesk {
         button(history, 'Korábbi előzmények betöltése', () => { void this.moreHistory(); }); }
     async moreHistory() { if (!this.view || this.busy)
         return; const epoch = this.epoch; this.busy = true; this.reading = true; this.lock(true); try {
-        const r = await this.api.plan('plan_history', { ...this.scope(), cursor: this.cursor });
+        const r = this.view.execution ? await this.api.execution('execution_history', { ...this.scope(), cursor: this.cursor }) : await this.api.plan('plan_history', { ...this.scope(), cursor: this.cursor });
         if (epoch !== this.epoch)
             return;
         this.cursor = r.cursor;

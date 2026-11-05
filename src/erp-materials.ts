@@ -1,8 +1,8 @@
 import type {ErpApi} from './erp-api.js';
-const {quoteNumber,quoteInput,EditHistory}=await import(new URL('./erp-quote-tools.js?v=0.14.1',import.meta.url).href) as typeof import('./erp-quote-tools.js');
-const {materialActions,materialSearch,materialCsv}=await import(new URL('./erp-material-model.js?v=0.14.1',import.meta.url).href) as typeof import('./erp-material-model.js');
-const {todayBudapest}=await import(new URL('./erp-dates.js?v=0.14.1',import.meta.url).href) as typeof import('./erp-dates.js');
-const {addDialogDismiss}=await import(new URL('./erp-dialogs.js?v=0.14.1',import.meta.url).href) as typeof import('./erp-dialogs.js');
+const {quoteNumber,quoteInput,EditHistory}=await import(new URL('./erp-quote-tools.js?v=0.15.0',import.meta.url).href) as typeof import('./erp-quote-tools.js');
+const {materialActions,materialSearch,materialCsv}=await import(new URL('./erp-material-model.js?v=0.15.0',import.meta.url).href) as typeof import('./erp-material-model.js');
+const {todayBudapest}=await import(new URL('./erp-dates.js?v=0.15.0',import.meta.url).href) as typeof import('./erp-dates.js');
+const {addDialogDismiss}=await import(new URL('./erp-dialogs.js?v=0.15.0',import.meta.url).href) as typeof import('./erp-dialogs.js');
 type Row=Record<string,any>;
 const node=(tag:string,text='')=>{const e=document.createElement(tag);e.textContent=text;return e;};
 const num=(v:unknown)=>quoteNumber(v);const names:Row={init:'Anyagterv betöltése',extra:'Extra anyag felvétele',line:'Anyagsor hozzárendelése',link:'Extra hozzárendelése az elfogadott ajánlathoz',material:'Anyagtörzs mentése',vendor:'Beszállító mentése',policy:'Költségsúlyok mentése',...materialActions};

@@ -1,7 +1,7 @@
-const { normalizeWorksheet, clockMinute, sheetUuid, worksheetCsv } = await import(new URL('./erp-worksheet-model.js?v=0.14.1', import.meta.url).href);
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.14.1', import.meta.url).href);
-const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.14.1', import.meta.url).href);
-const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.14.1', import.meta.url).href);
+const { normalizeWorksheet, clockMinute, sheetUuid, worksheetCsv } = await import(new URL('./erp-worksheet-model.js?v=0.15.0', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.15.0', import.meta.url).href);
+const { todayBudapest } = await import(new URL('./erp-dates.js?v=0.15.0', import.meta.url).href);
+const { addDialogDismiss } = await import(new URL('./erp-dialogs.js?v=0.15.0', import.meta.url).href);
 const n = (tag, text = '') => { const el = document.createElement(tag); el.textContent = text; return el; };
 const hour = (v) => v == null ? '—' : quoteNumber(Number(v) / 60) + ' óra';
 const clock = (v) => String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0');
@@ -409,7 +409,16 @@ export class WorksheetDesk {
                     field(p, 'Egyéni távozás', person.departure, value => { person.departure = value; this.touch(person.person_id + 'departure'); }, 'time');
                 }
                 field(p, 'Egyéni magyarázat (opcionális)', person.note, value => { person.note = value; this.touch(person.person_id + 'note'); }, 'textarea').maxLength = 2000;
-                const phases = fold(p, 'Munkafázisok (' + person.task_ids.length + ')');
+                if (v.execution_mode === 'parts') {
+                    doc.execution_version = 1;
+                    person.part_ids ??= [];
+                    const parts = fold(p, 'Kivitelezési részfeladatok (' + person.part_ids.length + ')');
+                    parts.dataset.sheetFoldKey = 'parts-' + person.person_id;
+                    parts.append(n('p', 'A kijelölés a teljes dolgozói időhöz kapcsolódik; több részfeladat nem többszörözi az időt.'));
+                    for (const task of (v.parts ?? []).filter((t) => t.active || person.part_ids.includes(t.id)))
+                        check(parts, task.section + ' · ' + task.title + (task.active ? '' : ' · Korábbi részfeladat'), person.part_ids.includes(task.id), value => { person.part_ids = value ? [...person.part_ids, task.id] : person.part_ids.filter((id) => id !== task.id); parts.querySelector('summary').textContent = 'Kivitelezési részfeladatok (' + person.part_ids.length + ')'; this.touch(); });
+                }
+                const phases = fold(p, 'Ajánlati munkafázisok (' + person.task_ids.length + ')');
                 phases.dataset.sheetFoldKey = 'phases-' + person.person_id;
                 phases.append(n('p', 'A fázisok kijelölése nem osztja fel és nem többszörözi a dolgozó teljes idejét.'));
                 for (const task of v.tasks.filter((t) => t.active || person.task_ids.includes(t.id)))
@@ -458,7 +467,7 @@ export class WorksheetDesk {
         parent.append(n('p', doc.note)); const table = document.createElement('table'); table.className = 'sheet-table'; const head = document.createElement('thead'), hr = document.createElement('tr'); for (const title of ['Dolgozó', 'Érkezés', 'Távozás', 'Munkaidő', 'Megjegyzés / munkafázis'])
         hr.append(n('th', title)); head.append(hr); const tbody = document.createElement('tbody'); for (const p of doc.people ?? []) {
         const row = document.createElement('tr');
-        const values = [p.name ?? 'Korábbi munkatárs', p.arrival, p.departure, hour(p.minutes), (p.note ?? '') + ((p.tasks ?? []).length ? ' · ' + p.tasks.map((t) => t.section + ' / ' + t.title).join('; ') : '')];
+        const values = [p.name ?? 'Korábbi munkatárs', p.arrival, p.departure, hour(p.minutes), (p.note ?? '') + ((p.tasks ?? []).length ? ' · ' + p.tasks.map((t) => t.section + ' / ' + t.title).join('; ') : '') + ((p.parts ?? []).length ? ' · Részfeladatok: ' + p.parts.map((t) => t.section + ' / ' + t.title).join('; ') : '')];
         values.forEach((value, index) => { const cell = n('td', String(value ?? '')); cell.dataset.label = ['Dolgozó', 'Érkezés', 'Távozás', 'Munkaidő', 'Megjegyzés / munkafázis'][index]; row.append(cell); });
         tbody.append(row);
     } table.append(head, tbody); parent.append(table); if (!(doc.people ?? []).length)

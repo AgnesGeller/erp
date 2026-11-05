@@ -1,3 +1,4 @@
+import { normalizeExecutionProcess, normalizeExecutionCatalog } from './erp-execution-model.js';
 const SCALE = 1000000n;
 export function decimal(value, label = 'Érték') {
     const text = String(value ?? '').trim().replace(',', '.');
@@ -53,6 +54,8 @@ export function formula(source, variables) {
 }
 export function validateType(raw) {
     const type = structuredClone(raw);
+    if (type.work_process != null)
+        type.work_process = normalizeExecutionProcess(type.work_process);
     type.name = text(type.name, 200, 'Típus');
     type.category = text(type.category, 150, 'Kategória');
     type.unit = text(type.unit, 30, 'Mértékegység');
@@ -109,6 +112,8 @@ export function validateBook(raw) {
     return book;
 }
 export function calculateQuote(input) {
+    if (input?.execution_catalog)
+        normalizeExecutionCatalog(input.execution_catalog.document);
     if (!input || !Array.isArray(input.sections) || input.sections.length > 100)
         throw Error('Legfeljebb 100 főtétel rögzíthető.');
     if (!['0', '27', 'aam'].includes(String(input.vat)))
@@ -251,7 +256,7 @@ export function calculateQuote(input) {
                 labor += lab;
                 const rate = input.hourly_rate ? decimal(input.hourly_rate, 'Ügyfélnek számlázott óradíj') : 0n;
                 const minutes = rate > 0n ? formatted(div(mul(lab, 60n * SCALE), rate)) : null;
-                return { id: line.id, label: cleanName(t.category) + ' – ' + cleanName(t.name), quantity: formatted(displayQuantity ?? quantity), unit: t.unit, parameter_note: second > 0n ? 'Második mennyiség: ' + money(second).replace(/\.?0+$/, '') + ' ' + t.unit2 : '', material_unit: money(line.agreement?.material_unit !== undefined ? materialUnit : second > 0n ? mul(materialUnit, second) : materialUnit), labor_unit: money(line.agreement?.labor_unit !== undefined ? laborUnit : second > 0n ? mul(laborUnit, second) : laborUnit), material: money(mat), labor: money(lab), net: money(mat + lab), minimum_adjustment: money(minimumApplied), public_note: text(line.public_note ?? '', 4000, 'Egyéb megjegyzés'), materials, planned_minutes: minutes, internal_info: t.internal_info, trace: { raw_material: money(rawMaterial), raw_labor: money(rawLabor), area: formatted(area), volume: formatted(volume), thickness_cm: formatted(thickness) } };
+                return { id: line.id, label: cleanName(t.category) + ' – ' + cleanName(t.name), quantity: formatted(displayQuantity ?? quantity), unit: t.unit, parameter_note: second > 0n ? 'Második mennyiség: ' + money(second).replace(/\.?0+$/, '') + ' ' + t.unit2 : '', material_unit: money(line.agreement?.material_unit !== undefined ? materialUnit : second > 0n ? mul(materialUnit, second) : materialUnit), labor_unit: money(line.agreement?.labor_unit !== undefined ? laborUnit : second > 0n ? mul(laborUnit, second) : laborUnit), material: money(mat), labor: money(lab), net: money(mat + lab), minimum_adjustment: money(minimumApplied), public_note: text(line.public_note ?? '', 4000, 'Egyéb megjegyzés'), materials, planned_minutes: minutes, internal_info: t.internal_info, trace: { quantity: formatted(quantity), length: formatted(length), count: formatted(countQty), raw_material: money(rawMaterial), raw_labor: money(rawLabor), area: formatted(area), volume: formatted(volume), thickness_cm: formatted(thickness) } };
             }
             catch (error) {
                 issues.push((si + 1) + '. főtétel, ' + (li + 1) + '. sor: ' + (error instanceof Error ? error.message : 'Hibás tétel.'));

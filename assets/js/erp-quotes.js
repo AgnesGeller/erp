@@ -1,5 +1,7 @@
-const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await import(new URL('./erp-quote-tools.js?v=0.14.1', import.meta.url).href);
-const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.14.1', import.meta.url).href);
+import { attachSorter, sortableHandle } from './erp-sortable.js';
+import { renderProcessEditor, ExecutionDesk } from './erp-execution-editor.js';
+const { quoteNumber, quoteInput, EditHistory, mailLinks, emailDraft } = await import(new URL('./erp-quote-tools.js?v=0.15.0', import.meta.url).href);
+const { calculateQuote } = await import(new URL('./erp-quote-engine.js?v=0.15.0', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const labels = { draft: 'Piszkozat', ready: 'Elkészült, kiküldésre vár', sent: 'Kiküldött', accepted: 'Elfogadott', rejected: 'Elutasított', withdrawn: 'Visszavont' };
 const eventNames = { entry_change_accepted: 'Kétoldalúan jóváhagyott változás', save: 'Mentés', ready: 'Elkészültnek jelölve', draft: 'Visszaállítva szerkesztésre', revise: 'Revízió indítva', accept: 'Árajánlat elfogadva', reject: 'Ajánlat elutasítva', withdraw: 'Ajánlat visszavonva', start: 'Kertépítés elindítva', mail_processing: 'Kiküldési rögzítés', mail_sent: 'Kiküldés visszaigazolva', manual_send_confirmed: 'Kézi kiküldés irodai visszaigazolása' };
@@ -25,6 +27,11 @@ export class QuoteDesk {
     chooseCustomer;
     completed;
     viewSurveyMedia;
+    executionCatalog = { revision: 0, document: { stages: [], categories: [] } };
+    executionDesk;
+    processCleanups = [];
+    quoteSortCleanup;
+    templateSortCleanup;
     history = new EditHistory();
     bookHistory = new EditHistory();
     pdfSequence = 0;
@@ -57,6 +64,7 @@ export class QuoteDesk {
         this.chooseCustomer = chooseCustomer;
         this.completed = completed;
         this.viewSurveyMedia = viewSurveyMedia;
+        this.executionDesk = new ExecutionDesk(api, () => { void this.loadBook(); });
         el('show-quotes').addEventListener('click', () => { void this.open(); });
         el('show-prices').addEventListener('click', () => { void this.open(true); });
         el('quote-new').addEventListener('click', () => { if (this.leave())
@@ -127,7 +135,7 @@ export class QuoteDesk {
     get editable() { return !this.current || this.current.quote.status === 'draft'; }
     message(value, kind = '') { const target = el(!el('prices-view').hidden ? 'price-feedback' : 'quote-feedback'); target.textContent = (kind === 'success' ? '✓ ' : '') + value; target.className = 'office-status ' + kind; }
     error(error) { this.message(error instanceof Error ? error.message : 'A művelet nem sikerült.', 'error'); this.authError(error); }
-    reset() { this.epoch++; this.history.reset(); this.bookHistory.reset(); this.closePreview(); clearTimeout(this.timer); this.org = undefined; this.changed = false; this.catalogChanged = false; this.loading = false; this.saving = false; this.input = undefined; this.current = undefined; this.pending = undefined; this.book = undefined; this.customer = undefined; this.rows = []; this.sites = []; this.bookRevision = 0; this.mailRequest = undefined; for (const id of ['quote-view', 'prices-view', 'quote-editor'])
+    reset() { this.quoteSortCleanup?.(); this.templateSortCleanup?.(); this.executionDesk.setOwner(undefined); this.processCleanups.splice(0).forEach(fn => fn()); this.executionCatalog = { revision: 0, document: { stages: [], categories: [] } }; this.epoch++; this.history.reset(); this.bookHistory.reset(); this.closePreview(); clearTimeout(this.timer); this.org = undefined; this.changed = false; this.catalogChanged = false; this.loading = false; this.saving = false; this.input = undefined; this.current = undefined; this.pending = undefined; this.book = undefined; this.customer = undefined; this.rows = []; this.sites = []; this.bookRevision = 0; this.mailRequest = undefined; for (const id of ['quote-view', 'prices-view', 'quote-editor'])
         el(id).hidden = true; for (const id of ['quote-list', 'quote-sections', 'price-type-editor', 'price-template-editor', 'price-info-editor', 'quote-history', 'quote-actions'])
         el(id).replaceChildren(); for (const id of ['quote-mail-dialog'])
         el(id).close(); if (this.objectUrl)
@@ -155,6 +163,7 @@ export class QuoteDesk {
             return;
         if (!data.book)
             throw Error('Az árlista még nincs feltöltve.');
+        this.executionCatalog = data.execution ?? this.executionCatalog;
         this.book = data.book.document;
         this.bookRevision = data.book.revision;
         this.renderBook();
@@ -177,11 +186,12 @@ export class QuoteDesk {
             return;
         if (!catalog.book)
             throw Error('Az árlista még nincs feltöltve.');
+        this.executionCatalog = catalog.execution ?? this.executionCatalog;
         this.book = catalog.book.document;
         this.bookRevision = catalog.book.revision;
         this.customer = { name: context.customer_name, ...context };
         this.sites = context.sites;
-        this.input = { title: '', customer_id: id, location_id: this.sites.length === 1 ? this.sites[0].id : '', vat: '0', hourly_rate: '', information: '', sections: [] };
+        this.input = { execution_catalog: structuredClone(this.executionCatalog), title: '', customer_id: id, location_id: this.sites.length === 1 ? this.sites[0].id : '', vat: '0', hourly_rate: '', information: '', sections: [] };
         this.current = undefined;
         this.renderEditor();
         this.message(this.sites.length ? 'Válaszd ki a címet, és add meg az ajánlat megnevezését.' : 'Az ügyfélhez nincs aktív, jóváhagyott munkavégzési cím.');
@@ -235,6 +245,7 @@ export class QuoteDesk {
         if (epoch !== this.epoch)
             return;
         this.current = saved;
+        this.executionCatalog = catalog.execution ?? this.executionCatalog;
         this.book = catalog.book.document;
         this.bookRevision = catalog.book.revision;
         const v = saved.versions.find((v) => v.version === saved.quote.current_version);
@@ -260,7 +271,7 @@ export class QuoteDesk {
         }
     } }
     async selectSurvey(payload) { await this.selectCustomer(payload.customer_id, ''); if (!this.input || this.input.customer_id !== payload.customer_id || !this.sites.some(s => s.id === payload.location_id))
-        throw Error('A felmérés munkavégzési címe most nem érhető el.'); this.input = structuredClone(payload); this.history.reset(this.input); this.changed = true; this.renderEditor(); this.message('A felmérés főtételei, méretei, jegyzetei és helyi fájlkapcsolatai átvéve. Add hozzá az árazott sorokat.'); }
+        throw Error('A felmérés munkavégzési címe most nem érhető el.'); this.input = { ...structuredClone(payload), execution_catalog: structuredClone(this.executionCatalog) }; this.history.reset(this.input); this.changed = true; this.renderEditor(); this.message('A felmérés főtételei, méretei, jegyzetei és helyi fájlkapcsolatai átvéve. Add hozzá az árazott sorokat.'); }
     touch(record = true) { if (record && this.input)
         this.history.remember(this.input, ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName ?? '') ? document.activeElement : undefined); this.edit++; this.changed = true; this.historyButtons(); this.queuePreview(); this.calculate(); clearTimeout(this.timer); if (this.current?.quote.status === 'draft' && !this.pending)
         this.timer = setTimeout(() => { if (!this.busy)
@@ -320,6 +331,52 @@ export class QuoteDesk {
         chosen(t); }); const rebuild = () => { typ.replaceChildren(new Option('Válassz típust', '')); for (const t of types.filter((t) => t.category === category).sort((a, b) => a.name.localeCompare(b.name, 'hu')))
         typ.add(new Option(t.name, t.id)); typ.value = current; }; rebuild(); }
     renderSections() {
+        this.quoteSortCleanup?.();
+        this.drawSections();
+        if (!this.input || !this.editable)
+            return;
+        const root = el('quote-sections');
+        root.dataset.sortContainer = 'areas';
+        for (const section of this.input.sections) {
+            const d = Array.from(root.querySelectorAll('details[data-section]')).find(x => x.dataset.section === section.id);
+            if (!d)
+                continue;
+            d.dataset.sortId = 'area/' + section.id;
+            sortableHandle(d, 'Főtétel húzása');
+            const field = d.querySelector('fieldset');
+            field.dataset.sortContainer = 'lines/' + section.id;
+            const shift = (rows, row, delta) => { if (this.busy || this.pending)
+                return; const at = rows.indexOf(row), target = at + delta; if (at < 0 || target < 0 || target >= rows.length)
+                return; [rows[at], rows[target]] = [rows[target], rows[at]]; this.touch(); this.renderSections(); };
+            field.append(button('Főtétel feljebb', () => shift(this.input.sections, section, -1)), button('Főtétel lejjebb', () => shift(this.input.sections, section, 1)));
+            for (const line of section.lines) {
+                const l = Array.from(field.querySelectorAll('[data-quote-line]')).find(x => x.dataset.quoteLine === line.id);
+                if (!l)
+                    continue;
+                l.dataset.sortId = 'line/' + line.id;
+                sortableHandle(l, 'Ajánlati tétel húzása');
+                l.append(button('Tétel feljebb', () => shift(section.lines, line, -1)), button('Tétel lejjebb', () => shift(section.lines, line, 1)));
+            }
+        }
+        this.quoteSortCleanup = attachSorter(root, m => { if (!this.input || !this.editable || this.busy || this.pending)
+            return; if (m.id.startsWith('area/') && m.container === 'areas') {
+            const rows = this.input.sections, at = rows.findIndex((r) => 'area/' + r.id === m.id), before = m.before ? rows.findIndex((r) => 'area/' + r.id === m.before) : rows.length;
+            if (at < 0 || before < 0)
+                return;
+            const [row] = rows.splice(at, 1);
+            rows.splice(before > at ? before - 1 : before, 0, row);
+        }
+        else if (m.id.startsWith('line/') && m.container.startsWith('lines/')) {
+            const target = this.input.sections.find((r) => 'lines/' + r.id === m.container), source = this.input.sections.find((r) => r.lines.some((l) => 'line/' + l.id === m.id));
+            if (!target || !source || m.before && !target.lines.some((l) => 'line/' + l.id === m.before))
+                return;
+            const at = source.lines.findIndex((l) => 'line/' + l.id === m.id), [row] = source.lines.splice(at, 1), before = m.before ? target.lines.findIndex((l) => 'line/' + l.id === m.before) : target.lines.length;
+            target.lines.splice(before, 0, row);
+        }
+        else
+            return; this.touch(); this.renderSections(); }, t => this.message(t));
+    }
+    drawSections() {
         const container = el('quote-sections');
         const opened = new Set(Array.from(container.querySelectorAll('details[data-section][open]')).map(d => d.dataset.section));
         container.replaceChildren();
@@ -355,6 +412,7 @@ export class QuoteDesk {
             field.append(button('+ Egyedi tétel', () => { section.lines.push({ id: uuid(), pricing: this.blankType(), params: {}, inherit: false, enabled: true, public_note: '' }); this.touch(); this.renderSections(); }));
             for (const line of section.lines) {
                 const l = fold(field, line.unresolved ? 'Pontosítandó: ' + line.unresolved : (line.pricing?.category + ' – ' + line.pricing?.name));
+                l.dataset.quoteLine = line.id;
                 const included = n('label', 'Tétel szerepeljen az ajánlatban'), check = document.createElement('input');
                 check.type = 'checkbox';
                 check.checked = line.enabled !== false;
@@ -436,8 +494,12 @@ export class QuoteDesk {
             return;
         this.current = saved;
         this.pending = undefined;
-        if (edit === this.edit)
+        if (edit === this.edit) {
             this.changed = false;
+            const latest = saved.versions.find((v) => v.version === saved.quote.current_version);
+            if (latest?.input?.execution_catalog)
+                this.input.execution_catalog = structuredClone(latest.input.execution_catalog);
+        }
         this.renderActions();
         this.renderHistory();
         el('quote-editor-title').textContent = saved.quote.number + ' · ' + (this.customer?.name ?? '');
@@ -611,8 +673,11 @@ export class QuoteDesk {
         this.bookHistory.reset(this.book); this.bookButtons(); const types = el('price-type'); types.replaceChildren(new Option('Válassz típust', '')); for (const t of [...this.book.types].sort((a, b) => (a.category + ' ' + a.name).localeCompare(b.category + ' ' + b.name, 'hu')))
         types.add(new Option(t.category + ' – ' + t.name, t.id)); types.value = this.typeId; el('price-count').textContent = this.book.types.length + ' típus · ' + new Set(this.book.types.map((t) => t.category)).size + ' kategória · ' + this.bookRevision + '. árlistaváltozat'; const templates = el('price-template'); templates.replaceChildren(new Option('Válassz sablont', '')); for (const t of this.book.templates)
         templates.add(new Option(t.name || 'Megnevezés szükséges', t.id)); templates.value = this.templateId; this.renderType(); this.renderTemplate(); this.renderInfo(); }
-    renderType() { const editor = el('price-type-editor'); editor.replaceChildren(); const t = this.book?.types.find((v) => v.id === this.typeId); if (!t)
-        return; const change = () => { this.touchBook(); }; for (const [key, label] of [['category', 'Kategória'], ['name', 'Típus'], ['unit', 'Mértékegység'], ['unit2', 'Második mértékegység – ha szükséges']])
+    renderType() { this.processCleanups.splice(0).forEach(fn => fn()); const editor = el('price-type-editor'); editor.replaceChildren(); const t = this.book?.types.find((v) => v.id === this.typeId); if (!t)
+        return; const change = () => { this.touchBook(); }; const execButton = button('Kategóriák és szakaszok alapbeállításai', () => { if (this.org && !this.dirty && !this.busy)
+        void this.executionDesk.showCatalog(this.org, this.org);
+    else
+        this.message('Előbb mentsd az árlista módosításait.'); }); editor.append(execButton); this.processCleanups.push(renderProcessEditor(editor, t, this.executionCatalog.document.stages, change)); for (const [key, label] of [['category', 'Kategória'], ['name', 'Típus'], ['unit', 'Mértékegység'], ['unit2', 'Második mértékegység – ha szükséges']])
         input(editor, label, t[key], v => { t[key] = v; change(); }); select(editor, 'Számítási mód', t.mode, Object.entries(modes), v => { t.mode = v; if (v === 'custom') {
         t.fields ??= [{ key: 'q1', label: 'Mennyiség', unit: t.unit, required: true, inherit: '' }];
         t.quantity_formula ??= 'q1';
@@ -635,7 +700,20 @@ export class QuoteDesk {
     } this.pricing(fold(editor, 'Árösszetevők és minimumdíjak'), t, change); const defaults = fold(editor, 'Paraméterek alapértékei'); for (const [key, label] of fieldsFor(t))
         input(defaults, label, t.defaults?.[key], v => { t.defaults ??= {}; t.defaults[key] = v; change(); }, 'number'); this.materials(fold(editor, 'Anyagjegyzék és ráhagyás'), t, change); input(editor, 'Hasznos információk – csak belső munkautasítás', t.internal_info, v => { t.internal_info = v; change(); }, 'textarea', 12000); if (t.source)
         editor.append(n('p', 'Forrás: ' + t.source.sheet + ' · ' + t.source.row + '. sor')); }
-    renderTemplate() { const editor = el('price-template-editor'); editor.replaceChildren(); const t = this.book?.templates.find((v) => v.id === this.templateId); if (!t)
+    renderTemplate() { this.templateSortCleanup?.(); this.drawTemplate(); const root = el('price-template-editor'), t = this.book?.templates.find((v) => v.id === this.templateId); if (!t)
+        return; root.dataset.sortContainer = 'template'; const rows = Array.from(root.querySelectorAll(':scope > details')); for (let i = 0; i < t.lines.length; i++) {
+        const row = rows[i];
+        if (!row)
+            continue;
+        row.dataset.sortId = 'template/' + i;
+        sortableHandle(row, 'Sablonsor húzása');
+        const shift = (delta) => { const at = i, target = at + delta; if (this.busy || target < 0 || target >= t.lines.length)
+            return; [t.lines[at], t.lines[target]] = [t.lines[target], t.lines[at]]; this.touchBook(); this.renderTemplate(); };
+        row.append(button('Sablonsor feljebb', () => shift(-1)), button('Sablonsor lejjebb', () => shift(1)));
+    } this.templateSortCleanup = attachSorter(root, m => { if (this.busy || m.container !== 'template')
+        return; const at = Number(m.id.split('/')[1]), target = m.before ? Number(m.before.split('/')[1]) : t.lines.length; if (!Number.isInteger(at) || at < 0 || at >= t.lines.length || target < 0 || target > t.lines.length)
+        return; const [row] = t.lines.splice(at, 1); t.lines.splice(target > at ? target - 1 : target, 0, row); this.touchBook(); this.renderTemplate(); }, text => this.message(text)); }
+    drawTemplate() { const editor = el('price-template-editor'); editor.replaceChildren(); const t = this.book?.templates.find((v) => v.id === this.templateId); if (!t)
         return; const change = () => { this.touchBook(); }; input(editor, 'Sablon neve', t.name, v => { t.name = v; change(); }); for (const row of t.lines) {
         const type = this.book?.types.find((v) => v.id === row.type_id);
         const d = fold(editor, type ? type.category + ' – ' + type.name : 'Pontosítandó: ' + row.unresolved);
@@ -670,7 +748,7 @@ export class QuoteDesk {
         return;
     } if (this.catalogChanged && !confirm('A még nem mentett árlista-módosításokat felváltja az import. Folytatod?'))
         return; const epoch = this.epoch; this.loading = true; try {
-        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.14.1', import.meta.url).href);
+        const { readCalculator } = await import(new URL('./erp-calculator-import.js?v=0.15.0', import.meta.url).href);
         const imported = await readCalculator(file);
         if (epoch !== this.epoch)
             return;

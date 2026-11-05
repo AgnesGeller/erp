@@ -3,7 +3,7 @@
 export type WorkRole='construction_worker'|'gardener'|'construction_lead'|'maintenance_lead'|'office'|'client';
 export type Level=0|1|2|3;
 export type Share={person_id:string;basis_points:number};
-export type Approval={id:string;level:Level;actor_id:string;role:WorkRole;subjects:string[];at:string;round:number};
+export type Approval={id:string;level:Level;actor_id:string;role:WorkRole;subjects:string[];at:string;round:number;reference_only?:boolean};
 export type MediaRef={id:string;name:string;mime:string;bytes:number;visibility:'team'|'client';sha256?:string};
 export interface TaskState{
  id:string;source_line_id:string|null;section:string;title:string;quantity:string;unit:string;
@@ -76,7 +76,7 @@ export function effectiveAcceptance(task:TaskState,level:Level){
  if(!source.length)for(let i=level+1;i<=3;i++){source=task.approvals.filter(a=>a.level===i);if(source.length)break;}
  if(!source.length)return {accepted:false,explicit:false,shares:[] as Share[]};
  const shares=level===0&&task.shares.length?structuredClone(task.shares):exact.length?equalShares(exact.flatMap(a=>a.subjects)):equalShares(source.map(a=>a.actor_id));
- return {accepted:true,explicit:exact.length>0,shares};
+ return {accepted:true,explicit:exact.some(a=>!a.reference_only),shares};
 }
 export function progressSummary(tasks:TaskState[]){
  const total=tasks.reduce((sum,t)=>sum+decimalUnits(t.labor),0n),known=tasks.every(t=>t.planned_minutes!==null),minutes=tasks.reduce((sum,t)=>sum+(t.planned_minutes===null?0n:decimalUnits(t.planned_minutes,6)),0n);
@@ -87,8 +87,8 @@ export function progressSummary(tasks:TaskState[]){
   return {level,percent:ratio(complete),completed_labor:amount(complete),total_labor:amount(total),completed_minutes:known?amount(doneMinutes,6):null,remaining_minutes:known?amount(minutes-doneMinutes,6):null,zero_done:zeroDone,zero_total:zeroTotal,people:[...perPerson].map(([person_id,numerator])=>({person_id,percent:total?Number((numerator*100n+total/2n)/total)/10000:null}))};
  });
 }
-export function validateTaskGraph(tasks:TaskState[]){
- if(!Array.isArray(tasks)||tasks.length>1000)fail('Egy terv legfeljebb ezer munkafázist tartalmazhat.');const map=new Map(tasks.map(t=>[t.id,t]));if(map.size!==tasks.length)fail('Ismételt munkafázis-azonosító.');
+export function validateTaskGraph(tasks:TaskState[],maxTasks=1000){
+ if(!Array.isArray(tasks)||tasks.length>maxTasks)fail('A munkaterv túl sok munkafázist tartalmaz.');const map=new Map(tasks.map(t=>[t.id,t]));if(map.size!==tasks.length)fail('Ismételt munkafázis-azonosító.');
  const incoming=new Map<string,number>(),followers=new Map<string,string[]>();
  for(const t of tasks){if(!t.id||!text(t.title,500).trim()||!text(t.section,200).trim()||!Number.isSafeInteger(t.sort)||t.sort<0)fail('Ellenőrizd a munkafázis nevét és sorrendjét.');decimalUnits(t.labor);decimalUnits(t.net);if(t.planned_minutes!==null)decimalUnits(t.planned_minutes,6);
   for(const day of [t.start_date,t.end_date])if(day!==null&&(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(Date.parse(day+'T12:00:00Z'))||new Date(day+'T12:00:00Z').toISOString().slice(0,10)!==day))fail('Érvénytelen ütemezési nap.');if(t.start_date&&t.end_date&&t.end_date<t.start_date)fail('A befejezés nem lehet a kezdés előtt.');

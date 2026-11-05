@@ -1,4 +1,5 @@
-const { calendarIntensityDescriptions, calendarQualityDescriptions } = await import(new URL('./erp-calendar-model.js?v=0.14.1', import.meta.url).href);
+import { attachSorter, sortableHandle } from './erp-sortable.js';
+const { calendarIntensityDescriptions, calendarQualityDescriptions } = await import(new URL('./erp-calendar-model.js?v=0.15.0', import.meta.url).href);
 export const calNode = (tag, text = '') => { const el = document.createElement(tag); el.textContent = text; return el; };
 export function calButton(parent, label, run, quiet = true) { const b = calNode('button', label); b.type = 'button'; if (quiet)
     b.className = 'quiet'; b.addEventListener('click', run); parent.append(b); return b; }
@@ -35,8 +36,11 @@ export class CalendarPlanEditor {
         const tasks = calNode('section');
         tasks.className = 'calendar-tasks';
         parent.append(tasks);
+        tasks.dataset.sortContainer = 'calendar-tasks';
         for (const [index, t] of doc.tasks.entries()) {
             const box = calFold(tasks, (index + 1) + '. ' + (t.customerName || t.jobs?.[0]?.name || 'Új feladat') + (t.startTime ? ' · ' + t.startTime : ''), false);
+            box.dataset.sortId = t.id;
+            sortableHandle(box, 'Napi feladat húzása');
             const actions = calNode('div');
             actions.className = 'calendar-actions';
             box.append(actions);
@@ -75,11 +79,19 @@ export class CalendarPlanEditor {
                 calPick(timing, label, t[key] ?? [], this.catalog(kind), values => { this.change(() => { for (const x of doc.tasks.filter((x) => x.teamId === t.teamId))
                     x[key] = values; }); this.redraw(); });
             const jobs = calFold(box, 'Feladatok és munkalépések (' + t.jobs.length + ')');
+            jobs.dataset.sortContainer = 'jobs/' + t.id;
             for (const [ji, j] of t.jobs.entries()) {
                 const jb = calFold(jobs, j.name || 'Új munkarész');
+                jb.dataset.sortId = j.id;
+                sortableHandle(jb, 'Munkarész húzása');
                 calField(jb, 'Munkarész neve', j.name, v => this.change(() => j.name = v));
                 calField(jb, 'Munkautasítás', j.note, v => this.change(() => j.note = v), 'textarea');
-                calField(jb, 'Lépések – soronként egy', j.steps.join('\n'), v => this.change(() => j.steps = v.split('\n').filter(x => x.trim())), 'textarea');
+                const steps = calFold(jb, 'Munkalépések sorrendje');
+                steps.dataset.sortContainer = 'steps/' + j.id;
+                j.steps.forEach((step, si) => { const line = calNode('div'); line.dataset.sortId = 'step/' + j.id + '/' + si; steps.append(line); sortableHandle(line, 'Munkalépés húzása'); calField(line, 'Lépés ' + (si + 1), step, v => this.change(() => j.steps[si] = v)); calButton(line, 'Lépés kivétele', () => { this.change(() => j.steps.splice(si, 1)); this.redraw(); }); if (si > 0)
+                    calButton(line, 'Lépés feljebb', () => { this.change(() => { [j.steps[si - 1], j.steps[si]] = [j.steps[si], j.steps[si - 1]]; }); this.redraw(); }); if (si < j.steps.length - 1)
+                    calButton(line, 'Lépés lejjebb', () => { this.change(() => { [j.steps[si + 1], j.steps[si]] = [j.steps[si], j.steps[si + 1]]; }); this.redraw(); }); });
+                calButton(steps, 'Új munkalépés', () => { this.change(() => j.steps.push('')); this.redraw(); });
                 calButton(jb, 'Munkarész kivétele', () => { this.change(() => t.jobs.splice(ji, 1)); this.redraw(); });
                 if (ji > 0)
                     calButton(jb, 'Munkarész feljebb', () => { this.change(() => { [t.jobs[ji - 1], t.jobs[ji]] = [t.jobs[ji], t.jobs[ji - 1]]; }); this.redraw(); });
@@ -102,6 +114,9 @@ export class CalendarPlanEditor {
             calField(expectations, 'Irodai megjegyzés', t.notes, v => this.change(() => t.notes = v), 'textarea');
         }
         calButton(parent, 'Új napi feladat', () => { const id = crypto.randomUUID(); this.change(() => doc.tasks.push({ id, teamId: id, entryType: 'customer', customerId: null, locationId: null, customerName: '', address: '', startTime: '', endTime: '', endDate: doc.date, workerIds: [], vehicleIds: [], jobs: [], toolIds: [], toolQuantities: {}, extraTools: '', materials: [], workLogRequired: true, workIntensity: 3, workQuality: 3, notes: '', work_type: 'internal' })); this.redraw(); }, false);
+        attachSorter(tasks, m => { const parentTask = doc.tasks.find((t) => m.container === 'jobs/' + t.id); const job = doc.tasks.flatMap((t) => t.jobs).find((j) => m.container === 'steps/' + j.id); const rows = m.container === 'calendar-tasks' ? doc.tasks : parentTask?.jobs ?? job?.steps ?? []; let at = job ? Number(m.id.split('/').at(-1)) : rows.findIndex(x => x.id === m.id); if (at < 0 || at >= rows.length)
+            return; const target = job ? (m.before ? Number(m.before.split('/').at(-1)) : rows.length) : (m.before ? rows.findIndex(x => x.id === m.before) : rows.length); if (target < 0)
+            return; this.change(() => { const [item] = rows.splice(at, 1); rows.splice(target > at ? target - 1 : target, 0, item); }); this.redraw(); }, () => { });
         const appointments = calFold(parent, 'Előjegyzések (' + doc.workItems.length + ')');
         for (const [i, w] of doc.workItems.entries()) {
             const row = calFold(appointments, w.customerName || 'Új előjegyzés');

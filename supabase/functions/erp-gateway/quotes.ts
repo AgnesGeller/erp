@@ -1,6 +1,7 @@
+import {freezeExecutionQuote} from './execution-model.ts';
 import {calculateQuote,customerQuote,validateBook,quoteChanges,type Obj} from './quote-engine.ts';
 type Result={data?:unknown;error?:string;status?:number};
-type Options={url:string;key:string;fetchImpl?:typeof fetch;context:(org:string,customer:string,token:string,actor:string,memberships:unknown)=>Promise<Result>;pdf:(data:any,normal:boolean)=>Promise<Uint8Array>};
+type Options={executionCatalog?:boolean;url:string;key:string;fetchImpl?:typeof fetch;context:(org:string,customer:string,token:string,actor:string,memberships:unknown)=>Promise<Result>;pdf:(data:any,normal:boolean)=>Promise<Uint8Array>};
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 class QuoteError extends Error{constructor(public status:number,message:string){super(message);}}
 const encode=(bytes:Uint8Array)=>{let s='';for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s);};
@@ -17,7 +18,7 @@ export function createQuotes(options:Options){
   try{
    const org=input.organization_id;if(!uuid(org)||!Array.isArray(memberships)||!memberships.some(m=>m.organization_id===org&&m.is_office===true))throw new QuoteError(403,'Irodai jogosultság szükséges.');
    const common={p_org:org,p_actor:actor};
-   if(input.action==='quote_catalog')return {data:{book:await rpc('erp_quote_catalog',{p_org:org},token),manual_email:true}};
+   if(input.action==='quote_catalog')return {data:{book:await rpc('erp_quote_catalog',{p_org:org},token),manual_email:true,...(options.executionCatalog?{execution:await rpc('erp_execution_catalog_read',{...common},token,true)}:{})}};
    if(input.action==='quote_list')return {data:await rpc('erp_quotes_list',{p_org:org},token)};
    if(input.action==='quote_context')return {data:await context(org,input.customer_id,token,actor,memberships)};
    if(input.action==='quote_catalog_save'){
@@ -25,7 +26,7 @@ export function createQuotes(options:Options){
    }
    if(input.action==='quote_save'){
     if(!uuid(input.request_id)||input.quote_id!==null&&!uuid(input.quote_id)||!Number.isSafeInteger(input.revision))throw Error('Érvénytelen mentési azonosító.');
-    const payload=structuredClone(input.payload);if(payload?.sections?.some((s:Obj)=>s.lines?.some((l:Obj)=>l.agreement)))throw new QuoteError(422,'Jóváhagyott feltételt csak a külön változáskérelem kezelhet.');const calculation=requireInput(payload);const customer=await context(org,payload.customer_id,token,actor,memberships);const site=customer.sites.find((s:Obj)=>s.id===payload.location_id);if(!site)throw new QuoteError(422,'A munkavégzési cím nem érhető el.');
+    let payload=structuredClone(input.payload);if(options.executionCatalog){const catalog=payload.execution_catalog??await rpc('erp_execution_catalog_read',common,token,true);payload=freezeExecutionQuote(payload,catalog);}if(payload?.sections?.some((s:Obj)=>s.lines?.some((l:Obj)=>l.agreement)))throw new QuoteError(422,'Jóváhagyott feltételt csak a külön változáskérelem kezelhet.');const calculation=requireInput(payload);const customer=await context(org,payload.customer_id,token,actor,memberships);const site=customer.sites.find((s:Obj)=>s.id===payload.location_id);if(!site)throw new QuoteError(422,'A munkavégzési cím nem érhető el.');
     return {data:await rpc('erp_quote_save',{...common,p_request:input.request_id,p_quote:input.quote_id,p_revision:input.revision,p_input:payload,p_calculation:calculation,p_customer:{name:customer.customer_name,address:site.address,email:customer.email??'',phone:customer.phone??'',billing_name:customer.billing_name??'',billing_address:customer.billing_address??'',tax_number:customer.tax_number??''}},token,true)};
    }
    if(input.action==='quote_pdf'&&input.payload){const payload=structuredClone(input.payload);if(!uuid(payload.customer_id))throw new QuoteError(422,'Válassz ügyfelet.');if(payload.location_id&&!uuid(payload.location_id))throw new QuoteError(422,'Érvénytelen munkavégzési cím.');payload.title=payload.title?.trim()?payload.title:'Árajánlat';const output=calculateQuote(payload);const customer=await context(org,payload.customer_id,token,actor,memberships);const site=customer.sites.find((s:Obj)=>s.id===payload.location_id);if(payload.location_id&&!site)throw new QuoteError(422,'A munkavégzési cím nem érhető el.');const bytes=await options.pdf({number:'MUNKAVÁLTOZAT',date:new Date().toISOString(),title:payload.title,customer:{name:customer.customer_name,address:site?.address??'Még nincs kiválasztva',email:customer.email,phone:customer.phone,billing_name:customer.billing_name,billing_address:customer.billing_address,tax_number:customer.tax_number},calculation:customerQuote(output,true)},input.normal===true);return {data:{pdf:encode(bytes),filename:'Diszkertek_munkavaltozat.pdf'}};}

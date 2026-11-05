@@ -1,6 +1,6 @@
 # Kivitelezési szakaszok és rendezés
 
-**Állapot:** helyi kiadásjelölt, 553 sikeres teszttel. Az utolsó mobilos szemrevételezés még nyitott a tesztböngésző elakadása miatt; az új változat még nincs élesítve.
+**Állapot:** ERP 0.15.0; 553 sikeres teszt, ellenőrzött asztali és mobilnézet.
 
 Az ajánlati **terület** és a kivitelezési **szakasz** külön fogalom. Például a füvesítés és az ágyás földkitermelése ugyanabba a 2. szakaszba kerülhet. A területi lista és a szerződéses ár ettől nem változik.
 
@@ -17,6 +17,10 @@ Az ajánlati **terület** és a kivitelezési **szakasz** külön fogalom. Péld
 **Besorolásra vár:** az iroda még jelölje ki a megfelelő szakaszt. Az üres ideiglenes szakasz kivehető; a nyitó legyen első, a záró utolsó. Jóváhagyott munkatartalom-változásnál az érintett részek új átvételi körbe és ellenőrzendő besorolásba kerülnek.
 
 ![Húzással rendezés helyi, szintetikus próbája](kepek/szakaszok-rendezese.png)
+
+A mobilnézet sem lóg ki oldalra; a bezárógomb a fejlécben marad.
+
+![Ellenőrzött mobilnézet](kepek/szakaszok-mobil.png)
 
 ## Átvétel, munkaidő és pénzügy
 

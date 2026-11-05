@@ -445,3 +445,13 @@ A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontos
 - A kiinduló éles gateway v27 mind a 29 fájlja egyezik a korábban feltöltött Git-verzióval. Az érintett saját adatbázisfüggvények ellenőrzése megtörtént; a karbantartási kivétel megmaradt. A két saját migráció egyetlen, 13 definíció-ellenőrzéssel védett helyi csomagban is elő van készítve.
 - **Nincs új éles adatbázismódosítás, gateway-telepítés vagy push.** Az online alkalmazás továbbra is 0.14.1. A 0.15.0 helyi kiadásjelölt.
 - Következő lépés: a tesztböngésző helyreállítása után a javított mobilnézet utolsó szemrevételezése, majd ellenőrzött saját ERP-élesítés, visszaellenőrzés és main push. Más fejlesztési témát nem kezdtünk el a nyitott ellenőrzés előtt.
+
+
+### A 0.15.0 kiadás ellenőrzött élesítése
+
+- Az újraindítás után az utolsó mobilpróba is sikeres. A 390 px-es próbában a párbeszédablak `clientWidth` és `scrollWidth` értéke egyaránt 342 px; a bezárás működik. A gombok kényelmes sorba tördelődnek.
+- A 13 kiinduló saját függvény lenyomata változatlan volt; a hét új tábla még nem létezett. A két migráció egy, ellenőrző feltételekkel védett tranzakcióban települt.
+- Saját `erp-gateway` v28: 32 fájl, telepítés után mind visszaolvasva és egyezőnek ellenőrizve. A meglévő saját hitelesítés megmaradt; Auth-fiók és más alkalmazás nem változott.
+- Mind a hét új tábla RLS/FORCE RLS védelemmel, közvetlen anon/authenticated/service_role táblajog nélkül működik. A védett katalógus olvasási próbája sikeres, a belépés nélküli HTTP-kérés 401-et kapott.
+- A [RLS-ellenőrző tájékoztatója](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) szerinti policy nélküli jelzés itt a kizárólag védett saját függvényekre épülő modell része; a táblák közvetlen jogai külön ellenőrizve tiltottak. A friss indexek használatlansága tájékoztató jelzés, új hiányzó idegenkulcs-indexet nem jelzett az ellenőrző.
+- A korábbi helyi kiadásjelöltről szóló bejegyzés történeti mentési pont; a mobilos akadály megszűnt. A rövid README és a képes használat aktualizálva.

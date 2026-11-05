@@ -1,5 +1,7 @@
 # A főnök szakaszolási pontosítása
 
+**Friss állapot:** a szakaszolás és rendezés 0.15.0-ban elkészült; [használat és ellenőrzések](szakaszolas-hasznalat.md). Az alábbi leírás az eredeti pontosítást és kiinduló helyzetet őrzi. A külön felsorolt további főnöki kérések még nyitottak.
+
 2026. november 4. · Követelményfeljegyzés. A [részletes terv](szakaszolas-es-huzassal-rendezes-terv.md) és a felhasználó megvalósítási jóváhagyása alapján a fejlesztés megkezdhető; a funkció még nincs kész.
 
 ## Elvárt eredmény

@@ -55,3 +55,5 @@ dialog{max-height:calc(100svh - 24px);overflow-y:auto;overscroll-behavior:contai
 .office-dialog.execution-dialog{width:min(70rem,calc(100vw - 32px));max-width:min(70rem,calc(100vw - 32px))}.execution-dialog summary>.sort-handle{float:right;margin-inline:.4rem}.execution-head h2{max-width:65%;overflow-wrap:anywhere}@media(max-width:600px){.execution-head h2{font-size:1.1rem}.execution-dialog .plan-actions{gap:.3rem}.execution-dialog .plan-actions button{padding:.6rem}}
 
 .execution-dialog button{max-width:100%;white-space:normal;overflow-wrap:anywhere}.execution-dialog summary{overflow-wrap:anywhere}.execution-dialog input,.execution-dialog textarea,.execution-dialog select{max-width:100%;box-sizing:border-box}.execution-dialog .execution-head{min-width:0}.execution-dialog .execution-head h2{min-width:0}
+
+@media(max-width:600px){.execution-dialog .plan-actions{flex-wrap:wrap}.execution-dialog .plan-actions button{flex:1 1 8rem;min-width:0;overflow-wrap:normal;word-break:normal}}

@@ -1,6 +1,6 @@
 # A fejlesztői PDF teljesítési állapota
 
-Ellenőrzés: **2026. november 4. – ERP 0.14.1**. Alap: a 15 oldalas teljes fejlesztői specifikáció, a kiegészítés és az azóta jóváhagyott döntések. Ez állapotfelmérés, nem készre jelentés. A teljes megbízásból az alábbi hátralévő részek is megvalósítandók.
+Ellenőrzés: **2026. november 5. – ERP 0.15.0**. Alap: a 15 oldalas teljes fejlesztői specifikáció, a kiegészítés és az azóta jóváhagyott döntések. Ez állapotfelmérés, nem készre jelentés. A teljes megbízásból az alábbi hátralévő részek is megvalósítandók.
 
 | Terület / PDF-fejezet | Jelenlegi állapot | Mi hiányzik még? |
 | --- | --- | --- |
@@ -40,3 +40,10 @@ Az eredeti üzleti szabályok megtartásával elkészült a Kiss Csaba-minta sze
 ## 0.14.1 – Munkanapi anyagkapcsolat és következő pontosítás
 
 A kertépítési napi munkalapon elérhető az adott nap beszállítás/beépítés összesítése és rögzítőfelülete, valamint az irodai anyagtörzs. A korábbi időlap-export nem tartalmazza automatikusan az anyagnaplót. A főnök új, területeken átívelő sorszámos részszakaszai és azok szabad, húzással történő szerkesztése még következő fejlesztés; [rögzített követelmények](fonoki-szakaszolas-pontositas.md).
+
+
+## 0.15.0 – Kivitelezési szakaszok és részfolyamatok
+
+Elkészült a területeken átívelő, sorszámos szakaszolás; a kategória-/típusszintű részfolyamatok; a rögzített ajánlati alap; a kézi/húzásos és billentyűzetes rendezés. Az átvétel, napi munkaidő, pénzügyi/jutaléksúly és PDF a saját részfeladatokat követi. A meglévő munkák csak külön, irodai ellenőrzés után válthatók át. [Rövid használat](szakaszolas-hasznalat.md).
+
+A korábban rögzített további főnöki kérésekből az önálló negyedik, építésvezetői munkacsomag, a jutalékarány, a központi földtérfogat-ráhagyás és a külön dolgozói színbeállító felület még hátravan. A teljes ERP és üzleti átadás további nyitott pontjai továbbra is érvényesek.

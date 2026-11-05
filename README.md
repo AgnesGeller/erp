@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.15.0 – helyi kiadásjelölt** (online: 0.14.1)
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.15.0**
 
 ## Mi használható?
 
@@ -34,7 +34,7 @@ HTML, CSS, TypeScript; Supabase saját ERP-sémákkal. Az eredeti fejlesztői PD
 
 Az ERP saját mappájában: `npm run build`, `npm test`, `npm run check:edge`.
 
-Legutóbbi ellenőrzés: **2026. november 5., 553 sikeres helyi teszt**, fordítás, kiszolgáló-típusellenőrzés és asztali szintetikus böngésző-/PDF-próba. A mobiljavítás ismételt szemrevételezése a tesztböngésző elakadása miatt még nyitott; élesítés/push nem történt.
+Legutóbbi ellenőrzés: **2026. november 5., 553 sikeres helyi teszt**, fordítás, kiszolgáló-típusellenőrzés és asztali/mobil szintetikus böngésző-/PDF-próba.
 
 [Adatbázisterv](docs/adatbazisterv.md) · [Jogosultságok](docs/szerepkorok.md) · [Fejlesztési napló](docs/fejlesztesi-naplo.md) · [Részletes dokumentáció](docs/reszletes-projektleiras.md)
 

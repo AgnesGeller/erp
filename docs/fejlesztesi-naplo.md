@@ -530,3 +530,10 @@ A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontos
 - 58 másodperces, magyar feliratos, hang nélküli MP4 készült a dokumentált ERP-képekből: 1600×900, H.264, kb. 0,4 MB. Ez képernyőképes áttekintés szemléltető próbaadatokkal, nem élő kattintásos felvétel. Dekódolt középső képkocka, hossz és formátum ellenőrizve; küldhető ZIP és vezetői összefoglaló mellékelve.
 - A videósegéd a hivatalos PyPI imageio-ffmpeg csomag SHA-256-tal ellenőrzött kerekéből, kizárólag a saját figyelmen kívül hagyott .local mappába lett kibontva; sem globális, sem más projektbeli Python-/Node-csomagtelepítés nem történt. A szerkesztői képek az ERP dokumentációjából származnak.
 - Csak ERP-felület és saját dokumentáció/média változott; nincs szerver-, adatbázis-, Auth- vagy más alkalmazást érintő módosítás.
+
+## 2026. november 6. – Magyar narrációs, zenés bemutató
+
+- Felhasználói kérésre részletesebb, közérthetőbb, 90 másodperces videó készült. Tíz jelenet: fő funkciók, majd két külön képernyő a hátralévő feladatokról. A korábbi 58 másodperces néma változat megmaradt.
+- Magyar Microsoft Szabolcs gépi narráció a már telepített Windows SpeechSynthesis API-val; saját, helyben szintetizált halk instrumentális zene. Nincs új előfizetés, külső hangszolgáltatás, rendszerbeállítás- vagy csomagtelepítés. A Windows szkriptfájl-házirendje nem változott.
+- MP4 H.264/AAC, 1600×900, 90 másodperc, kb. 2 MB. A beszéd jelenetenként illesztett; hangszint, dekódolhatóság és a végén megjelenő feladatlista ellenőrizve. A ZIP narrációszöveget, feliratot és vezetői összefoglalót is tartalmaz. Képernyőképes áttekintés, próbaadatokkal, nem élő kattintásos felvétel.
+- Csak ERP-dokumentáció és bemutatómédia módosult; alkalmazáskódhoz, adatbázishoz és más projekthez nem nyúltunk. Az alkalmazás verziója változatlanul 0.16.6; új alkalmazástesztet a médiamódosítás miatt nem futtattunk.

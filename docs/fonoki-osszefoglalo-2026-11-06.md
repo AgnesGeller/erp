@@ -4,7 +4,7 @@
 
 **Tegnap:** elkészült a kertépítési munkák sorszámos szakaszolása. A különböző területek azonos munkafolyamatai közös kivitelezési szakaszba rendezhetők, a sorrend húzással módosítható. A részfeladatokhoz kapcsolódik az átvétel, a munkaidő, az anyagok és a munkacsomag. Elkészült a referenciamodul is: bemutatószöveg, négy képcsoport, külön honlap-, Facebook- és Instagram-változat, előnézet és letölthető csomag.
 
-**Ma:** sikerült beállítani és ellenőrizni a WordPress-kapcsolatot. A piszkozatkészítés és a nyilvános közzététel külön művelet; automatikus publikálás nincs. A referenciaszerkesztő oldalanként egy teendővel, Vissza/Tovább gombokkal vezet végig, és mindig mutatja a kiválasztott munkát. Az irodai menü választás után becsukódik; az automatikus belépés stabil jelzést kapott, és a kezdőlap nem várja meg a rejtett listák betöltését. Elkészült egy 58 másodperces, feliratos, képernyőképes MP4-bemutató is.
+**Ma:** sikerült beállítani és ellenőrizni a WordPress-kapcsolatot. A piszkozatkészítés és a nyilvános közzététel külön művelet; automatikus publikálás nincs. A referenciaszerkesztő oldalanként egy teendővel, Vissza/Tovább gombokkal vezet végig, és mindig mutatja a kiválasztott munkát. Az irodai menü választás után becsukódik; az automatikus belépés stabil jelzést kapott, és a kezdőlap nem várja meg a rejtett listák betöltését. Elkészült az 58 másodperces feliratos, valamint a részletesebb, 90 másodperces, magyar narrációval és halk zenével kísért képernyőképes MP4-bemutató is; utóbbi a hátralévő feladatokat is ismerteti.
 
 **A teljes projektből még hátravan:**
 

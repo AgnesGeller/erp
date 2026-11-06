@@ -1,0 +1,31 @@
+DÍSZKERTEK ERP – magyar narráció
+
+DÍSZKERTEK
+Bemutatjuk a Díszkertek vállalatirányítási alkalmazás már elkészült részeit. A képernyőkön szemléltető próbaadatok láthatók.
+
+Hol kezdjük?
+A kezdőlapon ügyfelet kereshetünk, ajánlatot készíthetünk, vagy kiválaszthatjuk a kertépítést és a karbantartást. A beállítások külön menüben találhatók.
+
+Mi tartozik a munkához?
+A munkacsomag munkaterületenként mutatja az elvégzendő feladatokat. Kinyomtatható, így a helyszínen is követhető.
+
+Milyen sorrendben dolgozunk?
+A részfeladatok közös kivitelezési szakaszokba rendezhetők. A sorrend húzással módosítható. Az átvétel négy szerepkör szerint történik.
+
+Idő és anyag a munkanapon
+A napi munkalapon követjük a munkaidőt. Az anyagoknál külön látszik a beszállított és a beépített mennyiség.
+
+Mennyivel tartozik az ügyfél?
+A karbantartási munkalapból ügyfélelszámolás készül. A pénzügyi nézet mutatja a megrendelést, az előleget, a befizetéseket és az egyenleget.
+
+Ki, mikor, hol dolgozik?
+A heti naptárban áttekinthetők a tervezett munkák, a munkatársak és az eszközök beosztásai.
+
+Hogyan készül a referencia?
+A referenciakészítés oldalanként egy teendőn vezet végig. A Tovább gomb ment. A Vissza megőrzi a beírtakat. A közzététel külön jóváhagyást igényel.
+
+Mi van még hátra?
+Hátravan a vezetői áttekintés és a csoportosított teendőlista, a magyar diktálás és a mesterséges intelligencia teljes bekötése. Készül még az építésvezetői munkacsomag, a jutalékarány, a földráhagyás és a munkatársi színek beállítása.
+
+A projekt befejezése
+Befejezendő az adatátvétel, az eszközszinkron, a dolgozói csatlakozás és értesítéskezelés, a beszállítói Excel-beolvasás, a biztonságos törlés, valamint a honlapi megjelenés. Ezután következik a végleges üzleti átadás. A régi alkalmazások változatlanok.

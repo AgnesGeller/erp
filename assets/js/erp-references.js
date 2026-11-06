@@ -4,7 +4,7 @@ import { addDialogDismiss } from './erp-dialogs.js';
 import { attachSorter, sortableHandle } from './erp-sortable.js';
 const n = (tag, text = '') => { const e = document.createElement(tag); e.textContent = text; return e; };
 function button(parent, title, action) { const b = document.createElement('button'); b.type = 'button'; b.className = 'quiet'; b.textContent = title; b.onclick = action; parent.append(b); return b; }
-function fold(parent, title, open = false) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.open = open; d.append(n('summary', title)); parent.append(d); return d; }
+function fold(parent, title, open = false, key = title) { const d = document.createElement('details'); d.className = 'erp-disclosure'; d.dataset.referenceFoldKey = key; d.open = open; d.append(n('summary', title)); parent.append(d); return d; }
 const labels = { web: 'Weboldal', facebook: 'Facebook', instagram: 'Instagram', before: 'Előtte', during: 'Kivitelezés közben', after: 'Elkészült', later: 'Későbbi állapot' };
 export class ReferenceDesk {
     api;
@@ -28,6 +28,7 @@ export class ReferenceDesk {
     timer;
     queue = Promise.resolve();
     versions = new Map();
+    folds = new Map();
     local = new ReferenceLocal();
     files = new ReferenceFiles();
     dialog = document.createElement('dialog');
@@ -66,7 +67,7 @@ export class ReferenceDesk {
         this.person = person;
         this.owner = owner;
     } this.launcher.hidden = !owner; }
-    reset() { void this.persist().catch(() => { }); clearTimeout(this.timer); this.epoch++; this.owner = undefined; this.org = undefined; this.person = undefined; this.state = undefined; this.pending = undefined; this.busy = false; this.writing = false; this.undo = []; this.redo = []; this.dialog.close(); this.body.replaceChildren(); this.launcher.hidden = true; this.dispose(); }
+    reset() { void this.persist().catch(() => { }); this.folds.clear(); clearTimeout(this.timer); this.epoch++; this.owner = undefined; this.org = undefined; this.person = undefined; this.state = undefined; this.pending = undefined; this.busy = false; this.writing = false; this.undo = []; this.redo = []; this.dialog.close(); this.body.replaceChildren(); this.launcher.hidden = true; this.dispose(); }
     leave() { if (this.writing) {
         this.message('A mentés még folyamatban van.');
         return false;
@@ -115,12 +116,27 @@ export class ReferenceDesk {
         throw Error('Válassz kertépítést.'); await this.persist(); const epoch = this.epoch, source = await this.api.reference('reference_source', { organization_id: this.org, project_id: project }); if (epoch !== this.epoch)
         return; this.state = { id: crypto.randomUUID(), project_id: project, revision: 0, base_revision: 0, document: referenceFromSource(source), variants: {}, source, source_hash: source.hash, source_changed: true, history: [], variant_history: [], approvals: [], publications: [], dirty: true }; this.pending = undefined; this.undo = []; this.redo = []; this.active = 'wizard'; this.step = 0; await this.persist(); this.render(); this.message(''); this.dialog.scrollTop = 0; }
     field(parent, title, value, change, area = false) { const label = n('label', title), input = document.createElement(area ? 'textarea' : 'input'); input.value = value; if (area)
-        input.rows = 4; input.oninput = () => { if (change)
-        this.edit(() => change(input.value)); }; label.append(input); parent.append(label); return input; }
+        input.rows = 4; input.dataset.referenceControlKey = (parent.closest('[data-sort-id]')?.dataset.sortId ?? '') + ':' + title; let previous = value; const update = () => { const value = input.value; if (!change || value === previous)
+        return; previous = value; this.edit(() => change(value)); }; input.oninput = update; input.onchange = update; label.append(input); parent.append(label); return input; }
     choice(parent, title, value, items, change) { const label = n('label', title), select = document.createElement('select'); for (const [id, text] of items)
-        select.add(new Option(text, id)); select.value = value; select.onchange = () => change(select.value); label.append(select); parent.append(label); return select; }
+        select.add(new Option(text, id)); select.value = value; select.dataset.referenceControlKey = (parent.closest('[data-sort-id]')?.dataset.sortId ?? '') + ':' + title; select.onchange = () => change(select.value); label.append(select); parent.append(label); return select; }
     render() {
-        const openStates = new Map(Array.from(this.body.querySelectorAll('details')).map(d => [d.querySelector('summary')?.textContent ?? '', d.open]));
+        const scroll = this.dialog.scrollTop, view = this.body.dataset.referenceView, focused = document.activeElement, control = focused?.dataset.referenceControlKey, start = focused?.selectionStart, end = focused?.selectionEnd;
+        for (const d of Array.from(this.body.querySelectorAll('details'))) {
+            if (d.dataset.referenceViewKey)
+                this.folds.set(d.dataset.referenceViewKey, d.open);
+        }
+        const finish = () => { const scope = this.owner + '/' + (this.state?.id ?? 'list') + '/' + this.active + '/' + this.step + '/' + this.archived; this.body.dataset.referenceView = scope; for (const d of Array.from(this.body.querySelectorAll('details'))) {
+            const key = scope + '/' + d.dataset.referenceFoldKey;
+            d.dataset.referenceViewKey = key;
+            if (this.folds.has(key))
+                d.open = this.folds.get(key);
+        } this.dialog.scrollTop = scroll; if (view === scope && control) {
+            const target = Array.from(this.body.querySelectorAll('[data-reference-control-key]')).find(e => e.dataset.referenceControlKey === control);
+            target?.focus({ preventScroll: true });
+            if (target && typeof start === 'number' && typeof end === 'number' && 'setSelectionRange' in target)
+                target.setSelectionRange(start, end);
+        } this.lock(); };
         this.dispose();
         this.body.replaceChildren();
         const s = this.state;
@@ -136,6 +152,7 @@ export class ReferenceDesk {
                 button(box, row.value.document.title, () => void this.run(async () => { this.versions.set(this.owner + '/' + row.id, row.localVersion); this.state = row.value; this.pending = row.value.pending; this.active = 'wizard'; this.step = 0; this.render(); })); if (!box.querySelector('button'))
                 box.append(n('p', 'Nincs függő helyi piszkozat.')); }));
             this.connection(this.body);
+            finish();
             return;
         }
         const project = this.list.projects.find((p) => p.id === s.project_id), context = n('p', 'Munka: ' + (project ? project.name + (project.address ? ' · ' + project.address : '') : 'A referenciához kapcsolt kertépítés'));
@@ -176,12 +193,7 @@ export class ReferenceDesk {
         file.onchange = () => void this.run(async () => { if (!file.files?.[0])
             return; const count = await this.files.import(this.owner, s.id, s.document, file.files[0]); this.render(); this.message(count + ' kép visszatöltve. A szövegek nem változtak.', true); });
         transfer.append(n('p', 'Az adott referencia mentési ZIP-fájljából a hiányzó képeket tölti vissza.'), file);
-        for (const d of Array.from(this.body.querySelectorAll('details'))) {
-            const key = d.querySelector('summary')?.textContent ?? '';
-            if (openStates.has(key))
-                d.open = openStates.get(key);
-        }
-        this.lock();
+        finish();
     }
     wizard() { const titles = ['Megnevezés', 'Bemutató szöveg', 'Fényképek', 'A honlap szövege', 'Megjelenés a keresőben', 'A honlap képei', 'Előnézet', 'Tartalom jóváhagyása', 'WordPress-piszkozat'], hints = ['Adj nevet a referenciának.', 'Írd le röviden, mi készült el.', 'Adj hozzá bemutatásra szánt képeket. Kép nélkül is továbbléphetsz.', 'Ezt a címet és szöveget látják majd a honlapon.', 'Ez a cím és rövid leírás jelenhet meg a kereső találatai között.', 'Pipáld ki a honlapra szánt képeket, és ellenőrizd a leírásukat.', 'Nézd át, mit szeretnél megmutatni. Javításhoz használd a Vissza gombot.', 'Rögzítsd, hogy a szöveg és a képek bemutathatók.', 'Készíts ellenőrizhető piszkozatot. Ez még nem nyilvános bejegyzés.']; this.body.append(n('p', (this.step + 1) + ' / ' + titles.length + ' lépés'), n('h3', titles[this.step]), n('p', hints[this.step])); if (this.step < 3)
         this.base(['name', 'text', 'photos'][this.step]);
@@ -262,30 +274,34 @@ export class ReferenceDesk {
         const photos = fold(this.body, 'Fényképek', true);
         photos.append(n('p', 'A képek ezen az eszközön maradnak; másik eszközre mentési csomaggal vihetők át.'));
         for (const group of referenceGroups) {
-            const groupBox = fold(photos, labels[group]);
+            const groupBox = fold(photos, labels[group], false, 'group:' + group);
             groupBox.dataset.sortContainer = group;
             const input = document.createElement('input');
             input.type = 'file';
             input.multiple = true;
             input.accept = 'image/jpeg,image/png,image/webp';
             input.setAttribute('aria-label', labels[group] + ' képek hozzáadása');
-            input.onchange = () => void this.run(async () => { const epoch = this.epoch, owner = this.owner, id = s.id; this.undo.push(this.snapshot()); for (const f of Array.from(input.files ?? [])) {
+            input.hidden = true;
+            button(groupBox, 'Képek kiválasztása', () => input.click());
+            input.onchange = () => { const selected = Array.from(input.files ?? []); if (!selected.length)
+                return; void this.run(async () => { const epoch = this.epoch, owner = this.owner, id = s.id; this.undo.push(this.snapshot()); for (const f of selected) {
                 const m = await this.files.add(owner, id, f, group);
                 if (epoch !== this.epoch)
                     return;
                 d.media.push(m);
+                this.folds.set(this.body.dataset.referenceView + '/photo:' + m.id, true);
                 this.touch();
                 await this.persist();
-            } this.render(); this.message('A képek helyben mentve. Mentsd a referencia alapját is.', true); });
+            } this.render(); this.message('A képek hozzáadva. A Tovább gombbal mentheted a módosítást.', true); }); };
             groupBox.append(input);
             for (const m of d.media.filter(x => x.group === group)) {
-                const row = fold(groupBox, m.caption || 'Fénykép');
+                const row = fold(groupBox, m.caption || 'Fénykép', false, 'photo:' + m.id);
                 row.dataset.sortId = m.id;
                 sortableHandle(row);
                 this.photo(row, m, m.alt || labels[group]);
                 this.field(row, 'Képfelirat', m.caption, v => m.caption = v);
                 this.field(row, 'Kép leírása (alt)', m.alt, v => m.alt = v);
-                this.choice(row, 'Képcsoport', m.group, referenceGroups.map(x => [x, labels[x]]), v => this.edit(() => m.group = v, true));
+                this.choice(row, 'Képcsoport', m.group, referenceGroups.map(x => [x, labels[x]]), v => this.movePhotoGroup(m, v, row));
                 for (const [delta, title] of [[-1, 'Feljebb'], [1, 'Lejjebb']])
                     button(row, title, () => this.edit(() => { const same = d.media.filter(x => x.group === m.group), at = same.indexOf(m), to = at + delta; if (to >= 0 && to < same.length)
                         d.media = moveReferencePhoto(d.media, m.id, delta < 0 ? same[to].id : same[to + 1]?.id ?? null); }, true));
@@ -306,6 +322,10 @@ export class ReferenceDesk {
         if (!(s.source.photos ?? []).length)
             reuse.append(n('p', 'Nincs kapcsolt forrásfotó. A képcsoportnál képfájlt választhatsz.'));
     }
+    movePhotoGroup(media, group, row) { if (media.group === group)
+        return; const target = Array.from(this.body.querySelectorAll('[data-sort-container]')).find(e => e.dataset.sortContainer === group); if (!target)
+        return; const top = row.getBoundingClientRect().top, focused = document.activeElement; this.edit(() => media.group = group); target.open = true; row.open = true; target.append(row); this.dialog.scrollTop += row.getBoundingClientRect().top - top; if (focused && row.contains(focused))
+        focused.focus({ preventScroll: true }); }
     photo(parent, m, alt) { const image = document.createElement('img'); image.className = 'reference-photo'; image.loading = 'lazy'; image.alt = alt; parent.append(image); const epoch = this.epoch, id = this.state.id; void this.files.read(this.owner, id, m).then(blob => { if (epoch !== this.epoch || !image.isConnected)
         return; if (!blob) {
         image.replaceWith(n('p', 'Ez a kép nincs ezen az eszközön. Töltsd vissza a mentési csomagból.'));
@@ -352,7 +372,7 @@ export class ReferenceDesk {
                 label.prepend(c);
                 photos.append(label);
             }
-            v.photos.forEach((p, i) => { const row = fold(photos, (i + 1) + '. ' + (p.caption || 'Kijelölt kép')); row.dataset.sortId = p.media_id; sortableHandle(row); this.field(row, 'Képfelirat ebben a változatban', p.caption, x => p.caption = x); this.field(row, 'Alt szöveg ebben a változatban', p.alt, x => p.alt = x); for (const [delta, title] of [[-1, 'Feljebb'], [1, 'Lejjebb']])
+            v.photos.forEach((p, i) => { const row = fold(photos, (i + 1) + '. ' + (p.caption || 'Kijelölt kép'), false, 'variant-photo:' + platform + ':' + p.media_id); row.dataset.sortId = p.media_id; sortableHandle(row); this.field(row, 'Képfelirat ebben a változatban', p.caption, x => p.caption = x); this.field(row, 'Alt szöveg ebben a változatban', p.alt, x => p.alt = x); for (const [delta, title] of [[-1, 'Feljebb'], [1, 'Lejjebb']])
                 button(row, title, () => this.edit(() => { const to = i + delta; if (to >= 0 && to < v.photos.length)
                     [v.photos[i], v.photos[to]] = [v.photos[to], v.photos[i]]; }, true)); });
             this.sortCleanup = attachSorter(photos, move => this.edit(() => v.photos = moveReferencePhoto(v.photos.map(p => ({ ...p, id: p.media_id })), move.id, move.before).map(({ id, ...p }) => p), true));

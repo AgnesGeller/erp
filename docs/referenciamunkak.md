@@ -1,12 +1,14 @@
 # Referenciamunkák – rövid használat
 
-**ERP 0.16.5.** Iroda és beállítások → Referenciamunkák. Válassz kertépítést, majd Referencia készítése; korábbi munkához a Mentett referenciák nyitható le.
+**ERP 0.16.7.** Iroda és beállítások → Referenciamunkák. Válassz kertépítést, majd Referencia készítése; korábbi munkához a Mentett referenciák nyitható le.
 
 A szerkesztő **oldalanként egy teendőt** mutat. A munka neve és címe minden lépésen látszik. A **Tovább** elmenti az adott szöveget vagy képkijelölést; a **Vissza** megtartja a beírtakat. Nincs hosszú útmutató vagy külön Alap és képek fül.
 
 A Megnevezés után a bemutató szöveg, a fényképek, a honlapszöveg, a keresőbeli megjelenés, a honlap képei, az előnézet és a tartalom jóváhagyása következik. Végül külön gomb készíti el a WordPress-piszkozatot; a kijelölt képeket is ez a művelet tölti fel. A jóváhagyást nem lehet kihagyni.
 
 **Másik munka vagy referencia választása:** a További műveletek alatt, megerősítéssel. A helyi piszkozat megmarad. Ugyanitt található a külön Facebook-/Instagram-változat, az előzmény, a Visszavonás/Újra, a mentési ZIP és a visszaállítható archiválás. Egy platformváltozat szerkesztése nem írja át a többit.
+
+A képcsoportok nyitott állapota és a beírt felirat/leírás csoportváltáskor megmarad. A Képek kiválasztása gomb közvetlenül nyitja a fájlválasztót; a kiválasztás megszakítása nem rajzolja újra a szerkesztőt.
 
 A négy képcsoport: Előtte, Kivitelezés közben, Elkészült, Későbbi állapot. A fotók a saját eszközön maradnak; másik eszközre a mentési ZIP-pel vihetők át. A Supabase nem tárolja a képfájlokat. Belső árak és munkautasítások nem kerülnek automatikusan a nyilvános változatba.
 

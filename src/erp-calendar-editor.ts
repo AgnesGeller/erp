@@ -1,7 +1,7 @@
 import {attachSorter,sortableHandle} from './erp-sortable.js';
 import type {ErpApi} from './erp-api.js';
 import type {CalendarRow as Row} from './erp-calendar-model.js';
-const {calendarIntensityDescriptions,calendarQualityDescriptions}=await import(new URL('./erp-calendar-model.js?v=0.16.6',import.meta.url).href) as typeof import('./erp-calendar-model.js');
+const {calendarIntensityDescriptions,calendarQualityDescriptions}=await import(new URL('./erp-calendar-model.js?v=0.16.7',import.meta.url).href) as typeof import('./erp-calendar-model.js');
 export const calNode=(tag:string,text='')=>{const el=document.createElement(tag);el.textContent=text;return el;};
 export function calButton(parent:HTMLElement,label:string,run:()=>void,quiet=true){const b=calNode('button',label) as HTMLButtonElement;b.type='button';if(quiet)b.className='quiet';b.addEventListener('click',run);parent.append(b);return b;}
 export function calFold(parent:HTMLElement,label:string,open=false){const d=document.createElement('details');d.className='erp-disclosure';d.open=open;d.append(calNode('summary',label));parent.append(d);return d;}

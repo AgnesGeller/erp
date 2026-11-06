@@ -5,27 +5,27 @@ const clientSetupOpening = clientSetupToken !== null;
 if (clientSetupOpening)
     history.replaceState(null, '', location.pathname + location.search);
 const setupOpening = clientSetupOpening || new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.16.6', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.16.6', import.meta.url);
-const [{ ErpApi, ApiError }, { projectPeriod, todayBudapest, periodLabel }, { projectRoleNames: roleNames, selectableProjectRoles }] = await Promise.all([import(apiUrl.href), import(datesUrl.href), import(new URL('./erp-project-roles.js?v=0.16.6', import.meta.url).href)]);
+const apiUrl = new URL('./erp-api.js?v=0.16.7', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.16.7', import.meta.url);
+const [{ ErpApi, ApiError }, { projectPeriod, todayBudapest, periodLabel }, { projectRoleNames: roleNames, selectableProjectRoles }] = await Promise.all([import(apiUrl.href), import(datesUrl.href), import(new URL('./erp-project-roles.js?v=0.16.7', import.meta.url).href)]);
 const api = new ErpApi();
 const [{ CustomerDirectory }, { SiteWorks }, { QuoteDesk }, { SurveyDesk, surveysEnabled }, { ClientAdmin, ClientPortal }, { StaffAdmin }, { WorkPlanDesk }, { MaterialDesk }, { WorksheetDesk }, { EntryDesk }, { FinanceDesk }, { WorkpackDesk }, { CalendarDesk }, { ReferenceDesk }, { MaintenanceDesk }, { OfficeNavigation }] = await Promise.all([
-    import(new URL('./erp-customers.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-site-works.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-quotes.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-surveys.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-clients.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-staff.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-workplans.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-materials.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-worksheets.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-entries.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-finance.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-workpack.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-calendar.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-references.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-maintenance.js?v=0.16.6', import.meta.url).href),
-    import(new URL('./erp-office-navigation.js?v=0.16.6', import.meta.url).href)
+    import(new URL('./erp-customers.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-site-works.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-quotes.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-surveys.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-clients.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-staff.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-workplans.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-materials.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-worksheets.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-entries.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-finance.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-workpack.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-calendar.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-references.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-maintenance.js?v=0.16.7', import.meta.url).href),
+    import(new URL('./erp-office-navigation.js?v=0.16.7', import.meta.url).href)
 ]);
 const finance = new FinanceDesk(api, showError);
 const workpack = new WorkpackDesk(api, showError);

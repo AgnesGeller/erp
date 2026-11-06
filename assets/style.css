@@ -86,3 +86,6 @@ html[data-erp-starting] #app-startup{display:flex!important;}
 .reference-context{padding-block:.75rem;border-bottom:1px solid #c4d0c5;font-weight:600;overflow-wrap:anywhere;}
 .reference-wizard-nav{justify-content:space-between;border-top:1px solid #c4d0c5;padding-top:1rem;}
 .reference-wizard-nav button:last-child{background:#214a35;color:#fff;border-color:#214a35;}
+
+.reference-dialog{overflow-anchor:none;}
+.reference-photo{width:100%;height:clamp(140px,32vh,280px);max-height:280px;object-fit:contain;}

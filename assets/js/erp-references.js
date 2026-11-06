@@ -317,11 +317,12 @@ export class ReferenceDesk {
         box.append(n('p', 'A WordPress-hozzáférés még nincs beállítva.'));
         return;
     } button(box, 'WordPress-kapcsolat ellenőrzése', () => void this.run(async () => { const epoch = this.epoch, result = await this.api.reference('reference_wp_check', { organization_id: this.org }); if (epoch !== this.epoch)
-        return; this.message(result.ready ? 'A WordPress-belépés és jogosultság ellenőrizve. Közzététel továbbra is csak külön gombbal és megerősítéssel.' : 'A WordPress-belépés és jogosultság ellenőrizve. A küldés a megjelenés jóváhagyására vár.', true); })); box.append(n('p', 'Ez az ellenőrzés csak olvas; nem tölt fel képet és nem hoz létre bejegyzést.')); }
-    wordpress(parent) { const s = this.state, box = fold(parent, 'WordPress-piszkozat és közzététel'); this.connection(box); if (!this.list.wordpress_ready) {
-        box.append(n('p', this.list.wordpress_configured ? 'A WordPress-küldés a megjelenés ellenőrzésére vár.' : 'A WordPress-kapcsolat beállítására vár. A referencia mentése, előnézete és letöltése már használható.'));
+        return; this.message(result.ready ? 'A WordPress-belépés és jogosultság ellenőrizve. Közzététel továbbra is csak külön gombbal és megerősítéssel.' : 'A WordPress-belépés és jogosultság ellenőrizve. Piszkozat készíthető; a nyilvános közzététel a megjelenés jóváhagyására vár.', true); })); box.append(n('p', 'Ez az ellenőrzés csak olvas; nem tölt fel képet és nem hoz létre bejegyzést.')); }
+    wordpress(parent) { const s = this.state, box = fold(parent, 'WordPress-piszkozat és közzététel'); this.connection(box); if (!this.list.wordpress_configured) {
+        box.append(n('p', 'A WordPress-kapcsolat beállítására vár. A referencia mentése, előnézete és letöltése már használható.'));
         return;
-    } button(box, 'Kijelölt képek feltöltése', () => void this.run(async () => { const id = s.id, epoch = this.epoch; for (const p of s.variants.web.document.photos) {
+    } if (!this.list.wordpress_ready)
+        box.append(n('p', 'Piszkozat készíthető és előnézetben ellenőrizhető. A nyilvános közzététel a megjelenés jóváhagyására vár.')); button(box, 'Kijelölt képek feltöltése', () => void this.run(async () => { const id = s.id, epoch = this.epoch; for (const p of s.variants.web.document.photos) {
         const m = s.document.media.find((m) => m.id === p.media_id), blob = await this.files.read(this.owner, id, m);
         if (!blob)
             throw Error('Hiányzó helyi kép. Töltsd vissza a mentési csomagot.');
@@ -332,8 +333,9 @@ export class ReferenceDesk {
         await this.wp('reference_wp_media', { media_id: m.id, bytes: btoa(binary) }, false);
         if (epoch !== this.epoch)
             return;
-    } this.render(); this.message('A kijelölt képek feltöltése ellenőrizve.', true); })); button(box, 'WordPress-piszkozat készítése / frissítése', () => void this.run(() => this.wp('reference_wp_draft'))); button(box, 'Közzététel / nyilvános referencia frissítése', () => { if (confirm('A webes változat nyilvánosan megjelenik a diszkertek.hu oldalon. Közzéteszed?'))
-        void this.run(() => this.wp('reference_wp_publish', { confirmed: true })); }); for (const p of s.publications ?? []) {
+    } this.render(); this.message('A kijelölt képek feltöltése ellenőrizve.', true); })); button(box, 'WordPress-piszkozat készítése / frissítése', () => void this.run(() => this.wp('reference_wp_draft'))); if (this.list.wordpress_ready)
+        button(box, 'Közzététel / nyilvános referencia frissítése', () => { if (confirm('A webes változat nyilvánosan megjelenik a diszkertek.hu oldalon. Közzéteszed?'))
+            void this.run(() => this.wp('reference_wp_publish', { confirmed: true })); }); for (const p of s.publications ?? []) {
         const row = n('p', { media: 'Kép', draft: 'Piszkozat', publish: 'Közzététel' }[p.kind] + ' · ' + { succeeded: 'Sikeres', started: 'Ellenőrzésre vár', uncertain: 'Bizonytalan eredmény', failed: 'Sikertelen' }[p.status]);
         if (p.error)
             row.append(n('span', ' · ' + p.error));
@@ -342,7 +344,7 @@ export class ReferenceDesk {
             a.href = p.remote_url;
             a.target = '_blank';
             a.rel = 'noopener';
-            a.textContent = ' Megnyitás';
+            a.textContent = p.kind === 'draft' ? ' Piszkozat előnézete' : ' Megnyitás';
             row.append(a);
         }
         box.append(row);

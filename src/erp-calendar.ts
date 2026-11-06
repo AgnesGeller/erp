@@ -1,7 +1,7 @@
 import type {ErpApi} from './erp-api.js';
 import type {CalendarRow as Row} from './erp-calendar-model.js';
-const {calendarOffset,calendarWeek,calendarSearch,normalizeCalendarPlan,calendarRecurrenceDates}=await import(new URL('./erp-calendar-model.js?v=0.16.1',import.meta.url).href) as typeof import('./erp-calendar-model.js');
-const {CalendarPlanEditor,calNode:n,calButton:button,calField:field,calSelect:select,calCheck:check,calFold:fold,calPick:pick}=await import(new URL('./erp-calendar-editor.js?v=0.16.1',import.meta.url).href) as typeof import('./erp-calendar-editor.js');
+const {calendarOffset,calendarWeek,calendarSearch,normalizeCalendarPlan,calendarRecurrenceDates}=await import(new URL('./erp-calendar-model.js?v=0.16.2',import.meta.url).href) as typeof import('./erp-calendar-model.js');
+const {CalendarPlanEditor,calNode:n,calButton:button,calField:field,calSelect:select,calCheck:check,calFold:fold,calPick:pick}=await import(new URL('./erp-calendar-editor.js?v=0.16.2',import.meta.url).href) as typeof import('./erp-calendar-editor.js');
 const roleNames:Row={office:'Iroda',construction_lead:'Építésvezető',maintenance_lead:'Karbantartásvezető',construction_worker:'Kertépítő',gardener:'Kertész',client:'Megrendelő'};
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Budapest',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const uid=()=>crypto.randomUUID();

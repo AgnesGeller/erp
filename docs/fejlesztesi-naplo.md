@@ -488,3 +488,12 @@ A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontos
 - A valódi WordPress-belépés és a sablon-/SEO-illesztés ellenőrzése még hátravan; a titokbeállítások képe önmagában nem bizonyítja a sikeres kapcsolatot.
 
 - Az éles saját gateway kiinduló v30 csomaglenyomata egyezett a korábban teljesen visszaellenőrzött v29 kiadással. A csak olvasási próba v31-ként települt; mind a 35 fájl visszaolvasva és egyezőnek ellenőrizve.
+
+## 2026. november 6. – Ellenőrizhető WordPress-piszkozat, kézi közzététel (0.16.2)
+
+- A felhasználó az éles ERP sikeres WordPress-belépés/jogosultság visszajelzését megadta. A korábbi közös kapu a megjelenés ellenőrzéséhez szükséges piszkozatot is tiltotta; ezt javítottuk.
+- Beállított szerveroldali hozzáféréssel, friss irodai jogosultsággal és pontos változathoz kötött ellenőrzéssel képfeltöltés és piszkozatkészítés engedett. A megjelenési kapu a nyilvános publikálást továbbra is szerveroldalon tiltja; a felületen nincs hozzá gomb a kapu feloldásáig. Az adapter külön is védi a nyilvános tartalom és SEO módosítását.
+- A post/SEO-mentés utáni végállapot visszaolvasva; piszkozathoz kifejezett előnézeti hivatkozás. Bizonytalan eredménynél továbbra sincs vak ismétlés.
+- 31 célzott helyi teszt sikeres: WordPress-adapter, védett gateway és jóváhagyás, kézi publikálás tiltása, offline működés, teljes szintetikus bemutatófolyamat. Frontendfordítás és kiszolgáló-típusellenőrzés sikeres. A korábbi teljes 576 tesztes kiadás tényét nem helyettesítjük teljes új futás állításával.
+- Nincs adatbázis-, Auth-, más alkalmazást érintő módosítás vagy függőségtelepítés. Valódi WordPress-bejegyzést a fejlesztési ellenőrzés nem hozott létre; a felhasználóval végzendő piszkozat-/sablon-/SEO-próba hátravan.
+- Éles saját gateway v32: a kiinduló v31-hez képest csak két WordPress-modul változott; mind a 35 telepített fájl pontosan egyezik. Olvasási HTTP-próba: auth_options 200, bejelentkezés nélküli reference_wp_check 401.

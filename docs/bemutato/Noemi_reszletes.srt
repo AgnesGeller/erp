@@ -1,0 +1,49 @@
+1
+00:00:00,000 --> 00:00:10,856
+DÍSZKERTEK
+A már elkészült funkciók, közérthetően.
+
+2
+00:00:10,856 --> 00:00:23,512
+Hol kezdjük?
+A kezdőlapon kiválasztjuk az elvégzendő feladatot.
+
+3
+00:00:23,512 --> 00:00:33,552
+Mi tartozik a munkához?
+Nyomtatható feladatlista munkaterületenként.
+
+4
+00:00:33,552 --> 00:00:45,944
+Milyen sorrendben dolgozunk?
+Szakaszokba rendezett részfeladatok, négyszintű átvétellel.
+
+5
+00:00:45,944 --> 00:00:55,312
+Idő és anyag a munkanapon
+Beszállított és beépített anyag: két külön mennyiség.
+
+6
+00:00:55,312 --> 00:01:07,512
+Mennyivel tartozik az ügyfél?
+Karbantartási elszámolás, előlegek, befizetések és egyenleg.
+
+7
+00:01:07,512 --> 00:01:15,248
+Ki, mikor, hol dolgozik?
+Heti munkák, munkatársak és eszközök beosztása.
+
+8
+00:01:15,248 --> 00:01:32,104
+Hogyan készül a referencia?
+Új vagy folytatás. A Tovább csak léptet; a mentés külön művelet.
+
+9
+00:01:32,104 --> 00:01:50,736
+Mi van még hátra?
+Vezetői áttekintés · MI · munkacsomagok · központi beállítások
+
+10
+00:01:50,736 --> 00:02:12,152
+A projekt befejezése
+Adatátvétel · eszközszinkron · értesítések · honlapi megjelenés

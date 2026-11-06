@@ -1,5 +1,5 @@
 import type {Obj} from './erp-quote-engine.js';
-const {cleanName,validateBook}=await import(new URL('./erp-quote-engine.js?v=0.16.7',import.meta.url).href) as typeof import('./erp-quote-engine.js');
+const {cleanName,validateBook}=await import(new URL('./erp-quote-engine.js?v=0.16.8',import.meta.url).href) as typeof import('./erp-quote-engine.js');
 export async function readCalculator(file:File):Promise<Obj>{
  if(!/\.xlsx$/i.test(file.name)||file.size>25000000)throw Error('Legfeljebb 25 MB méretű XLSX-kalkulátort válassz.');
  const bytes=new Uint8Array(await file.arrayBuffer());const {unzipSync}=await import(new URL('../vendor/fflate-0.8.2.js',import.meta.url).href) as {unzipSync:(bytes:Uint8Array,options:{filter:(file:{name:string;originalSize:number})=>boolean})=>Record<string,Uint8Array>};let total=0;

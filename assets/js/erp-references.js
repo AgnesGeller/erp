@@ -18,6 +18,10 @@ export class ReferenceDesk {
     active = 'wizard';
     step = 0;
     state;
+    startScreen = true;
+    editMode = 'new';
+    storageId;
+    drafts = [];
     pending;
     list = { projects: [], references: [] };
     archived = false;
@@ -67,7 +71,7 @@ export class ReferenceDesk {
         this.person = person;
         this.owner = owner;
     } this.launcher.hidden = !owner; }
-    reset() { void this.persist().catch(() => { }); this.folds.clear(); clearTimeout(this.timer); this.epoch++; this.owner = undefined; this.org = undefined; this.person = undefined; this.state = undefined; this.pending = undefined; this.busy = false; this.writing = false; this.undo = []; this.redo = []; this.dialog.close(); this.body.replaceChildren(); this.launcher.hidden = true; this.dispose(); }
+    reset() { void this.persist().catch(() => { }); this.folds.clear(); clearTimeout(this.timer); this.epoch++; this.owner = undefined; this.org = undefined; this.person = undefined; this.state = undefined; this.storageId = undefined; this.drafts = []; this.startScreen = true; this.pending = undefined; this.busy = false; this.writing = false; this.undo = []; this.redo = []; this.dialog.close(); this.body.replaceChildren(); this.launcher.hidden = true; this.dispose(); }
     leave() { if (this.writing) {
         this.message('A mentés még folyamatban van.');
         return false;
@@ -99,22 +103,29 @@ export class ReferenceDesk {
         this.undo.shift(); this.redo = []; action(); this.touch(); if (paint)
         this.render(); }
     touch() { if (!this.state)
-        return; this.state.dirty = true; clearTimeout(this.timer); this.timer = setTimeout(() => void this.persist().catch(() => { }), 350); }
+        return; this.state.dirty = true; this.updateDraftStatus(); clearTimeout(this.timer); this.timer = setTimeout(() => void this.persist().catch(() => { }), 350); }
     persist() { clearTimeout(this.timer); if (!this.owner || !this.state)
-        return this.queue; const owner = this.owner, id = this.state.id, key = owner + '/' + id, value = structuredClone({ ...this.state, pending: this.pending, wizard_step: this.step }); this.queue = this.queue.catch(() => { }).then(async () => { const version = await this.local.put(owner, id, value, this.versions.get(key) ?? 0); this.versions.set(key, version); }).catch(e => { this.error(e); throw e; }); return this.queue; }
+        return this.queue; const owner = this.owner, id = this.storageId ?? this.state.id, key = owner + '/' + id, value = structuredClone({ ...this.state, pending: this.pending, wizard_step: this.step, device_saved_at: new Date().toISOString() }); this.queue = this.queue.catch(() => { }).then(async () => { const version = await this.local.put(owner, id, value, this.versions.get(key) ?? 0); this.versions.set(key, version); }).catch(e => { this.error(e); throw e; }); return this.queue; }
     saved(view) { return { document: structuredClone(view.document), variants: Object.fromEntries(Object.entries(view.variants).map(([k, v]) => [k, structuredClone(v.document)])) }; }
     isChanged() { const s = this.state; return !s.saved || JSON.stringify(s.document) !== JSON.stringify(s.saved.document) || JSON.stringify(Object.fromEntries(Object.entries(s.variants).map(([k, v]) => [k, v.document]))) !== JSON.stringify(s.saved.variants); }
     async listRemote() { const epoch = this.epoch, list = await this.api.reference('reference_list', { organization_id: this.org, archived: this.archived }); if (epoch === this.epoch)
         this.list = list; }
     async open() { if (!this.owner)
-        return; if (!this.dialog.open)
-        this.dialog.showModal(); await this.run(async () => { await this.listRemote(); this.render(); this.message(this.state ? '' : 'Válassz kertépítést vagy mentett referenciát.'); this.dialog.scrollTop = 0; }); }
-    async load(id) { await this.persist(); const epoch = this.epoch, owner = this.owner, remote = await this.api.reference('reference_read', { organization_id: this.org, reference_id: id }); const local = (await this.local.list(owner)).find(x => x.id === id); if (epoch !== this.epoch)
-        return; this.versions.set(owner + '/' + id, local?.localVersion ?? 0); this.state = local?.value?.dirty || local?.value?.pending ? local.value : { ...remote, dirty: false, saved: this.saved(remote) }; this.pending = this.state.pending; this.active = 'wizard'; this.step = Math.max(0, Math.min(8, Number(local?.value?.wizard_step) || 0)); if (this.step > 2 && !this.state.variants.web)
-        this.step = 0; this.undo = []; this.redo = []; this.render(); this.message(this.state.revision !== remote.revision ? 'A szerveren frissebb változat van. A helyi szöveg megmaradt; az Előzményeknél hasonlíthatod össze.' : this.pending ? 'A korábbi mentés eredménye még nem ismert. Próbáld újra az eredeti kérést.' : this.state.dirty ? 'Saját helyi piszkozat megnyitva.' : 'A referencia betöltve.'); this.dialog.scrollTop = 0; }
+        return; this.startScreen = true; if (!this.dialog.open)
+        this.dialog.showModal(); this.render(); await this.run(async () => { await this.persist(); await this.listRemote(); this.drafts = await this.local.list(this.owner); this.render(); this.message(''); this.dialog.scrollTop = 0; }); }
+    updateDraftStatus() { if (!this.state)
+        return; const changed = this.isChanged(), status = this.body.querySelector('[data-reference-state]'), title = this.body.querySelector('[data-reference-name]'); if (status)
+        status.textContent = !this.state.revision ? (this.editMode === 'new' ? 'Új referencia · még nincs az ERP-be mentve' : 'Korábbi helyi szerkesztés · még nincs az ERP-be mentve') : changed ? 'Szerkesztés alatt · az új módosítások még nincsenek az ERP-ben' : 'Az ERP-ben mentett változat'; if (title)
+        title.textContent = this.state.document.title; }
+    referenceLabel(row) { const project = this.list.projects.find((p) => p.id === (row.project_id ?? row.value?.project_id)), title = row.title ?? row.value?.document?.title ?? 'Névtelen referencia', time = row.updated_at ?? row.value?.device_saved_at; return title + (project ? ' · ' + project.name : '') + (time && !Number.isNaN(Date.parse(time)) ? ' · ' + new Intl.DateTimeFormat('hu-HU', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(time)) : ''); }
+    async resume(row) { const epoch = this.epoch; await this.persist(); if (epoch !== this.epoch)
+        return; this.storageId = row.id; this.versions.set(this.owner + '/' + row.id, row.localVersion ?? 0); this.state = structuredClone(row.value); this.editMode = 'local'; this.pending = this.state.pending; this.startScreen = false; this.active = 'wizard'; this.step = Math.max(0, Math.min(8, Number(row.value.wizard_step) || 0)); if (this.step > 2 && !this.state.variants.web)
+        this.step = 0; this.undo = []; this.redo = []; this.render(); this.message('Saját szerkesztés folytatása.'); this.dialog.scrollTop = 0; }
+    async load(id) { await this.persist(); const epoch = this.epoch, owner = this.owner, remote = await this.api.reference('reference_read', { organization_id: this.org, reference_id: id }), rows = await this.local.list(owner); if (epoch !== this.epoch)
+        return; const hasDraft = rows.some(row => row.value?.id === id && (row.value.dirty || row.value.pending)), local = rows.find(row => row.id === id); this.storageId = hasDraft ? crypto.randomUUID() : id; this.versions.set(owner + '/' + this.storageId, hasDraft ? 0 : local?.localVersion ?? 0); this.state = { ...remote, dirty: false, saved: this.saved(remote) }; this.editMode = 'saved'; this.pending = undefined; this.startScreen = false; this.active = 'wizard'; this.step = 0; this.undo = []; this.redo = []; this.render(); this.message('Az ERP-ben mentett változat megnyitva.'); this.dialog.scrollTop = 0; }
     async create(project) { if (!project)
         throw Error('Válassz kertépítést.'); await this.persist(); const epoch = this.epoch, source = await this.api.reference('reference_source', { organization_id: this.org, project_id: project }); if (epoch !== this.epoch)
-        return; this.state = { id: crypto.randomUUID(), project_id: project, revision: 0, base_revision: 0, document: referenceFromSource(source), variants: {}, source, source_hash: source.hash, source_changed: true, history: [], variant_history: [], approvals: [], publications: [], dirty: true }; this.pending = undefined; this.undo = []; this.redo = []; this.active = 'wizard'; this.step = 0; await this.persist(); this.render(); this.message(''); this.dialog.scrollTop = 0; }
+        return; this.state = { id: crypto.randomUUID(), project_id: project, revision: 0, base_revision: 0, document: referenceFromSource(source), variants: {}, source, source_hash: source.hash, source_changed: true, history: [], variant_history: [], approvals: [], publications: [], dirty: true }; this.storageId = this.state.id; this.editMode = 'new'; this.startScreen = false; this.pending = undefined; this.undo = []; this.redo = []; this.active = 'wizard'; this.step = 0; await this.persist(); this.render(); this.message(''); this.dialog.scrollTop = 0; }
     field(parent, title, value, change, area = false) { const label = n('label', title), input = document.createElement(area ? 'textarea' : 'input'); input.value = value; if (area)
         input.rows = 4; input.dataset.referenceControlKey = (parent.closest('[data-sort-id]')?.dataset.sortId ?? '') + ':' + title; let previous = value; const update = () => { const value = input.value; if (!change || value === previous)
         return; previous = value; this.edit(() => change(value)); }; input.oninput = update; input.onchange = update; label.append(input); parent.append(label); return input; }
@@ -126,7 +137,7 @@ export class ReferenceDesk {
             if (d.dataset.referenceViewKey)
                 this.folds.set(d.dataset.referenceViewKey, d.open);
         }
-        const finish = () => { const scope = this.owner + '/' + (this.state?.id ?? 'list') + '/' + this.active + '/' + this.step + '/' + this.archived; this.body.dataset.referenceView = scope; for (const d of Array.from(this.body.querySelectorAll('details'))) {
+        const finish = () => { const scope = this.owner + '/' + (this.startScreen ? 'list' : this.state?.id ?? 'list') + '/' + this.active + '/' + this.step + '/' + this.archived; this.body.dataset.referenceView = scope; for (const d of Array.from(this.body.querySelectorAll('details'))) {
             const key = scope + '/' + d.dataset.referenceFoldKey;
             d.dataset.referenceViewKey = key;
             if (this.folds.has(key))
@@ -140,24 +151,39 @@ export class ReferenceDesk {
         this.dispose();
         this.body.replaceChildren();
         const s = this.state;
-        if (!s) {
-            const make = fold(this.body, 'Új referencia kertépítésből', true), project = this.choice(make, 'Kertépítés', '', [['', 'Válassz munkát'], ...this.list.projects.map((p) => [p.id, p.name + ' · ' + p.address])], () => { });
-            button(make, 'Referencia készítése', () => void this.run(() => this.create(project.value)));
-            const list = fold(this.body, 'Mentett referenciák');
+        if (this.startScreen || !s) {
+            if (s) {
+                const resume = button(this.body, 'Szerkesztés folytatása: ' + this.referenceLabel({ value: s }), () => { this.startScreen = false; this.render(); this.message(''); this.dialog.scrollTop = 0; });
+                resume.dataset.retry = 'true';
+            }
+            if (this.pending)
+                this.body.append(n('p', 'Egy korábbi ERP-mentés visszaigazolásra vár. Folytasd azt a szerkesztést.'));
+            const make = fold(this.body, 'Új referencia indítása', true), project = this.choice(make, 'Kertépítés', '', [['', 'Válassz munkát'], ...this.list.projects.map((p) => [p.id, p.name + ' · ' + p.address])], () => { });
+            button(make, 'Új referencia indítása', () => void this.run(() => this.create(project.value)));
+            const list = fold(this.body, 'ERP-ben mentett referenciák');
             this.choice(list, 'Lista', this.archived ? 'archive' : 'active', [['active', 'Aktív'], ['archive', 'Archivált']], v => { this.archived = v === 'archive'; void this.run(async () => { await this.listRemote(); this.render(); }); });
             for (const r of this.list.references)
-                button(list, r.title, () => void this.run(() => this.load(r.id)));
+                button(list, this.referenceLabel(r), () => void this.run(() => this.load(r.id)));
             button(list, 'Lista frissítése', () => void this.run(async () => { await this.listRemote(); this.render(); }));
-            button(list, 'Helyi piszkozatok megnyitása', () => void this.run(async () => { const rows = await this.local.list(this.owner); const box = fold(this.body, 'Saját piszkozatok ezen az eszközön', true); for (const row of rows.filter(r => r.value.dirty || r.value.pending))
-                button(box, row.value.document.title, () => void this.run(async () => { this.versions.set(this.owner + '/' + row.id, row.localVersion); this.state = row.value; this.pending = row.value.pending; this.active = 'wizard'; this.step = 0; this.render(); })); if (!box.querySelector('button'))
-                box.append(n('p', 'Nincs függő helyi piszkozat.')); }));
+            const local = fold(this.body, 'Csak ezen az eszközön lévő szerkesztések');
+            for (const row of this.drafts.filter(row => row.value.dirty || row.value.pending || !row.value.revision)) {
+                const resume = button(local, 'Folytatás: ' + this.referenceLabel(row), () => void this.run(() => this.resume(row)));
+                resume.dataset.retry = 'true';
+            }
+            if (!local.querySelector('button'))
+                local.append(n('p', 'Nincs félbehagyott helyi szerkesztés.'));
             this.connection(this.body);
             finish();
             return;
         }
         const project = this.list.projects.find((p) => p.id === s.project_id), context = n('p', 'Munka: ' + (project ? project.name + (project.address ? ' · ' + project.address : '') : 'A referenciához kapcsolt kertépítés'));
         context.className = 'reference-context';
-        this.body.append(context);
+        const identity = n('p');
+        identity.dataset.referenceState = 'true';
+        const name = n('h3', s.document.title);
+        name.dataset.referenceName = 'true';
+        this.body.append(context, name, identity);
+        this.updateDraftStatus();
         if (this.pending) {
             const b = button(this.body, 'Korábbi mentés ellenőrzése', () => void this.run(() => this.retry()));
             b.dataset.retry = 'true';
@@ -172,6 +198,7 @@ export class ReferenceDesk {
                 this.variant(this.active);
         }
         const tools = fold(this.body, 'További műveletek');
+        button(tools, 'Referencia mentése az ERP-be', () => void this.run(() => this.saveDraft()));
         button(tools, 'Másik munka vagy referencia választása', () => void this.run(() => this.chooseAnother()));
         for (const [id, title] of [['facebook', 'Facebook-változat'], ['instagram', 'Instagram-változat'], ['history', 'Előzmények']])
             button(tools, title, () => { this.active = id; this.render(); this.dialog.scrollTop = 0; });
@@ -202,50 +229,41 @@ export class ReferenceDesk {
         await this.chooseAnother();
         return;
     } await this.persist(); this.step--; this.render(); this.message(''); this.dialog.scrollTop = 0; })); button(nav, this.step === 8 ? 'Befejezés' : 'Tovább →', () => void this.run(() => this.nextStep())); if (this.step < 6)
-        this.body.append(n('p', 'A Tovább gomb elmenti az adatokat.')); this.body.append(nav); }
-    async nextStep() {
-        const s = this.state, epoch = this.epoch;
-        if (this.pending)
-            throw Error('Előbb ellenőrizd a korábbi mentés eredményét.');
-        if (this.step === 8) {
-            await this.persist();
-            this.dialog.close();
-            return;
-        }
-        if (this.step < 3) {
-            if (!s.document.title.trim())
-                throw Error('Írd be a Megnevezés mezőt.');
-            if (!s.saved || JSON.stringify(s.document) !== JSON.stringify(s.saved.document))
-                await this.save({ kind: 'save', document: normalizeReference(s.document), ...(s.source_changed ? { source_hash: s.source_hash, ...(s.survey_id ? { survey_id: s.survey_id } : {}) } : {}) });
-            if (epoch !== this.epoch)
-                return;
-            if (this.step === 2 && !s.variants.web)
-                this.edit(() => s.variants.web = { revision: 0, base_revision: s.base_revision, document: makeReferenceVariant(s.document, 'web') });
-        }
-        else if (this.step <= 5) {
-            const v = s.variants.web?.document;
-            if (!v)
-                throw Error('Előbb készítsd el a referencia alapját.');
-            if (this.step === 4 && (!v.seo_title.trim() || !v.seo_description.trim()))
-                throw Error('Töltsd ki a Találati cím és Rövid leírás mezőt.');
-            if (!s.saved?.variants.web || JSON.stringify(v) !== JSON.stringify(s.saved.variants.web))
-                await this.save({ kind: 'variant', document: normalizeReferenceVariant(v, s.document) });
-        }
-        else if (this.step === 7) {
-            const approved = (s.approvals ?? []).some((a) => a.platform === 'web' && a.reference_revision === s.revision && a.variant_revision === s.variants.web?.revision);
-            if (this.isChanged() || !approved)
-                throw Error('Előbb rögzítsd a tartalom jóváhagyását ezen az oldalon.');
-        }
+        this.body.append(n('p', 'A Tovább csak léptet. A szerkesztést ezen az eszközön őrizzük meg.')); if (this.step === 6)
+        button(this.body, 'Referencia mentése az ERP-be', () => void this.run(() => this.saveDraft())); this.body.append(nav); }
+    async nextStep() { const s = this.state, epoch = this.epoch; if (this.pending)
+        throw Error('Előbb ellenőrizd a korábbi mentés eredményét.'); if (this.step === 8) {
+        await this.persist();
+        this.dialog.close();
+        return;
+    } if (this.step === 0 && !s.document.title.trim())
+        throw Error('Írd be a Megnevezés mezőt.'); if (this.step === 2 && !s.variants.web)
+        this.edit(() => s.variants.web = { revision: 0, base_revision: s.base_revision, document: makeReferenceVariant(s.document, 'web') }); if (this.step === 4) {
+        const v = s.variants.web?.document;
+        if (!v?.seo_title.trim() || !v?.seo_description.trim())
+            throw Error('Töltsd ki a Találati cím és Rövid leírás mezőt.');
+    } if (this.step === 7) {
+        const approved = (s.approvals ?? []).some((a) => a.platform === 'web' && a.reference_revision === s.revision && a.variant_revision === s.variants.web?.revision);
+        if (this.isChanged() || !approved)
+            throw Error('Előbb mentsd az ERP-be és hagyd jóvá a tartalmat.');
+    } await this.persist(); if (epoch !== this.epoch)
+        return; this.step++; await this.persist(); this.render(); this.message(''); this.dialog.scrollTop = 0; }
+    async saveDraft() { const s = this.state, epoch = this.epoch; if (this.pending)
+        throw Error('Előbb ellenőrizd a korábbi mentés eredményét.'); if (!s.saved || JSON.stringify(s.document) !== JSON.stringify(s.saved.document)) {
+        s.document = normalizeReference(s.document);
+        await this.save({ kind: 'save', document: s.document, ...(s.source_changed ? { source_hash: s.source_hash, ...(s.survey_id ? { survey_id: s.survey_id } : {}) } : {}) });
         if (epoch !== this.epoch)
             return;
-        this.step++;
-        await this.persist();
-        this.render();
-        this.message('');
-        this.dialog.scrollTop = 0;
-    }
-    async chooseAnother() { if (!confirm('Másik munkát vagy referenciát választasz? A mostani szerkesztés ezen az eszközön megmarad.'))
-        return; await this.persist(); this.state = undefined; this.pending = undefined; this.active = 'wizard'; this.step = 0; await this.listRemote(); this.render(); this.message('Válassz munkát vagy nyiss meg mentett referenciát.'); this.dialog.scrollTop = 0; }
+    } for (const platform of ['web', 'facebook', 'instagram']) {
+        const item = s.variants[platform];
+        if (item && (!s.saved?.variants[platform] || JSON.stringify(item.document) !== JSON.stringify(s.saved.variants[platform]))) {
+            item.document = normalizeReferenceVariant(item.document, s.document);
+            await this.save({ kind: 'variant', document: item.document });
+            if (epoch !== this.epoch)
+                return;
+        }
+    } this.editMode = 'saved'; this.updateDraftStatus(); this.message('Mentve az ERP-be: ' + s.document.title, true); }
+    async chooseAnother() { await this.persist(); this.startScreen = true; await this.listRemote(); this.drafts = await this.local.list(this.owner); this.render(); this.message('Új referencia vagy korábbi szerkesztés folytatása.'); this.dialog.scrollTop = 0; }
     base(part) {
         const s = this.state, d = s.document;
         const box = n('section');
@@ -292,7 +310,7 @@ export class ReferenceDesk {
                 this.folds.set(this.body.dataset.referenceView + '/photo:' + m.id, true);
                 this.touch();
                 await this.persist();
-            } this.render(); this.message('A képek hozzáadva. A Tovább gombbal mentheted a módosítást.', true); }); };
+            } this.render(); this.message('A képek hozzáadva a helyi szerkesztéshez. Az ERP-be mentés külön művelet.', true); }); };
             groupBox.append(input);
             for (const m of d.media.filter(x => x.group === group)) {
                 const row = fold(groupBox, m.caption || 'Fénykép', false, 'photo:' + m.id);
@@ -336,7 +354,7 @@ export class ReferenceDesk {
         this.body.append(box);
         if (!part)
             button(box, item ? 'Új szövegjavaslat' : 'Változat készítése', () => { if (!s.revision) {
-                this.message('Előbb mentsd a referencia alapját.');
+                this.message('Előbb használd a Referencia mentése az ERP-be gombot.');
                 return;
             } const proposed = makeReferenceVariant(d, platform); if (item) {
                 const pane = fold(box, 'Új javaslat', true);
@@ -393,6 +411,11 @@ export class ReferenceDesk {
             button(preview, 'Posztcsomag letöltése', () => void this.run(async () => { await this.files.export(this.owner, s.id, d, s.variants, platform); this.message('A posztcsomag letöltése elindult.', true); }));
         }
         if (!part || part === 'approval') {
+            if (!s.revision || this.isChanged()) {
+                box.append(n('p', 'Jóváhagyás előtt külön el kell mentened a referenciát az ERP-be.'));
+                button(box, 'Referencia mentése az ERP-be', () => void this.run(() => this.saveDraft()));
+                return;
+            }
             const approval = n('section');
             box.append(approval);
             approval.append(n('p', 'Csak bemutatható szöveget és engedélyezett képeket hagyj jóvá. A feltöltött képek már a piszkozatnál is nyilvánosak lehetnek.'));
@@ -402,7 +425,7 @@ export class ReferenceDesk {
             label.prepend(checked);
             approval.append(label);
             button(approval, 'Jóváhagyás rögzítése', () => void this.run(async () => { if (this.isChanged())
-                throw Error('Előbb lépj vissza, és mentsd a módosított szöveget vagy képeket a Tovább gombbal.'); await this.save({ kind: 'approve', platform, evidence: evidence.value, checked: checked.checked }); }));
+                throw Error('Előbb mentsd a módosításokat a Referencia mentése az ERP-be gombbal.'); await this.save({ kind: 'approve', platform, evidence: evidence.value, checked: checked.checked }); }));
             if ((s.approvals ?? []).some((a) => a.platform === platform))
                 approval.append(n('p', '✓ Az aktuális mentett változat irodai ellenőrzése rögzítve.'));
         }

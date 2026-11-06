@@ -1,0 +1,16 @@
+DÍSZKERTEK ERP – magyar narráció
+
+DÍSZKERTEK ERP
+A Díszkertek alkalmazásban az ügyféltől az elszámolásig követhető a munka. Nézzük a már elkészült részeket.
+
+Ügyfelek és munkacsomag
+A kezdőlapon kiválasztjuk az ügyfelet vagy a munkát. Az ajánlatból nyomtatható, területenként rendezett munkacsomag készül.
+
+A kivitelezés követése
+A feladatokat szakaszokba rendezzük, húzással sorrendbe állítjuk. Követhető a négyszintű átvétel, a munkaidő, a beszállított és beépített anyag.
+
+Pénzügyek és naptár
+A pénzügyeknél látszanak a befizetések és az egyenlegek. A naptár a munkák és munkatársak beosztását mutatja.
+
+Referencia, egyértelmű lépésekkel
+A referencia oldalanként vezet végig. A mentés és a közzététel külön művelet. A teljes projekt befejezése még hátravan.

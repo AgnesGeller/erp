@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.7**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.8**
 
 ## Mi használható?
 
@@ -19,7 +19,7 @@
 
 A teljes ERP fejlesztése folyamatban van. [Szakaszolás és rendezés – rövid használat](docs/szakaszolas-hasznalat.md). [Állapot](docs/specifikacio-allapot.md) · [Referenciák használata](docs/referenciamunkak.md) · [Bemutatók és keddi útmutató](docs/bemutato-2026-11-10.md).
 
-A referenciakészítés oldalanként egy teendővel, Vissza/Tovább gombokkal halad; az irodai menü választás után becsukódik. A WordPress-kapcsolat ellenőrizhető; jóváhagyott referenciából piszkozat készíthető. A nyilvános közzététel külön megjelenési jóváhagyást és kézi megerősítést igényel.
+A referenciakészítésben külön választható az új munka és a korábbi szerkesztés. A Tovább csak léptet; az ERP-mentés külön gomb. Az irodai menü választás után becsukódik. A WordPress-kapcsolat ellenőrizhető; jóváhagyott referenciából piszkozat készíthető. A nyilvános közzététel külön megjelenési jóváhagyást és kézi megerősítést igényel.
 
 Az irodai kezdőlapon négy feladat közül választhatsz; a ritkább műveletek az **Iroda és beállítások** alatt találhatók.
 
@@ -37,7 +37,7 @@ HTML, CSS, TypeScript; Supabase saját ERP-sémákkal. Az eredeti fejlesztői PD
 
 Az ERP saját mappájában: `npm run build`, `npm test`, `npm run check:edge`.
 
-Legutóbbi ellenőrzés: **2026. november 5., 576 sikeres helyi teszt**, fordítás, kiszolgáló-típusellenőrzés és asztali/mobil szintetikus böngésző-/PDF-próba.
+Ellenőrzések és kiadási részletek: [fejlesztési napló](docs/fejlesztesi-naplo.md).
 
 [Adatbázisterv](docs/adatbazisterv.md) · [Jogosultságok](docs/szerepkorok.md) · [Fejlesztési napló](docs/fejlesztesi-naplo.md) · [Részletes dokumentáció](docs/reszletes-projektleiras.md)
 

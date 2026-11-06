@@ -1,0 +1,24 @@
+1
+00:00:00,000 --> 00:00:09,680
+DÍSZKERTEK ERP
+A már elkészült funkciók rövid bemutatója.
+
+2
+00:00:09,680 --> 00:00:19,888
+Ügyfelek és munkacsomag
+Ügyféladatok, ajánlatok és nyomtatható feladatok.
+
+3
+00:00:19,888 --> 00:00:32,664
+A kivitelezés követése
+Szakaszok, négyszintű átvétel, munkaidő és anyagok.
+
+4
+00:00:32,664 --> 00:00:42,320
+Pénzügyek és naptár
+Befizetések, egyenlegek és heti beosztás.
+
+5
+00:00:42,320 --> 00:00:53,800
+Referencia, egyértelmű lépésekkel
+A Tovább csak léptet; a mentés külön gomb.

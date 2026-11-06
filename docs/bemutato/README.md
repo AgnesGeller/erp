@@ -1,13 +1,13 @@
 # DÍSZKERTEK ERP – bemutatók
 
-A hangos próbaváltozat narrációja átdolgozás alatt áll. A korábbi 58 másodperces néma változat változatlanul elérhető.
+**Új magyar Noémi narráció, normál beszédtempóval és halk saját zenével.**
 
-[90 másodperces, magyar narrációs és zenés MP4](Diszkertek_ERP_hangos_bemutato_90mp.mp4) · [Hangos videó és összefoglaló ZIP-ben](Diszkertek_ERP_hangos_csomag.zip)
+- [Rövid bemutató – 54 másodperc](Diszkertek_ERP_rovid_Noemi.mp4), kb. 1,1 MB: a keddi, legfeljebb egyperces bemutatóhoz.
+- [Részletes bemutató – 2 perc 12 másodperc](Diszkertek_ERP_bemutato_Noemi.mp4), kb. 2,8 MB: közérthető funkcióbemutató és a hátralévő feladatok.
+- [Mindkét videó, szöveg és vezetői összefoglaló ZIP-ben](Diszkertek_ERP_Noemi_bemutatok.zip).
 
-A hangos változat közérthetőbben végigvezet a fő funkciókon, majd felsorolja a hátralévő fejlesztéseket. Magyar gépi narrációval, saját készítésű halk instrumentális háttérzenével; kb. 2 MB. A szöveg külön is megtalálható a csomagban. A zene és a beszéd helyben készült; nincs hozzá új előfizetés vagy külső hangszolgáltatás.
+A korábbi, elutasított Windows-hang helyett neurális magyar szintetikus narráció készült, gyorsítás nélkül. A hanghoz csak általános bemutatószöveg került a Microsoft online beszédszolgáltatásához; ügyféladat nem. A zene saját, helyben készült. Nincs új előfizetés vagy az alkalmazásba épített hangszolgáltatás.
 
-## Korábbi rövid változat
+1600×900, H.264/AAC MP4; feliratos képernyőképes áttekintés szemléltető próbaadatokkal, nem élő kattintásos felvétel. A teljes ERP még nincs kész. A referencia képe már a külön mentéses működést mutatja.
 
-[58 másodperces MP4](Diszkertek_ERP_bemutato_58mp.mp4) · [Videó és vezetői összefoglaló ZIP-ben](Diszkertek_ERP_bemutato_csomag.zip)
-
-1600×900 képpont, H.264, körülbelül 0,4 MB; magyar felirat, hang nélkül. Képernyőképes áttekintés a már elkészült funkciókról, szemléltető próbaadatokkal; nem élő kattintásos felvétel. A teljes projekt még fejlesztés alatt áll. A képek az ERP korábbi, dokumentált felületeit és a november 6-i referenciaszerkesztőt mutatják.
+[Korábbi, 58 másodperces néma videó](Diszkertek_ERP_bemutato_58mp.mp4). A régi hangos fájlok előzményként megmaradtak; továbbküldéshez az új változatokat használd.

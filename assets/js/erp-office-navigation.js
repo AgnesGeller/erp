@@ -10,6 +10,8 @@ export class OfficeNavigation {
         this.construction = construction;
         this.maintenance = maintenance;
         const get = (id) => document.getElementById(id);
+        get('office-admin-actions').addEventListener('click', e => { const target = e.target; if (e.defaultPrevented || !target?.closest('button'))
+            return; get('office-admin-actions').closest('details')?.removeAttribute('open'); });
         get('office-home-open').addEventListener('click', () => { void this.home(); });
         get('office-construction-open').addEventListener('click', () => this.construction());
         get('office-maintenance-open').addEventListener('click', () => this.maintenance());

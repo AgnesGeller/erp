@@ -16,6 +16,7 @@ export class ReferenceDesk {
     busy = false;
     writing = false;
     active = 'base';
+    stepTitle;
     state;
     pending;
     list = { projects: [], references: [] };
@@ -106,7 +107,7 @@ export class ReferenceDesk {
         this.list = list; }
     async open() { if (!this.owner)
         return; if (!this.dialog.open)
-        this.dialog.showModal(); await this.run(async () => { await this.listRemote(); this.render(); this.message('Válassz kertépítést vagy mentett referenciát.'); }); }
+        this.dialog.showModal(); await this.run(async () => { await this.listRemote(); this.render(); this.message(this.state ? 'Kövesd a szerkesztőben látható lépéseket.' : 'Válassz kertépítést vagy mentett referenciát.'); }); }
     async load(id) { await this.persist(); const epoch = this.epoch, owner = this.owner, remote = await this.api.reference('reference_read', { organization_id: this.org, reference_id: id }); const local = (await this.local.list(owner)).find(x => x.id === id); if (epoch !== this.epoch)
         return; this.versions.set(owner + '/' + id, local?.localVersion ?? 0); this.state = local?.value?.dirty || local?.value?.pending ? local.value : { ...remote, dirty: false, saved: this.saved(remote) }; this.pending = this.state.pending; this.active = 'base'; this.undo = []; this.redo = []; this.render(); this.message(this.state.revision !== remote.revision ? 'A szerveren frissebb változat van. A helyi szöveg megmaradt; az Előzményeknél hasonlíthatod össze.' : this.pending ? 'A korábbi mentés eredménye még nem ismert. Próbáld újra az eredeti kérést.' : this.state.dirty ? 'Saját helyi piszkozat megnyitva.' : 'A referencia betöltve.'); }
     async create(project) { if (!project)
@@ -141,10 +142,11 @@ export class ReferenceDesk {
         nav.className = 'reference-actions';
         button(nav, 'Másik referencia', () => void this.run(async () => { await this.persist(); this.state = undefined; this.pending = undefined; await this.listRemote(); this.render(); }));
         for (const [id, title] of [['base', 'Alap és képek'], ['web', 'Weboldal'], ['facebook', 'Facebook'], ['instagram', 'Instagram'], ['history', 'Előzmények']]) {
-            const b = button(nav, title, () => { this.active = id; this.render(); });
+            const b = button(nav, title, () => { this.selectTab(id); });
             b.setAttribute('aria-pressed', String(this.active === id));
         }
         this.body.append(nav);
+        this.guide();
         if (this.pending) {
             const b = button(this.body, 'Eredeti kérés újrapróbálása', () => void this.run(() => this.retry()));
             b.dataset.retry = 'true';
@@ -180,6 +182,17 @@ export class ReferenceDesk {
         }
         this.lock();
     }
+    selectTab(id, title) { this.active = id; this.stepTitle = title; this.render(); const panels = Array.from(this.body.querySelectorAll('details')), panel = title ? panels.find(d => d.querySelector('summary')?.textContent === title) : panels.find(d => d.parentElement === this.body && d.dataset.referenceGuide !== 'true'); if (panel) {
+        let parent = panel;
+        while (parent && parent !== this.body) {
+            if (parent instanceof HTMLDetailsElement)
+                parent.open = true;
+            parent = parent.parentElement;
+        }
+        panel.scrollIntoView({ block: 'nearest' });
+    } }
+    guide() { const text = this.active === 'web' && this.stepTitle === 'Publikálás előtti irodai ellenőrzés' ? '3. Ellenőrizd a mentett szöveget és képeket. Az ellenőrzés rögzítése után a Tovább: WordPress-piszkozat gombbal folytasd.' : this.active === 'web' && this.stepTitle === 'WordPress-piszkozat és közzététel' ? '4. Töltsd fel a kijelölt képeket, majd készíts WordPress-piszkozatot. A naplósorban a Piszkozat előnézete hivatkozással nézheted meg az eredményt.' : this.active === 'base' ? '1. Írd be a megnevezést és a bemutató szöveget. A Fényképek részen adhatsz hozzá képeket. Kattints az Alap mentése, majd a Tovább: weboldal-változat gombra.' : this.active === 'web' ? '2. Ha még nincs weboldal-változat, kattints a Változat készítése gombra. Ellenőrizd a szöveget, töltsd ki a SEO-címet és SEO-leírást, jelöld ki a képeket, majd Változat mentése. Ezután az irodai ellenőrzés következik.' : this.active === 'history' ? 'Itt korábbi mentéseket nézhetsz meg és nyithatsz vissza szerkesztésre.' : labels[this.active] + ': készíts külön változatot, ellenőrizd a szöveget és a képeket, majd mentsd. A posztcsomag letölthető; ez nem tesz közzé automatikusan semmit.'; const hint = n('p', text); hint.className = 'reference-next-step'; this.body.append(hint); const help = fold(this.body, 'A referencia elkészítése – 4 lépés'); help.dataset.referenceGuide = 'true'; const list = n('ol'); for (const step of ['Alap és képek: megnevezés, szöveg, fotók, majd Alap mentése.', 'Weboldal: Változat készítése, szöveg és képek ellenőrzése, SEO-cím/leírás kitöltése, majd Változat mentése.', 'Irodai ellenőrzés: írd le, ki és mikor ellenőrizte a tartalmat, szükség esetén hivatkozz a hozzájárulásra. Pipáld be az ellenőrzést, majd Irodai ellenőrzés rögzítése.', 'WordPress-piszkozat: előbb a kijelölt képek feltöltése, utána WordPress-piszkozat készítése / frissítése. A naplósor Piszkozat előnézete hivatkozásával nézheted meg.'])
+        list.append(n('li', step)); help.append(list, n('p', 'A piszkozat még nem nyilvános bejegyzés. A megjelenés jóváhagyása után a közzététel külön gombbal és megerősítéssel történik. Facebook és Instagram külön, választható változat.')); }
     base() {
         const s = this.state, d = s.document, box = fold(this.body, 'Referencia szövege', true);
         this.field(box, 'Megnevezés', d.title, v => d.title = v);
@@ -187,6 +200,10 @@ export class ReferenceDesk {
         this.field(box, 'Megvalósítás – valóban elkészült munkák', d.realization, v => d.realization = v, true);
         this.field(box, 'Ténylegesen beépített anyagok', d.materials, v => d.materials = v, true);
         button(box, 'Alap mentése', () => void this.run(() => this.save({ kind: 'save', document: normalizeReference(d), ...(s.source_changed ? { source_hash: s.source_hash, ...(s.survey_id ? { survey_id: s.survey_id } : {}) } : {}) })));
+        button(box, 'Tovább: weboldal-változat', () => { if (!s.revision || this.isChanged()) {
+            this.message('Előbb kattints az Alap mentése gombra, és várd meg a sikeres mentést.');
+            return;
+        } this.selectTab('web'); });
         const source = fold(this.body, 'Forrás ellenőrzése');
         if (s.source_hash !== s.source.hash)
             source.append(n('p', 'A projekt forrásadata a mentett alap óta megváltozott.'));
@@ -300,6 +317,14 @@ export class ReferenceDesk {
         button(preview, 'Szöveg másolása', () => void this.run(async () => { await navigator.clipboard.writeText(referencePlain(v)); this.message('A szöveg a vágólapra került.', true); }));
         button(preview, 'Posztcsomag letöltése', () => void this.run(async () => { await this.files.export(this.owner, s.id, d, s.variants, platform); this.message('A posztcsomag letöltése elindult.', true); }));
         const approval = fold(box, 'Publikálás előtti irodai ellenőrzés');
+        if (platform === 'web') {
+            const next = button(box, 'Tovább: irodai ellenőrzés', () => { if (this.isChanged()) {
+                this.message('Előbb kattints a Változat mentése gombra.');
+                return;
+            } this.selectTab('web', 'Publikálás előtti irodai ellenőrzés'); });
+            box.insertBefore(next, preview);
+        }
+        approval.append(n('p', '3. A mentett szöveget és képeket ellenőrizd. Az alábbi mezőbe például ezt írhatod: „Ellenőrizte: Ági, dátum: …; személyes adatot nem tartalmaz.” Csak a valóban elvégzett ellenőrzést rögzítsd.'));
         approval.append(n('p', 'Ellenőrizd a szöveget és minden képet. Név, pontos cím, arc és rendszám csak megfelelő jóváhagyással osztható meg. A WordPress-piszkozat képfájljai is nyilvánossá válhatnak.'));
         const evidence = this.field(approval, 'Ellenőrzés és szükséges hozzájárulások hivatkozása', ''), label = n('label', 'A szöveg, képek és nyilvánosságra hozhatóság ellenőrizve.'), checked = document.createElement('input');
         checked.type = 'checkbox';
@@ -310,15 +335,20 @@ export class ReferenceDesk {
             throw Error('Előbb mentsd a módosított alapot és a külön változatokat.'); await this.save({ kind: 'approve', platform, evidence: evidence.value, checked: checked.checked }); }));
         if ((s.approvals ?? []).some((a) => a.platform === platform))
             approval.append(n('p', '✓ Az aktuális mentett változat irodai ellenőrzése rögzítve.'));
-        if (platform === 'web')
+        if (platform === 'web') {
+            button(approval, 'Tovább: WordPress-piszkozat', () => { const approved = (s.approvals ?? []).some((a) => a.platform === 'web' && a.reference_revision === s.revision && a.variant_revision === s.variants.web.revision); if (this.isChanged() || !approved) {
+                this.message('Előbb mentsd a változatot, majd rögzítsd az irodai ellenőrzést.');
+                return;
+            } this.selectTab('web', 'WordPress-piszkozat és közzététel'); });
             this.wordpress(box);
+        }
     }
     connection(parent) { const box = fold(parent, 'WordPress-kapcsolat', true); if (!this.list.wordpress_configured) {
         box.append(n('p', 'A WordPress-hozzáférés még nincs beállítva.'));
         return;
     } button(box, 'WordPress-kapcsolat ellenőrzése', () => void this.run(async () => { const epoch = this.epoch, result = await this.api.reference('reference_wp_check', { organization_id: this.org }); if (epoch !== this.epoch)
         return; this.message(result.ready ? 'A WordPress-belépés és jogosultság ellenőrizve. Közzététel továbbra is csak külön gombbal és megerősítéssel.' : 'A WordPress-belépés és jogosultság ellenőrizve. Piszkozat készíthető; a nyilvános közzététel a megjelenés jóváhagyására vár.', true); })); box.append(n('p', 'Ez az ellenőrzés csak olvas; nem tölt fel képet és nem hoz létre bejegyzést.')); }
-    wordpress(parent) { const s = this.state, box = fold(parent, 'WordPress-piszkozat és közzététel'); this.connection(box); if (!this.list.wordpress_configured) {
+    wordpress(parent) { const s = this.state, box = fold(parent, 'WordPress-piszkozat és közzététel'); box.append(n('p', '4. Ha vannak kijelölt képek, előbb töltsd fel őket. Ezután készíts WordPress-piszkozatot. A sikeres naplósorban nyisd meg a Piszkozat előnézete hivatkozást; ehhez a WordPressben is be kell jelentkezned.')); this.connection(box); if (!this.list.wordpress_configured) {
         box.append(n('p', 'A WordPress-kapcsolat beállítására vár. A referencia mentése, előnézete és letöltése már használható.'));
         return;
     } if (!this.list.wordpress_ready)

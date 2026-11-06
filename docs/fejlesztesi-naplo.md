@@ -497,3 +497,11 @@ A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontos
 - 31 célzott helyi teszt sikeres: WordPress-adapter, védett gateway és jóváhagyás, kézi publikálás tiltása, offline működés, teljes szintetikus bemutatófolyamat. Frontendfordítás és kiszolgáló-típusellenőrzés sikeres. A korábbi teljes 576 tesztes kiadás tényét nem helyettesítjük teljes új futás állításával.
 - Nincs adatbázis-, Auth-, más alkalmazást érintő módosítás vagy függőségtelepítés. Valódi WordPress-bejegyzést a fejlesztési ellenőrzés nem hozott létre; a felhasználóval végzendő piszkozat-/sablon-/SEO-próba hátravan.
 - Éles saját gateway v32: a kiinduló v31-hez képest csak két WordPress-modul változott; mind a 35 telepített fájl pontosan egyezik. Olvasási HTTP-próba: auth_options 200, bejelentkezés nélküli reference_wp_check 401.
+
+## 2026. november 6. – Követhető referenciakészítés és becsukódó menü (0.16.3)
+
+- Az Iroda és beállítások lenyíló menüpont választásakor becsukódik; a később létrehozott menüpontokra is érvényes. A menü üres részére kattintás nem választ műveletet.
+- Az aktív referenciafül jól látható zöld kiemelést kapott. Ismételt választáskor a hozzá tartozó becsukott szerkesztőrész újra megnyílik és látható helyre kerül. Ez megszünteti az Alap és képek látszólag hatástalan kattintását.
+- Négy lépéses lenyitható használati segítség, aktuális teendő és a mentések melletti Tovább gombok vezetik végig a szöveg/képek → weboldal-változat → irodai ellenőrzés → WordPress-piszkozat folyamatot. A mentést vagy ellenőrzést nem hagyják észrevétlenül ki.
+- 19 célzott helyi teszt és frontendfordítás sikeres. Saját helyi böngészőben, szintetikus adatokkal: becsukott rész újranyitása, mentés előtti továbblépés jelzése, alap/változat mentése, 3–4. lépés célzott megnyitása, bezárás ellenőrizve. Mobil 390 px: clientWidth=scrollWidth=358 px. Asztali és mobilos képernyőkép készült; a használati leírásban az asztali próba látható.
+- Csak ERP-felület és saját dokumentáció változott. Nincs adatbázis-, kiszolgáló-, Auth- vagy más alkalmazást érintő módosítás; valódi WordPress-bejegyzés nem készült.

@@ -71,3 +71,8 @@ dialog{max-height:calc(100svh - 24px);overflow-y:auto;overscroll-behavior:contai
 @media(max-width:480px){.reference-dialog{width:calc(100vw - 1rem);max-width:calc(100vw - 1rem);padding:1rem;}.reference-actions>button{flex:1 1 8rem;min-height:44px;}}
 
 .reference-dialog input:not([type=checkbox]),.reference-dialog textarea,.reference-dialog select{font:inherit;min-height:44px;padding:.6rem;border:1px solid var(--line,#aab9a8);background:#fff;color:inherit;}
+
+.reference-actions button[aria-pressed="true"]{background:#214a35;color:#fff;border-color:#214a35;font-weight:700;}
+.reference-next-step{border-left:3px solid #214a35;padding:.75rem 1rem;background:#edf1e9;line-height:1.6;}
+.reference-dialog ol{padding-left:1.5rem;}
+.reference-dialog li{margin-block:.6rem;}

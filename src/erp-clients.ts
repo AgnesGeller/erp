@@ -4,7 +4,7 @@ const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const node=(tag:string,text='')=>{const x=document.createElement(tag);x.textContent=text;return x;};
 const button=(text:string,run:()=>void)=>{const b=document.createElement('button');b.type='button';b.className='quiet';b.textContent=text;b.addEventListener('click',run);return b;};
 const statuses:Record<string,string>={waiting_start:'Indításra vár',running:'Kertépítés folyamatban',closed:'Lezárt kertépítés',requested:'Időpontigény beérkezett',confirmed:'Visszaigazolt munka',cancelled:'Visszavont munka',sent:'Kiküldött ajánlat',accepted:'Elfogadott ajánlat',rejected:'Elutasított ajánlat',withdrawn:'Visszavont ajánlat'};
-const {quoteNumber}=await import(new URL('./erp-quote-tools.js?v=0.16.2',import.meta.url).href) as typeof import('./erp-quote-tools.js');
+const {quoteNumber}=await import(new URL('./erp-quote-tools.js?v=0.16.3',import.meta.url).href) as typeof import('./erp-quote-tools.js');
 const money=(v:unknown)=>quoteNumber(v)+' Ft';
 export class ClientAdmin{
  private org:string|undefined;private epoch=0;private accounts:Row[]=[];private sites:Row[]=[];private context:Row|undefined;private freshId=crypto.randomUUID();private selected:Row|undefined;

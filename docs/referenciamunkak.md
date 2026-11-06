@@ -1,6 +1,8 @@
 # Referenciamunkák – rövid használat
 
-**ERP 0.16.2.** A referencia-szerkesztő az **Iroda és beállítások → Referenciamunkák** pontban nyílik meg. A fejléc × gombjával bármikor bezárható; mentés közben várd meg a visszajelzést.
+**ERP 0.16.3.** A referencia-szerkesztő az **Iroda és beállítások → Referenciamunkák** pontban nyílik meg. A fejléc × gombjával bármikor bezárható; mentés közben várd meg a visszajelzést.
+
+**A szerkesztőben négy lépéses útmutató látható.** Az aktív fül zöld; rákattintva a becsukott szerkesztőrész is újra kinyílik. Az **Alap mentése → Tovább: weboldal-változat → Változat készítése → Változat mentése → Tovább: irodai ellenőrzés → Tovább: WordPress-piszkozat** gombok vezetnek végig. A Tovább gomb jelzi, ha előbb mentés vagy ellenőrzés szükséges. Az Iroda és beállítások menü menüpont választása után becsukódik.
 
 1. Válassz meglévő kertépítést, majd **Referencia készítése**. Az alap a kapcsolt felmérésből, ténylegesen átvett munkákból és valóban beépített anyagokból készül. A beszerzett, de be nem épített anyag nem kerül automatikusan bele.
 2. Az **Alap és képek** részen nevezd el, javítsd a szöveget, majd **Alap mentése**. A **Forrás ellenőrzése** megmutatja az átvett és még függő munkákat. A friss forrás javaslata külön nyílik meg; a saját szöveget csak kifejezett átvétellel cseréli le.
@@ -29,3 +31,5 @@ A nyilvános közzététel a megjelenés jóváhagyásáig szerveroldalon tiltot
 Név, cím, arc, rendszám és más felismerhető adat csak megfelelő jóváhagyással kerülhet nyilvánosságra. Már a piszkozat képfájljai is hozzáférhetővé válhatnak, ezért az ellenőrzés a feltöltés előtt kell. Közben máshol szerkesztett cikket nem írunk felül; bizonytalan küldést nem ismétlünk vakon. A saját SEO-mentés utáni végső WordPress-állapotot visszaolvassuk, hogy a következő küldés ne jelezze tévesen más szerkesztő módosítását.
 
 ![Mobilos referencia-előnézet helyi, szintetikus képpel](kepek/referenciak-mobil.png)
+
+![Lépésenkénti referenciaszerkesztő helyi próbája](kepek/referencia-lepesek-0163.png)

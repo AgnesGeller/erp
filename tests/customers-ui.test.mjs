@@ -13,3 +13,4 @@ test('A betöltés közben módosított keresés frissítése nem vész el',asyn
 test('Kijelentkezés után a későn megérkező ügyféladat nem jelenik meg',async()=>{
  const h=harness(),loading=h.directory.setOrganization('org');h.directory.reset();h.calls[0].resolve(result('private'));await loading;assert.equal(h.rendered.length,0);assert.equal(h.element('customer-view').hidden,true);
 });
+test('Kezdolapi belepes nem tolti a rejtett ugyfellistat; megnyitasakor viszont betolti',async()=>{const h=harness();await h.directory.setOrganization('org',true);assert.equal(h.calls.length,0);h.directory.open();assert.equal(h.calls.length,1);h.calls[0].resolve(result('lazy'));await new Promise(r=>setImmediate(r));assert.equal(h.rendered.length,1);});

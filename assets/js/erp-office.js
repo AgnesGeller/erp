@@ -5,27 +5,27 @@ const clientSetupOpening = clientSetupToken !== null;
 if (clientSetupOpening)
     history.replaceState(null, '', location.pathname + location.search);
 const setupOpening = clientSetupOpening || new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.16.5', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.16.5', import.meta.url);
-const [{ ErpApi, ApiError }, { projectPeriod, todayBudapest, periodLabel }, { projectRoleNames: roleNames, selectableProjectRoles }] = await Promise.all([import(apiUrl.href), import(datesUrl.href), import(new URL('./erp-project-roles.js?v=0.16.5', import.meta.url).href)]);
+const apiUrl = new URL('./erp-api.js?v=0.16.6', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.16.6', import.meta.url);
+const [{ ErpApi, ApiError }, { projectPeriod, todayBudapest, periodLabel }, { projectRoleNames: roleNames, selectableProjectRoles }] = await Promise.all([import(apiUrl.href), import(datesUrl.href), import(new URL('./erp-project-roles.js?v=0.16.6', import.meta.url).href)]);
 const api = new ErpApi();
 const [{ CustomerDirectory }, { SiteWorks }, { QuoteDesk }, { SurveyDesk, surveysEnabled }, { ClientAdmin, ClientPortal }, { StaffAdmin }, { WorkPlanDesk }, { MaterialDesk }, { WorksheetDesk }, { EntryDesk }, { FinanceDesk }, { WorkpackDesk }, { CalendarDesk }, { ReferenceDesk }, { MaintenanceDesk }, { OfficeNavigation }] = await Promise.all([
-    import(new URL('./erp-customers.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-site-works.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-quotes.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-surveys.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-clients.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-staff.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-workplans.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-materials.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-worksheets.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-entries.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-finance.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-workpack.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-calendar.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-references.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-maintenance.js?v=0.16.5', import.meta.url).href),
-    import(new URL('./erp-office-navigation.js?v=0.16.5', import.meta.url).href)
+    import(new URL('./erp-customers.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-site-works.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-quotes.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-surveys.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-clients.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-staff.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-workplans.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-materials.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-worksheets.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-entries.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-finance.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-workpack.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-calendar.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-references.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-maintenance.js?v=0.16.6', import.meta.url).href),
+    import(new URL('./erp-office-navigation.js?v=0.16.6', import.meta.url).href)
 ]);
 const finance = new FinanceDesk(api, showError);
 const workpack = new WorkpackDesk(api, showError);
@@ -114,6 +114,8 @@ let mutations = 0;
 let dirty = false;
 let loading = false;
 let lastWorkspaceRefresh = 0;
+let teamLoadedFor;
+let teamLoadedAt = 0;
 let restoring = false;
 let assignmentRequest = 0;
 let workerRequest;
@@ -131,6 +133,8 @@ function resetView() {
     get('office-status').textContent = '';
     get('login-feedback').textContent = '';
     generation++;
+    teamLoadedFor = undefined;
+    teamLoadedAt = 0;
     references.reset();
     calendar.reset();
     officeNavigation.reset();
@@ -256,7 +260,7 @@ async function loadAssignments() {
         list.append(row);
     }
 }
-async function loadWorkspace() {
+async function loadWorkspace(freshMemberships) {
     if (loading || !api.signedIn)
         return;
     loading = true;
@@ -265,7 +269,8 @@ async function loadWorkspace() {
     get('organization-select').disabled = true;
     projectSelect.disabled = true;
     try {
-        const memberships = await api.rpc('erp_session');
+        // Csak az éppen sikeres szerveres belépés/helyreállítás válasza adható át; nem helyi jogosultságmásolat.
+        const memberships = freshMemberships ?? await api.rpc('erp_session');
         if (epoch !== generation)
             return;
         const wanted = selectedOrganization() || current?.organization_id;
@@ -327,6 +332,27 @@ async function loadWorkspace() {
         clientPortal.reset();
         clientAdmin.setOrganization(current.is_office ? current.organization_id : undefined);
         get('client-login-area').hidden = true;
+        surveys.setOrganization(current.is_office ? current.organization_id : undefined, current.person_id);
+        quotes.setOrganization(current.is_office ? current.organization_id : undefined);
+        works.setOrganization(current.is_office ? current.organization_id : undefined);
+        if (current.is_office && !get('office-home').hidden) {
+            await customers.setOrganization(current.organization_id, true);
+            if (epoch !== generation)
+                return;
+            if (teamLoadedFor !== current.organization_id) {
+                people = [];
+                projects = [];
+                projectSelect.replaceChildren();
+                personSelect.replaceChildren();
+                get('people-list').replaceChildren();
+                get('assignment-list').replaceChildren();
+            }
+            get('office-app').hidden = false;
+            get('login-area').hidden = true;
+            get('public-identity').hidden = true;
+            get('logout').hidden = false;
+            return;
+        }
         const result = await Promise.all([
             api.rpc('erp_list_projects', { p_org: current.organization_id }),
             current.is_office ? api.rpc('erp_list_people', { p_org: current.organization_id }) : Promise.resolve([])
@@ -350,12 +376,11 @@ async function loadWorkspace() {
         get('public-identity').hidden = true;
         get('logout').hidden = false;
         await loadAssignments();
-        surveys.setOrganization(current.is_office ? current.organization_id : undefined, current.person_id);
-        quotes.setOrganization(current.is_office ? current.organization_id : undefined);
-        works.setOrganization(current.is_office ? current.organization_id : undefined);
         await customers.setOrganization(current.is_office ? current.organization_id : undefined);
         if (current.is_office)
             await clientAdmin.refreshRequests();
+        teamLoadedFor = current.organization_id;
+        teamLoadedAt = Date.now();
     }
     finally {
         loading = false;
@@ -390,7 +415,7 @@ loginForm.addEventListener('submit', async (event) => {
         await api.login(name, password);
         if (epoch !== generation)
             return;
-        await loadWorkspace();
+        await loadWorkspace(api.organizations);
         message(api.remembered ? 'Sikeres belépés. Az eszköz megjegyezte a belépésedet.' : 'Sikeres belépés. Az eszköz nem engedte megjegyezni a belépést; újranyitáskor ismét add meg a PIN-kódot.', true);
     }
     catch (error) {
@@ -484,6 +509,8 @@ get('logout').addEventListener('click', async () => {
         showError(error);
     }
 });
+get('show-team').addEventListener('click', () => { if (current?.is_office && !loading && !mutations && !dirty && (teamLoadedFor !== current.organization_id || Date.now() - teamLoadedAt >= 30000))
+    void loadWorkspace().catch(showError); });
 get('reload-workspace').addEventListener('click', () => { if (!mutations)
     loadWorkspace().then(() => message('A lista naprakész.', true)).catch(showError); });
 projectSelect.addEventListener('change', () => { loadAssignments().catch(showError); });
@@ -522,7 +549,7 @@ clientForm.addEventListener('submit', async (e) => { e.preventDefault(); if (cli
         await api.loginClient(email, password);
     if (epoch !== generation)
         return;
-    await loadWorkspace();
+    await loadWorkspace(api.organizations);
 }
 catch (error) {
     if (epoch === generation)
@@ -606,7 +633,7 @@ async function restoreOffice() {
         restoring = false;
         if (epoch !== generation || !restored)
             return;
-        await loadWorkspace();
+        await loadWorkspace(api.organizations);
         if (epoch !== generation || !api.signedIn)
             return;
         message('Sikeres automatikus belépés.', true);

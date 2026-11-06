@@ -49,3 +49,5 @@ Publikus ellenőrzés: a 7942c55 GitHub Pages-telepítése sikeres. A https://ag
 ## Alkalmazás megnyitása
 
 Megjegyzett belépésnél az **Alkalmazás megnyitása…** jelzés után közvetlenül a munkatér jelenik meg. A belépőoldal közben nem villan fel. A szerver a belépést és a hozzáférést továbbra is ellenőrzi; a várakozás ideje az internetkapcsolattól is függ. Lejárt belépésnél a belépőoldal és a hibaüzenet jelenik meg. Elakadt betöltésnél az Újrapróbálás gomb használható.
+
+0.16.6: a friss belépés/helyreállítás szerveresen ellenőrzött jogosultságválaszát közvetlenül felhasználjuk. A kezdőlap nem vár a rejtett ügyfél-, munkatárs-, munka- és megbízáslistára. Az ügyfelek és munkatársak adatai a megfelelő menüpont megnyitásakor töltődnek; a szerver minden műveletet továbbra is ellenőriz. A hálózati belépésellenőrzés ideje nem szüntethető meg a védelem kikapcsolása nélkül, ezért azonnali megnyitást nem ígérünk.

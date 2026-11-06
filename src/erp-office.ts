@@ -1,27 +1,27 @@
 import type { OrganizationSession } from './erp-api.js';
 const clientSetupParams=new URLSearchParams(location.hash.slice(1));const clientSetupKind=clientSetupParams.has('staff_setup')?'staff':'client';let clientSetupToken=clientSetupParams.get(clientSetupKind==='staff'?'staff_setup':'client_setup');const clientSetupOpening=clientSetupToken!==null;if(clientSetupOpening)history.replaceState(null,'',location.pathname+location.search);
 const setupOpening=clientSetupOpening||new URLSearchParams(location.hash.slice(1)).has('office_setup')||document.documentElement.dataset.erpSetup==='true';
-const apiUrl=new URL('./erp-api.js?v=0.16.5',import.meta.url);
-const datesUrl=new URL('./erp-dates.js?v=0.16.5',import.meta.url);
-const [{ErpApi,ApiError},{projectPeriod,todayBudapest,periodLabel},{projectRoleNames:roleNames,selectableProjectRoles}]=await Promise.all([import(apiUrl.href) as Promise<typeof import('./erp-api.js')>,import(datesUrl.href) as Promise<typeof import('./erp-dates.js')>,import(new URL('./erp-project-roles.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-project-roles.js')>]);
+const apiUrl=new URL('./erp-api.js?v=0.16.6',import.meta.url);
+const datesUrl=new URL('./erp-dates.js?v=0.16.6',import.meta.url);
+const [{ErpApi,ApiError},{projectPeriod,todayBudapest,periodLabel},{projectRoleNames:roleNames,selectableProjectRoles}]=await Promise.all([import(apiUrl.href) as Promise<typeof import('./erp-api.js')>,import(datesUrl.href) as Promise<typeof import('./erp-dates.js')>,import(new URL('./erp-project-roles.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-project-roles.js')>]);
 const api=new ErpApi();
 const [{CustomerDirectory},{SiteWorks},{QuoteDesk},{SurveyDesk,surveysEnabled},{ClientAdmin,ClientPortal},{StaffAdmin},{WorkPlanDesk},{MaterialDesk},{WorksheetDesk},{EntryDesk},{FinanceDesk},{WorkpackDesk},{CalendarDesk},{ReferenceDesk},{MaintenanceDesk},{OfficeNavigation}]=await Promise.all([
- import(new URL('./erp-customers.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-customers.js')>,
- import(new URL('./erp-site-works.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-site-works.js')>,
- import(new URL('./erp-quotes.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-quotes.js')>,
- import(new URL('./erp-surveys.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-surveys.js')>,
- import(new URL('./erp-clients.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-clients.js')>,
- import(new URL('./erp-staff.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-staff.js')>,
- import(new URL('./erp-workplans.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-workplans.js')>,
- import(new URL('./erp-materials.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-materials.js')>,
- import(new URL('./erp-worksheets.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-worksheets.js')>,
- import(new URL('./erp-entries.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-entries.js')>,
- import(new URL('./erp-finance.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-finance.js')>,
- import(new URL('./erp-workpack.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-workpack.js')>,
- import(new URL('./erp-calendar.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-calendar.js')>,
- import(new URL('./erp-references.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-references.js')>,
- import(new URL('./erp-maintenance.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-maintenance.js')>,
- import(new URL('./erp-office-navigation.js?v=0.16.5',import.meta.url).href) as Promise<typeof import('./erp-office-navigation.js')>
+ import(new URL('./erp-customers.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-customers.js')>,
+ import(new URL('./erp-site-works.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-site-works.js')>,
+ import(new URL('./erp-quotes.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-quotes.js')>,
+ import(new URL('./erp-surveys.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-surveys.js')>,
+ import(new URL('./erp-clients.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-clients.js')>,
+ import(new URL('./erp-staff.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-staff.js')>,
+ import(new URL('./erp-workplans.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-workplans.js')>,
+ import(new URL('./erp-materials.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-materials.js')>,
+ import(new URL('./erp-worksheets.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-worksheets.js')>,
+ import(new URL('./erp-entries.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-entries.js')>,
+ import(new URL('./erp-finance.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-finance.js')>,
+ import(new URL('./erp-workpack.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-workpack.js')>,
+ import(new URL('./erp-calendar.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-calendar.js')>,
+ import(new URL('./erp-references.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-references.js')>,
+ import(new URL('./erp-maintenance.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-maintenance.js')>,
+ import(new URL('./erp-office-navigation.js?v=0.16.6',import.meta.url).href) as Promise<typeof import('./erp-office-navigation.js')>
 ]);
 const finance=new FinanceDesk(api,showError);
 const workpack=new WorkpackDesk(api,showError);
@@ -59,7 +59,7 @@ let generation=0;
 let mutations=0;
 let dirty=false;
 let loading=false;
-let lastWorkspaceRefresh=0;
+let lastWorkspaceRefresh=0;let teamLoadedFor:string|undefined;let teamLoadedAt=0;
 let restoring=false;
 let assignmentRequest=0;
 let workerRequest: {name:string;id:string}|undefined;
@@ -75,7 +75,7 @@ function formBusy(form:HTMLFormElement,busy:boolean):void {
 }
 function resetView():void {
  get('office-status').textContent='';get('login-feedback').textContent='';
- generation++;references.reset();calendar.reset();officeNavigation.reset();workpack.reset();maintenance.reset();finance.reset();staffAdmin.reset();workplans.reset();get('show-materials').hidden=true;clientAdmin.reset();clientPortal.reset();customers.reset();works.reset();quotes.reset();surveys.reset();current=undefined;people=[];projects=[];dirty=false;workerRequest=undefined;
+ generation++;teamLoadedFor=undefined;teamLoadedAt=0;references.reset();calendar.reset();officeNavigation.reset();workpack.reset();maintenance.reset();finance.reset();staffAdmin.reset();workplans.reset();get('show-materials').hidden=true;clientAdmin.reset();clientPortal.reset();customers.reset();works.reset();quotes.reset();surveys.reset();current=undefined;people=[];projects=[];dirty=false;workerRequest=undefined;
  get('staff-workspace').hidden=true;get('office-app').hidden=true;get('client-login-area').hidden=true;get('client-setup-area').hidden=true;get('login-area').hidden=false;get('public-identity').hidden=false;get('logout').hidden=true;
  for(const id of ['people-list','assignment-list','project-select','assignment-person','organization-select'])get(id).replaceChildren();
  workerForm.reset();roleForm.reset();get<HTMLInputElement>('login-password').value='';
@@ -130,10 +130,11 @@ async function loadAssignments():Promise<void> {
   list.append(row);
  }
 }
-async function loadWorkspace():Promise<void> {
+async function loadWorkspace(freshMemberships?:OrganizationSession[]):Promise<void> {
  if(loading||!api.signedIn)return;loading=true;lastWorkspaceRefresh=Date.now();const epoch=generation;get<HTMLSelectElement>('organization-select').disabled=true;projectSelect.disabled=true;
  try{
-  const memberships=await api.rpc<OrganizationSession[]>('erp_session');
+  // Csak az éppen sikeres szerveres belépés/helyreállítás válasza adható át; nem helyi jogosultságmásolat.
+  const memberships=freshMemberships??await api.rpc<OrganizationSession[]>('erp_session');
   if(epoch!==generation)return;
   const wanted=selectedOrganization()||current?.organization_id;
   current=memberships.find(m=>m.organization_id===wanted)??memberships[0];
@@ -153,6 +154,8 @@ async function loadWorkspace():Promise<void> {
   if(current.is_staff&&!current.is_office){clientAdmin.setOrganization(undefined);clientPortal.reset();customers.reset();works.reset();quotes.reset();surveys.reset();get('office-app').hidden=true;get('login-area').hidden=true;get('client-login-area').hidden=true;get('client-setup-area').hidden=true;get('public-identity').hidden=true;get('logout').hidden=false;get('staff-workspace').hidden=false;return;}
   if(current.is_client){clientAdmin.setOrganization(undefined);customers.reset();works.reset();quotes.reset();surveys.reset();get('office-app').hidden=true;get('login-area').hidden=true;get('client-login-area').hidden=true;get('client-setup-area').hidden=true;get('public-identity').hidden=true;get('logout').hidden=false;await clientPortal.open(current.person_id);return;}
   clientPortal.reset();clientAdmin.setOrganization(current.is_office?current.organization_id:undefined);get('client-login-area').hidden=true;
+  surveys.setOrganization(current.is_office?current.organization_id:undefined,current.person_id);quotes.setOrganization(current.is_office?current.organization_id:undefined);works.setOrganization(current.is_office?current.organization_id:undefined);
+  if(current.is_office&&!get('office-home').hidden){await customers.setOrganization(current.organization_id,true);if(epoch!==generation)return;if(teamLoadedFor!==current.organization_id){people=[];projects=[];projectSelect.replaceChildren();personSelect.replaceChildren();get('people-list').replaceChildren();get('assignment-list').replaceChildren();}get('office-app').hidden=false;get('login-area').hidden=true;get('public-identity').hidden=true;get('logout').hidden=false;return;}
   const result=await Promise.all([
    api.rpc<Project[]>('erp_list_projects',{p_org:current.organization_id}),
    current.is_office?api.rpc<Person[]>('erp_list_people',{p_org:current.organization_id}):Promise.resolve([])
@@ -167,10 +170,7 @@ async function loadWorkspace():Promise<void> {
   projectSelect.disabled=!projects.some(p=>p.active);
   get('office-app').hidden=false;get('login-area').hidden=true;get('public-identity').hidden=true;get('logout').hidden=false;
   await loadAssignments();
-  surveys.setOrganization(current.is_office?current.organization_id:undefined,current.person_id);
-  quotes.setOrganization(current.is_office?current.organization_id:undefined);
-  works.setOrganization(current.is_office?current.organization_id:undefined);
-  await customers.setOrganization(current.is_office?current.organization_id:undefined);if(current.is_office)await clientAdmin.refreshRequests();
+  await customers.setOrganization(current.is_office?current.organization_id:undefined);if(current.is_office)await clientAdmin.refreshRequests();teamLoadedFor=current.organization_id;teamLoadedAt=Date.now();
  }finally{loading=false;get<HTMLSelectElement>('organization-select').disabled=false;projectSelect.disabled=!projects.some(p=>p.active);}
 }
 loginForm.addEventListener('invalid',()=>{
@@ -186,7 +186,7 @@ loginForm.addEventListener('submit',async event=>{
  if(name!=='agi'&&name!=='tamas'){message('Válaszd ki a nevedet.',false);return;}
  const password=get<HTMLInputElement>('login-password').value;get<HTMLInputElement>('login-password').value='';
  generation++;const epoch=generation;formBusy(loginForm,true);message('Belépés…');
- try{await api.login(name,password);if(epoch!==generation)return;await loadWorkspace();message(api.remembered?'Sikeres belépés. Az eszköz megjegyezte a belépésedet.':'Sikeres belépés. Az eszköz nem engedte megjegyezni a belépést; újranyitáskor ismét add meg a PIN-kódot.',true);}
+ try{await api.login(name,password);if(epoch!==generation)return;await loadWorkspace(api.organizations);message(api.remembered?'Sikeres belépés. Az eszköz megjegyezte a belépésedet.':'Sikeres belépés. Az eszköz nem engedte megjegyezni a belépést; újranyitáskor ismét add meg a PIN-kódot.',true);}
  catch(error){if(epoch===generation)showError(error);}finally{formBusy(loginForm,false);}
 });
 workerForm.addEventListener('submit',async event=>{
@@ -219,6 +219,7 @@ get('logout').addEventListener('click',async()=>{
  generation++;
  try{await api.logout();resetView();message('Sikeres kijelentkezés.',true);}catch(error){resetView();showError(error);}
 });
+get('show-team').addEventListener('click',()=>{if(current?.is_office&&!loading&&!mutations&&!dirty&&(teamLoadedFor!==current.organization_id||Date.now()-teamLoadedAt>=30000))void loadWorkspace().catch(showError);});
 get('reload-workspace').addEventListener('click',()=>{if(!mutations)loadWorkspace().then(()=>message('A lista naprakész.',true)).catch(showError);});
 projectSelect.addEventListener('change',()=>{loadAssignments().catch(showError);});
 get('organization-select').addEventListener('change',()=>{if(!mutations)loadWorkspace().catch(showError);});
@@ -236,7 +237,7 @@ get('show-staff-login').addEventListener('click',()=>showPublicLogin('staff'));
 get('switch-client-kind').addEventListener('click',()=>showPublicLogin(loginKind==='staff'?'client':'staff'));
 get('show-office-login').addEventListener('click',()=>{if(clientAuthBusy)return;get('client-login-area').hidden=true;get('login-area').hidden=false;get<HTMLInputElement>('client-login-password').value='';});
 clientForm.addEventListener('invalid',()=>clientFeedback('Add meg az irodával egyeztetett e-mail-címet és a legalább 12 karakteres saját ERP-jelszót.'),true);
-clientForm.addEventListener('submit',async e=>{e.preventDefault();if(clientAuthBusy||loading)return;clientAuthBusy=true;formBusy(clientForm,true);const email=get<HTMLInputElement>('client-login-email').value.trim(),password=get<HTMLInputElement>('client-login-password').value;get<HTMLInputElement>('client-login-password').value='';const epoch=++generation;clientFeedback('Belépés…');try{if(loginKind==='staff')await api.loginStaff(email,password);else await api.loginClient(email,password);if(epoch!==generation)return;await loadWorkspace();}catch(error){if(epoch===generation)clientFeedback(error instanceof Error?error.message:'A belépés nem sikerült.');}finally{clientAuthBusy=false;formBusy(clientForm,false);}});
+clientForm.addEventListener('submit',async e=>{e.preventDefault();if(clientAuthBusy||loading)return;clientAuthBusy=true;formBusy(clientForm,true);const email=get<HTMLInputElement>('client-login-email').value.trim(),password=get<HTMLInputElement>('client-login-password').value;get<HTMLInputElement>('client-login-password').value='';const epoch=++generation;clientFeedback('Belépés…');try{if(loginKind==='staff')await api.loginStaff(email,password);else await api.loginClient(email,password);if(epoch!==generation)return;await loadWorkspace(api.organizations);}catch(error){if(epoch===generation)clientFeedback(error instanceof Error?error.message:'A belépés nem sikerült.');}finally{clientAuthBusy=false;formBusy(clientForm,false);}});
 get('client-forgot').addEventListener('click',async()=>{if(clientAuthBusy)return;const email=get<HTMLInputElement>('client-login-email');if(!email.reportValidity())return;clientAuthBusy=true;formBusy(clientForm,true);try{const result=loginKind==='staff'?await api.staffPublic<{message:string}>('staff_recover',{email:email.value.trim()}):await api.clientPublic<{message:string}>('client_recover',{email:email.value.trim()});clientFeedback(result.message,true);}catch(error){clientFeedback(error instanceof Error?error.message:'A kérés nem sikerült.');}finally{clientAuthBusy=false;formBusy(clientForm,false);}});
 clientSetupForm.addEventListener('input',()=>{clientSetupDirty=true;});
 clientSetupForm.addEventListener('submit',async e=>{e.preventDefault();if(clientAuthBusy||!clientSetupToken)return;const password=get<HTMLInputElement>('client-new-password').value;if(password!==get<HTMLInputElement>('client-repeat-password').value){clientFeedback('A két jelszó nem egyezik.');return;}clientAuthBusy=true;formBusy(clientSetupForm,true);try{if(clientSetupKind==='staff')await api.staffPublic('staff_setup',{setup_token:clientSetupToken,password});else await api.clientPublic('client_setup',{setup_token:clientSetupToken,password});clientSetupToken=null;clientSetupDirty=false;clientSetupForm.reset();get('client-setup-area').hidden=true;showPublicLogin(clientSetupKind,true);get('client-login-feedback').textContent='✓ A saját ERP-jelszavadat beállítottad. Most beléphetsz az irodával egyeztetett e-mail-címeddel.';}catch(error){clientFeedback(error instanceof Error?error.message:'A jelszó nem állítható be.');}finally{clientAuthBusy=false;formBusy(clientSetupForm,false);}});
@@ -247,7 +248,7 @@ get<HTMLInputElement>('assignment-from').value=todayBudapest();
 async function restoreOffice():Promise<void> {
  if(setupOpening||restoring||api.signedIn){window.dispatchEvent(new Event('erp:startup-ready'));return;}restoring=true;const epoch=generation;formBusy(loginForm,true);
  try{if(!api.remembered)return;message('Korábbi belépés ellenőrzése…');const restored=await api.restore();restoring=false;
- if(epoch!==generation||!restored)return;await loadWorkspace();if(epoch!==generation||!api.signedIn)return;message('Sikeres automatikus belépés.',true);}
+ if(epoch!==generation||!restored)return;await loadWorkspace(api.organizations);if(epoch!==generation||!api.signedIn)return;message('Sikeres automatikus belépés.',true);}
  catch(error){if(epoch===generation)showError(error);}finally{restoring=false;formBusy(loginForm,false);window.dispatchEvent(new Event('erp:startup-ready'));}
 }
 void restoreOffice();

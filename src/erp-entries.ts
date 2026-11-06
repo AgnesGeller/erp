@@ -1,8 +1,8 @@
 import type {ErpApi} from './erp-api.js';
-const {entryKinds,financialKinds,parameterFields}=await import(new URL('./erp-entry-model.js?v=0.16.5',import.meta.url).href) as typeof import('./erp-entry-model.js');
-const {quoteNumber,quoteInput,EditHistory}=await import(new URL('./erp-quote-tools.js?v=0.16.5',import.meta.url).href) as typeof import('./erp-quote-tools.js');
-const {WorkMedia}=await import(new URL('./erp-workplan-media.js?v=0.16.5',import.meta.url).href) as typeof import('./erp-workplan-media.js');
-const {addDialogDismiss}=await import(new URL('./erp-dialogs.js?v=0.16.5',import.meta.url).href) as typeof import('./erp-dialogs.js');
+const {entryKinds,financialKinds,parameterFields}=await import(new URL('./erp-entry-model.js?v=0.16.6',import.meta.url).href) as typeof import('./erp-entry-model.js');
+const {quoteNumber,quoteInput,EditHistory}=await import(new URL('./erp-quote-tools.js?v=0.16.6',import.meta.url).href) as typeof import('./erp-quote-tools.js');
+const {WorkMedia}=await import(new URL('./erp-workplan-media.js?v=0.16.6',import.meta.url).href) as typeof import('./erp-workplan-media.js');
+const {addDialogDismiss}=await import(new URL('./erp-dialogs.js?v=0.16.6',import.meta.url).href) as typeof import('./erp-dialogs.js');
 type Row=Record<string,any>;
 const labels:Row={needs_office:'Irodai feldolgozásra vár',needs_client:'Megrendelői döntésre vár',reported:'Bejelentve',investigating:'Ellenőrzés alatt',repairing:'Javítás folyamatban',repaired:'Javítva, átvételre vár',reopened:'Újranyitva',answered:'Megválaszolva',closed:'Lezárva',disputed:'Vitatott',liability_proposed:'Felelősségi döntésre vár',liability_agreed:'Közösen elfogadott felelősség',applied:'Jóváhagyva és alkalmazva',withdrawn:'Visszavonva',rejected:'Elutasítva'};
 const events:Row={create:'Létrehozás',revise:'Új változat',price:'Irodai ajánlat',approve:'Elfogadás',reject:'Elutasítás',comment:'Megjegyzés',status:'Állapotváltás',react:'Címzetti visszajelzés',withdraw:'Visszavonás',archive:'Archiválás',restore:'Visszaállítás'};

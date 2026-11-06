@@ -83,10 +83,11 @@ export class CustomerDirectory {
     get busy() { return this.saving || this.loading; }
     message(value, kind = '') { const target = node('customer-status'); target.textContent = (kind === 'success' ? '✓ ' : '') + value; target.className = 'office-status ' + kind; }
     reset() { this.epoch++; this.org = undefined; this.rows = []; this.selected = undefined; this.editing = false; this.creating = false; this.createRequest = undefined; this.createPayload = undefined; this.loading = false; this.refreshQueued = false; this.saving = false; this.page = 0; clearTimeout(this.timer); this.newForm.reset(); this.profileForm.reset(); this.unlockNew(); node('customer-list').replaceChildren(); node('customer-pending').replaceChildren(); node('customer-details').replaceChildren(); node('customer-detail-panel').hidden = true; node('customer-list').hidden = true; this.suggestionsOpen = false; node('customer-view').hidden = true; node('customer-new-panel').hidden = true; node('customer-profile-panel').hidden = true; node('customer-status').textContent = ''; node('customer-count').textContent = ''; node('customer-sync-time').textContent = ''; node('customer-search').value = ''; node('customer-include-archived').checked = false; }
-    async setOrganization(org) { if (this.org !== org) {
+    async setOrganization(org, defer = false) { if (this.org !== org) {
         this.reset();
         this.org = org;
-    } node('people-navigation').hidden = !org; if (!org) {
+    } node('people-navigation').hidden = !org; if (defer && org)
+        return; if (!org) {
         node('team-view').hidden = false;
         return;
     } if (!node('survey-view').hidden || !node('team-view').hidden || !node('work-view').hidden || !node('quote-view').hidden || !node('prices-view').hidden)

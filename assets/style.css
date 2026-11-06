@@ -82,3 +82,7 @@ html[data-erp-starting] #app-startup{display:flex!important;}
 #app-startup{min-height:65svh;max-width:1080px;margin-inline:auto;padding:3rem 1.5rem;box-sizing:border-box;flex-direction:column;justify-content:center;align-items:flex-start;}
 #app-startup h1{font-size:clamp(1.4rem,4vw,2rem);font-weight:400;line-height:1.5;max-width:36rem;}
 #app-startup-retry{margin-top:1rem;}
+
+.reference-context{padding-block:.75rem;border-bottom:1px solid #c4d0c5;font-weight:600;overflow-wrap:anywhere;}
+.reference-wizard-nav{justify-content:space-between;border-top:1px solid #c4d0c5;padding-top:1rem;}
+.reference-wizard-nav button:last-child{background:#214a35;color:#fff;border-color:#214a35;}

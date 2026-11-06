@@ -15,8 +15,8 @@ export class ReferenceDesk {
     epoch = 0;
     busy = false;
     writing = false;
-    active = 'base';
-    stepTitle;
+    active = 'wizard';
+    step = 0;
     state;
     pending;
     list = { projects: [], references: [] };
@@ -74,7 +74,7 @@ export class ReferenceDesk {
     dispose() { this.sortCleanup?.(); this.sortCleanup = undefined; for (const u of this.urls)
         URL.revokeObjectURL(u); this.urls = []; }
     message(text, ok = false) { this.status.textContent = (ok ? '✓ ' : '') + text; this.status.className = 'office-status' + (ok ? ' success' : ''); }
-    error(e) { this.message(e instanceof Error ? e.message : 'A referenciaművelet nem sikerült.'); if (e?.status === 401)
+    error(e) { this.message(e instanceof Error ? e.message : 'A referenciaművelet nem sikerült.'); this.status.scrollIntoView({ block: 'nearest' }); if (e?.status === 401)
         this.onError(e); }
     async run(task) { if (this.busy)
         return; const epoch = this.epoch; this.busy = true; this.lock(); try {
@@ -100,19 +100,20 @@ export class ReferenceDesk {
     touch() { if (!this.state)
         return; this.state.dirty = true; clearTimeout(this.timer); this.timer = setTimeout(() => void this.persist().catch(() => { }), 350); }
     persist() { clearTimeout(this.timer); if (!this.owner || !this.state)
-        return this.queue; const owner = this.owner, id = this.state.id, key = owner + '/' + id, value = structuredClone({ ...this.state, pending: this.pending }); this.queue = this.queue.catch(() => { }).then(async () => { const version = await this.local.put(owner, id, value, this.versions.get(key) ?? 0); this.versions.set(key, version); }).catch(e => { this.error(e); throw e; }); return this.queue; }
+        return this.queue; const owner = this.owner, id = this.state.id, key = owner + '/' + id, value = structuredClone({ ...this.state, pending: this.pending, wizard_step: this.step }); this.queue = this.queue.catch(() => { }).then(async () => { const version = await this.local.put(owner, id, value, this.versions.get(key) ?? 0); this.versions.set(key, version); }).catch(e => { this.error(e); throw e; }); return this.queue; }
     saved(view) { return { document: structuredClone(view.document), variants: Object.fromEntries(Object.entries(view.variants).map(([k, v]) => [k, structuredClone(v.document)])) }; }
     isChanged() { const s = this.state; return !s.saved || JSON.stringify(s.document) !== JSON.stringify(s.saved.document) || JSON.stringify(Object.fromEntries(Object.entries(s.variants).map(([k, v]) => [k, v.document]))) !== JSON.stringify(s.saved.variants); }
     async listRemote() { const epoch = this.epoch, list = await this.api.reference('reference_list', { organization_id: this.org, archived: this.archived }); if (epoch === this.epoch)
         this.list = list; }
     async open() { if (!this.owner)
         return; if (!this.dialog.open)
-        this.dialog.showModal(); await this.run(async () => { await this.listRemote(); this.render(); this.message(this.state ? 'Kövesd a szerkesztőben látható lépéseket.' : 'Válassz kertépítést vagy mentett referenciát.'); }); }
+        this.dialog.showModal(); await this.run(async () => { await this.listRemote(); this.render(); this.message(this.state ? '' : 'Válassz kertépítést vagy mentett referenciát.'); this.dialog.scrollTop = 0; }); }
     async load(id) { await this.persist(); const epoch = this.epoch, owner = this.owner, remote = await this.api.reference('reference_read', { organization_id: this.org, reference_id: id }); const local = (await this.local.list(owner)).find(x => x.id === id); if (epoch !== this.epoch)
-        return; this.versions.set(owner + '/' + id, local?.localVersion ?? 0); this.state = local?.value?.dirty || local?.value?.pending ? local.value : { ...remote, dirty: false, saved: this.saved(remote) }; this.pending = this.state.pending; this.active = 'base'; this.undo = []; this.redo = []; this.render(); this.message(this.state.revision !== remote.revision ? 'A szerveren frissebb változat van. A helyi szöveg megmaradt; az Előzményeknél hasonlíthatod össze.' : this.pending ? 'A korábbi mentés eredménye még nem ismert. Próbáld újra az eredeti kérést.' : this.state.dirty ? 'Saját helyi piszkozat megnyitva.' : 'A referencia betöltve.'); }
+        return; this.versions.set(owner + '/' + id, local?.localVersion ?? 0); this.state = local?.value?.dirty || local?.value?.pending ? local.value : { ...remote, dirty: false, saved: this.saved(remote) }; this.pending = this.state.pending; this.active = 'wizard'; this.step = Math.max(0, Math.min(8, Number(local?.value?.wizard_step) || 0)); if (this.step > 2 && !this.state.variants.web)
+        this.step = 0; this.undo = []; this.redo = []; this.render(); this.message(this.state.revision !== remote.revision ? 'A szerveren frissebb változat van. A helyi szöveg megmaradt; az Előzményeknél hasonlíthatod össze.' : this.pending ? 'A korábbi mentés eredménye még nem ismert. Próbáld újra az eredeti kérést.' : this.state.dirty ? 'Saját helyi piszkozat megnyitva.' : 'A referencia betöltve.'); this.dialog.scrollTop = 0; }
     async create(project) { if (!project)
         throw Error('Válassz kertépítést.'); await this.persist(); const epoch = this.epoch, source = await this.api.reference('reference_source', { organization_id: this.org, project_id: project }); if (epoch !== this.epoch)
-        return; this.state = { id: crypto.randomUUID(), project_id: project, revision: 0, base_revision: 0, document: referenceFromSource(source), variants: {}, source, source_hash: source.hash, source_changed: true, history: [], variant_history: [], approvals: [], publications: [], dirty: true }; this.pending = undefined; this.undo = []; this.redo = []; this.active = 'base'; await this.persist(); this.render(); this.message('Az ellenőrizhető forrásból elkészült az alap. Nevezd el, ellenőrizd és mentsd.'); }
+        return; this.state = { id: crypto.randomUUID(), project_id: project, revision: 0, base_revision: 0, document: referenceFromSource(source), variants: {}, source, source_hash: source.hash, source_changed: true, history: [], variant_history: [], approvals: [], publications: [], dirty: true }; this.pending = undefined; this.undo = []; this.redo = []; this.active = 'wizard'; this.step = 0; await this.persist(); this.render(); this.message(''); this.dialog.scrollTop = 0; }
     field(parent, title, value, change, area = false) { const label = n('label', title), input = document.createElement(area ? 'textarea' : 'input'); input.value = value; if (area)
         input.rows = 4; input.oninput = () => { if (change)
         this.edit(() => change(input.value)); }; label.append(input); parent.append(label); return input; }
@@ -124,39 +125,39 @@ export class ReferenceDesk {
         this.body.replaceChildren();
         const s = this.state;
         if (!s) {
-            this.connection(this.body);
             const make = fold(this.body, 'Új referencia kertépítésből', true), project = this.choice(make, 'Kertépítés', '', [['', 'Válassz munkát'], ...this.list.projects.map((p) => [p.id, p.name + ' · ' + p.address])], () => { });
             button(make, 'Referencia készítése', () => void this.run(() => this.create(project.value)));
-            const list = fold(this.body, 'Mentett referenciák', true);
+            const list = fold(this.body, 'Mentett referenciák');
             this.choice(list, 'Lista', this.archived ? 'archive' : 'active', [['active', 'Aktív'], ['archive', 'Archivált']], v => { this.archived = v === 'archive'; void this.run(async () => { await this.listRemote(); this.render(); }); });
             for (const r of this.list.references)
                 button(list, r.title, () => void this.run(() => this.load(r.id)));
             button(list, 'Lista frissítése', () => void this.run(async () => { await this.listRemote(); this.render(); }));
             button(list, 'Helyi piszkozatok megnyitása', () => void this.run(async () => { const rows = await this.local.list(this.owner); const box = fold(this.body, 'Saját piszkozatok ezen az eszközön', true); for (const row of rows.filter(r => r.value.dirty || r.value.pending))
-                button(box, row.value.document.title, () => void this.run(async () => { this.versions.set(this.owner + '/' + row.id, row.localVersion); this.state = row.value; this.pending = row.value.pending; this.active = 'base'; this.render(); })); if (!box.querySelector('button'))
+                button(box, row.value.document.title, () => void this.run(async () => { this.versions.set(this.owner + '/' + row.id, row.localVersion); this.state = row.value; this.pending = row.value.pending; this.active = 'wizard'; this.step = 0; this.render(); })); if (!box.querySelector('button'))
                 box.append(n('p', 'Nincs függő helyi piszkozat.')); }));
+            this.connection(this.body);
             return;
         }
-        this.body.append(n('h3', s.document.title), n('p', s.archived ? 'Archivált referencia' : s.revision ? 'Mentett változat: ' + s.revision : 'Helyi, még nem szinkronizált referencia'));
-        const nav = n('div');
-        nav.className = 'reference-actions';
-        button(nav, 'Másik referencia', () => void this.run(async () => { await this.persist(); this.state = undefined; this.pending = undefined; await this.listRemote(); this.render(); }));
-        for (const [id, title] of [['base', 'Alap és képek'], ['web', 'Weboldal'], ['facebook', 'Facebook'], ['instagram', 'Instagram'], ['history', 'Előzmények']]) {
-            const b = button(nav, title, () => { this.selectTab(id); });
-            b.setAttribute('aria-pressed', String(this.active === id));
-        }
-        this.body.append(nav);
-        this.guide();
+        const project = this.list.projects.find((p) => p.id === s.project_id), context = n('p', 'Munka: ' + (project ? project.name + (project.address ? ' · ' + project.address : '') : 'A referenciához kapcsolt kertépítés'));
+        context.className = 'reference-context';
+        this.body.append(context);
         if (this.pending) {
-            const b = button(this.body, 'Eredeti kérés újrapróbálása', () => void this.run(() => this.retry()));
+            const b = button(this.body, 'Korábbi mentés ellenőrzése', () => void this.run(() => this.retry()));
             b.dataset.retry = 'true';
         }
-        if (this.active === 'base')
-            this.base();
-        else if (this.active === 'history')
-            this.history();
-        else
-            this.variant(this.active);
+        if (this.active === 'wizard')
+            this.wizard();
+        else {
+            button(this.body, '← Vissza a referenciához', () => { this.active = 'wizard'; this.render(); this.dialog.scrollTop = 0; });
+            if (this.active === 'history')
+                this.history();
+            else
+                this.variant(this.active);
+        }
+        const tools = fold(this.body, 'További műveletek');
+        button(tools, 'Másik munka vagy referencia választása', () => void this.run(() => this.chooseAnother()));
+        for (const [id, title] of [['facebook', 'Facebook-változat'], ['instagram', 'Instagram-változat'], ['history', 'Előzmények']])
+            button(tools, title, () => { this.active = id; this.render(); this.dialog.scrollTop = 0; });
         const actions = n('div');
         actions.className = 'reference-actions';
         button(actions, 'Visszavonás', () => { if (!this.undo.length)
@@ -167,8 +168,8 @@ export class ReferenceDesk {
         if (s.revision)
             button(actions, s.archived ? 'Archiválás visszavonása' : 'Referencia archiválása', () => { if (confirm(s.archived ? 'Visszaállítod a referenciát?' : 'Archiválod a referenciát? A munka, a fájlok és pénzügyei megmaradnak.'))
                 void this.run(() => this.save({ kind: 'archive', archived: !s.archived })); });
-        this.body.append(actions);
-        const transfer = fold(this.body, 'Képek visszatöltése másik eszközről'), file = document.createElement('input');
+        tools.append(actions);
+        const transfer = fold(tools, 'Képek visszatöltése másik eszközről'), file = document.createElement('input');
         file.type = 'file';
         file.accept = '.zip';
         file.setAttribute('aria-label', 'Referenciacsomag kiválasztása');
@@ -182,38 +183,82 @@ export class ReferenceDesk {
         }
         this.lock();
     }
-    selectTab(id, title) { this.active = id; this.stepTitle = title; this.render(); const panels = Array.from(this.body.querySelectorAll('details')), panel = title ? panels.find(d => d.querySelector('summary')?.textContent === title) : panels.find(d => d.parentElement === this.body && d.dataset.referenceGuide !== 'true'); if (panel) {
-        let parent = panel;
-        while (parent && parent !== this.body) {
-            if (parent instanceof HTMLDetailsElement)
-                parent.open = true;
-            parent = parent.parentElement;
-        }
-        panel.scrollIntoView({ block: 'nearest' });
-    } }
-    guide() { const text = this.active === 'web' && this.stepTitle === 'Publikálás előtti irodai ellenőrzés' ? '3. Ellenőrizd a mentett szöveget és képeket. Az ellenőrzés rögzítése után a Tovább: WordPress-piszkozat gombbal folytasd.' : this.active === 'web' && this.stepTitle === 'WordPress-piszkozat és közzététel' ? '4. Töltsd fel a kijelölt képeket, majd készíts WordPress-piszkozatot. A naplósorban a Piszkozat előnézete hivatkozással nézheted meg az eredményt.' : this.active === 'base' ? '1. Írd be a megnevezést és a bemutató szöveget. A Fényképek részen adhatsz hozzá képeket. Kattints az Alap mentése, majd a Tovább: weboldal-változat gombra.' : this.active === 'web' ? '2. Ha még nincs weboldal-változat, kattints a Változat készítése gombra. Ellenőrizd a szöveget, töltsd ki a SEO-címet és SEO-leírást, jelöld ki a képeket, majd Változat mentése. Ezután az irodai ellenőrzés következik.' : this.active === 'history' ? 'Itt korábbi mentéseket nézhetsz meg és nyithatsz vissza szerkesztésre.' : labels[this.active] + ': készíts külön változatot, ellenőrizd a szöveget és a képeket, majd mentsd. A posztcsomag letölthető; ez nem tesz közzé automatikusan semmit.'; const hint = n('p', text); hint.className = 'reference-next-step'; this.body.append(hint); const help = fold(this.body, 'A referencia elkészítése – 4 lépés'); help.dataset.referenceGuide = 'true'; const list = n('ol'); for (const step of ['Alap és képek: megnevezés, szöveg, fotók, majd Alap mentése.', 'Weboldal: Változat készítése, szöveg és képek ellenőrzése, SEO-cím/leírás kitöltése, majd Változat mentése.', 'Irodai ellenőrzés: írd le, ki és mikor ellenőrizte a tartalmat, szükség esetén hivatkozz a hozzájárulásra. Pipáld be az ellenőrzést, majd Irodai ellenőrzés rögzítése.', 'WordPress-piszkozat: előbb a kijelölt képek feltöltése, utána WordPress-piszkozat készítése / frissítése. A naplósor Piszkozat előnézete hivatkozásával nézheted meg.'])
-        list.append(n('li', step)); help.append(list, n('p', 'A piszkozat még nem nyilvános bejegyzés. A megjelenés jóváhagyása után a közzététel külön gombbal és megerősítéssel történik. Facebook és Instagram külön, választható változat.')); }
-    base() {
-        const s = this.state, d = s.document, box = fold(this.body, 'Referencia szövege', true);
-        this.field(box, 'Megnevezés', d.title, v => d.title = v);
-        this.field(box, 'Az ügyfél elképzelései', d.wishes, v => d.wishes = v, true);
-        this.field(box, 'Megvalósítás – valóban elkészült munkák', d.realization, v => d.realization = v, true);
-        this.field(box, 'Ténylegesen beépített anyagok', d.materials, v => d.materials = v, true);
-        button(box, 'Alap mentése', () => void this.run(() => this.save({ kind: 'save', document: normalizeReference(d), ...(s.source_changed ? { source_hash: s.source_hash, ...(s.survey_id ? { survey_id: s.survey_id } : {}) } : {}) })));
-        button(box, 'Tovább: weboldal-változat', () => { if (!s.revision || this.isChanged()) {
-            this.message('Előbb kattints az Alap mentése gombra, és várd meg a sikeres mentést.');
+    wizard() { const titles = ['Megnevezés', 'Bemutató szöveg', 'Fényképek', 'A honlap szövege', 'Megjelenés a keresőben', 'A honlap képei', 'Előnézet', 'Tartalom jóváhagyása', 'WordPress-piszkozat'], hints = ['Adj nevet a referenciának.', 'Írd le röviden, mi készült el.', 'Adj hozzá bemutatásra szánt képeket. Kép nélkül is továbbléphetsz.', 'Ezt a címet és szöveget látják majd a honlapon.', 'Ez a cím és rövid leírás jelenhet meg a kereső találatai között.', 'Pipáld ki a honlapra szánt képeket, és ellenőrizd a leírásukat.', 'Nézd át, mit szeretnél megmutatni. Javításhoz használd a Vissza gombot.', 'Rögzítsd, hogy a szöveg és a képek bemutathatók.', 'Készíts ellenőrizhető piszkozatot. Ez még nem nyilvános bejegyzés.']; this.body.append(n('p', (this.step + 1) + ' / ' + titles.length + ' lépés'), n('h3', titles[this.step]), n('p', hints[this.step])); if (this.step < 3)
+        this.base(['name', 'text', 'photos'][this.step]);
+    else
+        this.variant('web', ['content', 'search', 'photos', 'preview', 'approval', 'wordpress'][this.step - 3]); const nav = n('div'); nav.className = 'reference-actions reference-wizard-nav'; button(nav, '← Vissza', () => void this.run(async () => { if (this.step === 0) {
+        await this.chooseAnother();
+        return;
+    } await this.persist(); this.step--; this.render(); this.message(''); this.dialog.scrollTop = 0; })); button(nav, this.step === 8 ? 'Befejezés' : 'Tovább →', () => void this.run(() => this.nextStep())); if (this.step < 6)
+        this.body.append(n('p', 'A Tovább gomb elmenti az adatokat.')); this.body.append(nav); }
+    async nextStep() {
+        const s = this.state, epoch = this.epoch;
+        if (this.pending)
+            throw Error('Előbb ellenőrizd a korábbi mentés eredményét.');
+        if (this.step === 8) {
+            await this.persist();
+            this.dialog.close();
             return;
-        } this.selectTab('web'); });
-        const source = fold(this.body, 'Forrás ellenőrzése');
-        if (s.source_hash !== s.source.hash)
-            source.append(n('p', 'A projekt forrásadata a mentett alap óta megváltozott.'));
-        for (const t of s.source.tasks ?? [])
-            source.append(n('p', (t.accepted ? '✓ Átvett: ' : 'Átvételre vár: ') + t.section + ' · ' + t.title));
-        if (!s.source.survey_id)
-            source.append(n('p', 'Nincs egyértelműen kapcsolt felmérés. Az elképzelést kézzel is megadhatod.'));
-        const survey = this.choice(source, 'Felmérés', s.survey_id ?? '', [['', 'Az ajánlathoz kapcsolt felmérés'], ...(s.source.surveys ?? []).map((x) => [x.id, x.title])], () => { });
-        button(source, 'Friss forrás összehasonlítása', () => void this.run(async () => { const epoch = this.epoch, raw = await this.api.reference('reference_source', { organization_id: this.org, project_id: s.project_id, ...(survey.value ? { survey_id: survey.value } : {}) }); if (epoch !== this.epoch)
-            return; const preview = referenceFromSource(raw), pane = fold(source, 'Friss forrásból javasolt szöveg', true); pane.append(n('pre', [preview.wishes, preview.realization, preview.materials].join('\n\n'))); button(pane, 'Javasolt alap átvétele', () => this.edit(() => { s.document = { ...preview, title: d.title, media: d.media }; s.source = raw; s.source_hash = raw.hash; s.source_changed = true; s.survey_id = survey.value || undefined; }, true)); this.message('A javaslat megnyílt. Csak külön gombbal váltja le a saját szöveget.'); }));
+        }
+        if (this.step < 3) {
+            if (!s.document.title.trim())
+                throw Error('Írd be a Megnevezés mezőt.');
+            if (!s.saved || JSON.stringify(s.document) !== JSON.stringify(s.saved.document))
+                await this.save({ kind: 'save', document: normalizeReference(s.document), ...(s.source_changed ? { source_hash: s.source_hash, ...(s.survey_id ? { survey_id: s.survey_id } : {}) } : {}) });
+            if (epoch !== this.epoch)
+                return;
+            if (this.step === 2 && !s.variants.web)
+                this.edit(() => s.variants.web = { revision: 0, base_revision: s.base_revision, document: makeReferenceVariant(s.document, 'web') });
+        }
+        else if (this.step <= 5) {
+            const v = s.variants.web?.document;
+            if (!v)
+                throw Error('Előbb készítsd el a referencia alapját.');
+            if (this.step === 4 && (!v.seo_title.trim() || !v.seo_description.trim()))
+                throw Error('Töltsd ki a Találati cím és Rövid leírás mezőt.');
+            if (!s.saved?.variants.web || JSON.stringify(v) !== JSON.stringify(s.saved.variants.web))
+                await this.save({ kind: 'variant', document: normalizeReferenceVariant(v, s.document) });
+        }
+        else if (this.step === 7) {
+            const approved = (s.approvals ?? []).some((a) => a.platform === 'web' && a.reference_revision === s.revision && a.variant_revision === s.variants.web?.revision);
+            if (this.isChanged() || !approved)
+                throw Error('Előbb rögzítsd a tartalom jóváhagyását ezen az oldalon.');
+        }
+        if (epoch !== this.epoch)
+            return;
+        this.step++;
+        await this.persist();
+        this.render();
+        this.message('');
+        this.dialog.scrollTop = 0;
+    }
+    async chooseAnother() { if (!confirm('Másik munkát vagy referenciát választasz? A mostani szerkesztés ezen az eszközön megmarad.'))
+        return; await this.persist(); this.state = undefined; this.pending = undefined; this.active = 'wizard'; this.step = 0; await this.listRemote(); this.render(); this.message('Válassz munkát vagy nyiss meg mentett referenciát.'); this.dialog.scrollTop = 0; }
+    base(part) {
+        const s = this.state, d = s.document;
+        const box = n('section');
+        this.body.append(box);
+        if (part === 'name') {
+            this.field(box, 'Megnevezés', d.title, v => d.title = v);
+            return;
+        }
+        if (part === 'text') {
+            this.field(box, 'Mi készült el?', d.realization, v => d.realization = v, true);
+            const more = fold(box, 'További részletek');
+            this.field(more, 'Az ügyfél elképzelései', d.wishes, v => d.wishes = v, true);
+            this.field(more, 'Ténylegesen beépített anyagok', d.materials, v => d.materials = v, true);
+            const source = fold(this.body, 'Forrás ellenőrzése');
+            if (s.source_hash !== s.source.hash)
+                source.append(n('p', 'A projekt forrásadata a mentett alap óta megváltozott.'));
+            for (const t of s.source.tasks ?? [])
+                source.append(n('p', (t.accepted ? '✓ Átvett: ' : 'Átvételre vár: ') + t.section + ' · ' + t.title));
+            if (!s.source.survey_id)
+                source.append(n('p', 'Nincs egyértelműen kapcsolt felmérés. Az elképzelést kézzel is megadhatod.'));
+            const survey = this.choice(source, 'Felmérés', s.survey_id ?? '', [['', 'Az ajánlathoz kapcsolt felmérés'], ...(s.source.surveys ?? []).map((x) => [x.id, x.title])], () => { });
+            button(source, 'Friss forrás összehasonlítása', () => void this.run(async () => { const epoch = this.epoch, raw = await this.api.reference('reference_source', { organization_id: this.org, project_id: s.project_id, ...(survey.value ? { survey_id: survey.value } : {}) }); if (epoch !== this.epoch)
+                return; const preview = referenceFromSource(raw), pane = fold(source, 'Friss forrásból javasolt szöveg', true); pane.append(n('pre', [preview.wishes, preview.realization, preview.materials].join('\n\n'))); button(pane, 'Javasolt alap átvétele', () => this.edit(() => { s.document = { ...preview, title: d.title, media: d.media }; s.source = raw; s.source_hash = raw.hash; s.source_changed = true; s.survey_id = survey.value || undefined; }, true)); this.message('A javaslat megnyílt. Csak külön gombbal váltja le a saját szöveget.'); }));
+            return;
+        }
         const photos = fold(this.body, 'Fényképek', true);
         photos.append(n('p', 'A képek ezen az eszközön maradnak; másik eszközre mentési csomaggal vihetők át.'));
         for (const group of referenceGroups) {
@@ -266,93 +311,94 @@ export class ReferenceDesk {
         image.replaceWith(n('p', 'Ez a kép nincs ezen az eszközön. Töltsd vissza a mentési csomagból.'));
         return;
     } const url = URL.createObjectURL(blob); this.urls.push(url); image.src = url; }).catch(e => this.error(e)); }
-    variant(platform) {
-        const s = this.state, d = s.document, item = s.variants[platform], box = fold(this.body, labels[platform] + '-változat', true);
-        button(box, item ? 'Új szövegjavaslat' : 'Változat készítése', () => { if (!s.revision) {
-            this.message('Előbb mentsd a referencia alapját.');
+    variant(platform, part) {
+        const s = this.state, d = s.document, item = s.variants[platform], box = n('section');
+        this.body.append(box);
+        if (!part)
+            button(box, item ? 'Új szövegjavaslat' : 'Változat készítése', () => { if (!s.revision) {
+                this.message('Előbb mentsd a referencia alapját.');
+                return;
+            } const proposed = makeReferenceVariant(d, platform); if (item) {
+                const pane = fold(box, 'Új javaslat', true);
+                pane.append(n('pre', referencePlain(proposed)));
+                button(pane, 'Javaslat átvétele', () => this.edit(() => s.variants[platform] = { ...item, document: proposed }, true));
+            }
+            else
+                this.edit(() => s.variants[platform] = { revision: 0, base_revision: s.base_revision, document: proposed }, true); });
+        if (!item) {
+            box.append(n('p', 'Előbb fejezd be a referencia alapját.'));
             return;
-        } const proposed = makeReferenceVariant(d, platform); if (item) {
-            const pane = fold(box, 'Új javaslat', true);
-            pane.append(n('pre', referencePlain(proposed)));
-            button(pane, 'Javaslat átvétele', () => this.edit(() => s.variants[platform] = { ...item, document: proposed }, true));
         }
-        else
-            this.edit(() => s.variants[platform] = { revision: 0, base_revision: s.base_revision, document: proposed }, true); });
-        if (!item)
-            return;
         const v = item.document;
-        this.field(box, 'Cím', v.title, x => v.title = x);
-        this.field(box, 'Bemutató szöveg', v.body, x => v.body = x, true);
-        if (platform === 'web') {
-            this.field(box, 'SEO-cím', v.seo_title, x => v.seo_title = x);
-            this.field(box, 'SEO-leírás', v.seo_description, x => v.seo_description = x, true);
+        if (!part || part === 'content') {
+            this.field(box, 'Honlapon megjelenő cím', v.title, x => v.title = x);
+            this.field(box, 'Bemutató szöveg', v.body, x => v.body = x, true);
+            if (platform !== 'web')
+                this.field(box, 'Címkék, vesszővel elválasztva', v.tags.join(', '), x => v.tags = x.split(',').map(x => x.trim()).filter(Boolean));
         }
-        else
-            this.field(box, 'Címkék, vesszővel elválasztva', v.tags.join(', '), x => v.tags = x.split(',').map(x => x.trim()).filter(Boolean));
-        const photos = fold(box, 'Kijelölt képek és sorrend');
-        photos.dataset.sortContainer = 'variant';
-        for (const m of d.media) {
-            const label = n('label', labels[m.group] + ' · ' + (m.caption || m.id.slice(0, 8))), c = document.createElement('input');
-            c.type = 'checkbox';
-            c.className = 'inline-check';
-            c.checked = v.photos.some(p => p.media_id === m.id);
-            c.onchange = () => this.edit(() => v.photos = c.checked ? [...v.photos, { media_id: m.id, caption: m.caption, alt: m.alt }] : v.photos.filter(p => p.media_id !== m.id), true);
-            label.prepend(c);
-            photos.append(label);
+        if (platform === 'web' && (!part || part === 'search')) {
+            this.field(box, 'Találati cím', v.seo_title, x => v.seo_title = x);
+            this.field(box, 'Rövid leírás', v.seo_description, x => v.seo_description = x, true);
         }
-        v.photos.forEach((p, i) => { const row = fold(photos, (i + 1) + '. ' + (p.caption || 'Kijelölt kép')); row.dataset.sortId = p.media_id; sortableHandle(row); this.field(row, 'Képfelirat ebben a változatban', p.caption, x => p.caption = x); this.field(row, 'Alt szöveg ebben a változatban', p.alt, x => p.alt = x); for (const [delta, title] of [[-1, 'Feljebb'], [1, 'Lejjebb']])
-            button(row, title, () => this.edit(() => { const to = i + delta; if (to >= 0 && to < v.photos.length)
-                [v.photos[i], v.photos[to]] = [v.photos[to], v.photos[i]]; }, true)); });
-        this.sortCleanup = attachSorter(photos, move => this.edit(() => v.photos = moveReferencePhoto(v.photos.map(p => ({ ...p, id: p.media_id })), move.id, move.before).map(({ id, ...p }) => p), true));
-        button(box, 'Változat mentése', () => void this.run(() => this.save({ kind: 'variant', document: normalizeReferenceVariant(v, d) })));
-        const preview = fold(box, 'Előnézet', true);
-        button(preview, 'Előnézet frissítése', () => this.render());
-        preview.append(n('h3', v.title), n('pre', v.body), n('p', v.tags.join(' ')));
-        for (const p of v.photos) {
-            const m = d.media.find(x => x.id === p.media_id);
-            if (m)
-                this.photo(preview, m, p.alt);
-            preview.append(n('p', p.caption));
+        if (!part || part === 'photos') {
+            const photos = fold(box, 'Kijelölt képek és sorrend', part === 'photos');
+            photos.dataset.sortContainer = 'variant';
+            for (const m of d.media) {
+                const label = n('label', labels[m.group] + ' · ' + (m.caption || m.id.slice(0, 8))), c = document.createElement('input');
+                c.type = 'checkbox';
+                c.className = 'inline-check';
+                c.checked = v.photos.some(p => p.media_id === m.id);
+                c.onchange = () => this.edit(() => v.photos = c.checked ? [...v.photos, { media_id: m.id, caption: m.caption, alt: m.alt }] : v.photos.filter(p => p.media_id !== m.id), true);
+                label.prepend(c);
+                photos.append(label);
+            }
+            v.photos.forEach((p, i) => { const row = fold(photos, (i + 1) + '. ' + (p.caption || 'Kijelölt kép')); row.dataset.sortId = p.media_id; sortableHandle(row); this.field(row, 'Képfelirat ebben a változatban', p.caption, x => p.caption = x); this.field(row, 'Alt szöveg ebben a változatban', p.alt, x => p.alt = x); for (const [delta, title] of [[-1, 'Feljebb'], [1, 'Lejjebb']])
+                button(row, title, () => this.edit(() => { const to = i + delta; if (to >= 0 && to < v.photos.length)
+                    [v.photos[i], v.photos[to]] = [v.photos[to], v.photos[i]]; }, true)); });
+            this.sortCleanup = attachSorter(photos, move => this.edit(() => v.photos = moveReferencePhoto(v.photos.map(p => ({ ...p, id: p.media_id })), move.id, move.before).map(({ id, ...p }) => p), true));
         }
-        button(preview, 'Szöveg másolása', () => void this.run(async () => { await navigator.clipboard.writeText(referencePlain(v)); this.message('A szöveg a vágólapra került.', true); }));
-        button(preview, 'Posztcsomag letöltése', () => void this.run(async () => { await this.files.export(this.owner, s.id, d, s.variants, platform); this.message('A posztcsomag letöltése elindult.', true); }));
-        const approval = fold(box, 'Publikálás előtti irodai ellenőrzés');
-        if (platform === 'web') {
-            const next = button(box, 'Tovább: irodai ellenőrzés', () => { if (this.isChanged()) {
-                this.message('Előbb kattints a Változat mentése gombra.');
-                return;
-            } this.selectTab('web', 'Publikálás előtti irodai ellenőrzés'); });
-            box.insertBefore(next, preview);
+        if (!part)
+            button(box, 'Változat mentése', () => void this.run(() => this.save({ kind: 'variant', document: normalizeReferenceVariant(v, d) })));
+        if (!part || part === 'preview') {
+            const preview = fold(box, 'Előnézet', true);
+            button(preview, 'Előnézet frissítése', () => this.render());
+            preview.append(n('h3', v.title), n('pre', v.body), n('p', v.tags.join(' ')));
+            for (const p of v.photos) {
+                const m = d.media.find(x => x.id === p.media_id);
+                if (m)
+                    this.photo(preview, m, p.alt);
+                preview.append(n('p', p.caption));
+            }
+            button(preview, 'Szöveg másolása', () => void this.run(async () => { await navigator.clipboard.writeText(referencePlain(v)); this.message('A szöveg a vágólapra került.', true); }));
+            button(preview, 'Posztcsomag letöltése', () => void this.run(async () => { await this.files.export(this.owner, s.id, d, s.variants, platform); this.message('A posztcsomag letöltése elindult.', true); }));
         }
-        approval.append(n('p', '3. A mentett szöveget és képeket ellenőrizd. Az alábbi mezőbe például ezt írhatod: „Ellenőrizte: Ági, dátum: …; személyes adatot nem tartalmaz.” Csak a valóban elvégzett ellenőrzést rögzítsd.'));
-        approval.append(n('p', 'Ellenőrizd a szöveget és minden képet. Név, pontos cím, arc és rendszám csak megfelelő jóváhagyással osztható meg. A WordPress-piszkozat képfájljai is nyilvánossá válhatnak.'));
-        const evidence = this.field(approval, 'Ellenőrzés és szükséges hozzájárulások hivatkozása', ''), label = n('label', 'A szöveg, képek és nyilvánosságra hozhatóság ellenőrizve.'), checked = document.createElement('input');
-        checked.type = 'checkbox';
-        checked.className = 'inline-check';
-        label.prepend(checked);
-        approval.append(label);
-        button(approval, 'Irodai ellenőrzés rögzítése', () => void this.run(async () => { if (this.isChanged())
-            throw Error('Előbb mentsd a módosított alapot és a külön változatokat.'); await this.save({ kind: 'approve', platform, evidence: evidence.value, checked: checked.checked }); }));
-        if ((s.approvals ?? []).some((a) => a.platform === platform))
-            approval.append(n('p', '✓ Az aktuális mentett változat irodai ellenőrzése rögzítve.'));
-        if (platform === 'web') {
-            button(approval, 'Tovább: WordPress-piszkozat', () => { const approved = (s.approvals ?? []).some((a) => a.platform === 'web' && a.reference_revision === s.revision && a.variant_revision === s.variants.web.revision); if (this.isChanged() || !approved) {
-                this.message('Előbb mentsd a változatot, majd rögzítsd az irodai ellenőrzést.');
-                return;
-            } this.selectTab('web', 'WordPress-piszkozat és közzététel'); });
+        if (!part || part === 'approval') {
+            const approval = n('section');
+            box.append(approval);
+            approval.append(n('p', 'Csak bemutatható szöveget és engedélyezett képeket hagyj jóvá. A feltöltött képek már a piszkozatnál is nyilvánosak lehetnek.'));
+            const evidence = this.field(approval, 'Ki és mikor ellenőrizte? Hozzájárulás hivatkozása, ha szükséges', ''), label = n('label', 'A szöveg, képek és nyilvánosságra hozhatóság ellenőrizve.'), checked = document.createElement('input');
+            checked.type = 'checkbox';
+            checked.className = 'inline-check';
+            label.prepend(checked);
+            approval.append(label);
+            button(approval, 'Jóváhagyás rögzítése', () => void this.run(async () => { if (this.isChanged())
+                throw Error('Előbb lépj vissza, és mentsd a módosított szöveget vagy képeket a Tovább gombbal.'); await this.save({ kind: 'approve', platform, evidence: evidence.value, checked: checked.checked }); }));
+            if ((s.approvals ?? []).some((a) => a.platform === platform))
+                approval.append(n('p', '✓ Az aktuális mentett változat irodai ellenőrzése rögzítve.'));
+        }
+        if (part === 'wordpress')
             this.wordpress(box);
-        }
     }
-    connection(parent) { const box = fold(parent, 'WordPress-kapcsolat', true); if (!this.list.wordpress_configured) {
+    connection(parent) { const box = fold(parent, 'WordPress-kapcsolat'); if (!this.list.wordpress_configured) {
         box.append(n('p', 'A WordPress-hozzáférés még nincs beállítva.'));
         return;
     } button(box, 'WordPress-kapcsolat ellenőrzése', () => void this.run(async () => { const epoch = this.epoch, result = await this.api.reference('reference_wp_check', { organization_id: this.org }); if (epoch !== this.epoch)
         return; this.message(result.ready ? 'A WordPress-belépés és jogosultság ellenőrizve. Közzététel továbbra is csak külön gombbal és megerősítéssel.' : 'A WordPress-belépés és jogosultság ellenőrizve. Piszkozat készíthető; a nyilvános közzététel a megjelenés jóváhagyására vár.', true); })); box.append(n('p', 'Ez az ellenőrzés csak olvas; nem tölt fel képet és nem hoz létre bejegyzést.')); }
-    wordpress(parent) { const s = this.state, box = fold(parent, 'WordPress-piszkozat és közzététel'); box.append(n('p', '4. Ha vannak kijelölt képek, előbb töltsd fel őket. Ezután készíts WordPress-piszkozatot. A sikeres naplósorban nyisd meg a Piszkozat előnézete hivatkozást; ehhez a WordPressben is be kell jelentkezned.')); this.connection(box); if (!this.list.wordpress_configured) {
+    wordpress(parent) { const s = this.state, box = n('section'); parent.append(box); this.connection(box); if (!this.list.wordpress_configured) {
         box.append(n('p', 'A WordPress-kapcsolat beállítására vár. A referencia mentése, előnézete és letöltése már használható.'));
         return;
     } if (!this.list.wordpress_ready)
-        box.append(n('p', 'Piszkozat készíthető és előnézetben ellenőrizhető. A nyilvános közzététel a megjelenés jóváhagyására vár.')); button(box, 'Kijelölt képek feltöltése', () => void this.run(async () => { const id = s.id, epoch = this.epoch; for (const p of s.variants.web.document.photos) {
+        box.append(n('p', 'Piszkozat készíthető és előnézetben ellenőrizhető. A nyilvános közzététel a megjelenés jóváhagyására vár.')); button(box, 'WordPress-piszkozat készítése', () => void this.run(async () => { const id = s.id, epoch = this.epoch; for (const p of s.variants.web.document.photos) {
         const m = s.document.media.find((m) => m.id === p.media_id), blob = await this.files.read(this.owner, id, m);
         if (!blob)
             throw Error('Hiányzó helyi kép. Töltsd vissza a mentési csomagot.');
@@ -363,7 +409,7 @@ export class ReferenceDesk {
         await this.wp('reference_wp_media', { media_id: m.id, bytes: btoa(binary) }, false);
         if (epoch !== this.epoch)
             return;
-    } this.render(); this.message('A kijelölt képek feltöltése ellenőrizve.', true); })); button(box, 'WordPress-piszkozat készítése / frissítése', () => void this.run(() => this.wp('reference_wp_draft'))); if (this.list.wordpress_ready)
+    } await this.wp('reference_wp_draft'); })); if (this.list.wordpress_ready)
         button(box, 'Közzététel / nyilvános referencia frissítése', () => { if (confirm('A webes változat nyilvánosan megjelenik a diszkertek.hu oldalon. Közzéteszed?'))
             void this.run(() => this.wp('reference_wp_publish', { confirmed: true })); }); for (const p of s.publications ?? []) {
         const row = n('p', { media: 'Kép', draft: 'Piszkozat', publish: 'Közzététel' }[p.kind] + ' · ' + { succeeded: 'Sikeres', started: 'Ellenőrzésre vár', uncertain: 'Bizonytalan eredmény', failed: 'Sikertelen' }[p.status]);
@@ -386,11 +432,11 @@ export class ReferenceDesk {
         this.render(); this.message(result.message ?? 'A WordPress-művelet ellenőrizve.', true); }
     history() { const s = this.state, box = fold(this.body, 'Mentett előzmények', true); box.append(n('p', 'A korábbi változat helyi szerkesztésként nyílik meg; külön mentéssel lesz belőle új változat.')); for (const v of s.history ?? [])
         button(box, 'Alap · ' + v.revision + ' · ' + new Date(v.created_at).toLocaleString('hu-HU'), () => void this.run(async () => { const epoch = this.epoch, x = await this.api.reference('reference_read', { organization_id: this.org, reference_id: s.id, filter: { base_revision: v.revision } }); if (epoch !== this.epoch)
-            return; this.edit(() => s.document = x.document); this.active = 'base'; this.render(); })); for (const v of s.variant_history ?? [])
+            return; this.edit(() => s.document = x.document); this.active = 'wizard'; this.step = 0; this.render(); })); for (const v of s.variant_history ?? [])
         button(box, labels[v.platform] + ' · ' + v.revision, () => void this.run(async () => { const epoch = this.epoch, x = await this.api.reference('reference_read', { organization_id: this.org, reference_id: s.id, filter: { platform: v.platform, variant_revision: v.revision } }); if (epoch !== this.epoch)
             return; this.edit(() => s.variants[v.platform] = { ...s.variants[v.platform], document: x.variants[v.platform].document }); this.active = v.platform; this.render(); })); button(box, 'További előzmények', () => void this.run(async () => { const offset = s.history_offset = (s.history_offset ?? 0) + 50, x = await this.api.reference('reference_read', { organization_id: this.org, reference_id: s.id, filter: { offset } }); s.history.push(...x.history); s.variant_history.push(...x.variant_history); this.render(); this.message(x.history.length || x.variant_history.length ? 'További előzmények betöltve.' : 'Nincs több előzmény.'); })); button(box, 'Friss szerverpéldány összehasonlítása', () => void this.run(async () => { const epoch = this.epoch, x = await this.api.reference('reference_read', { organization_id: this.org, reference_id: s.id }); if (epoch !== this.epoch)
         return; const pane = fold(box, 'Szerverpéldány – a helyi szöveg megmarad', true); pane.append(n('pre', JSON.stringify({ document: x.document, variants: x.variants }, null, 2))); button(pane, 'Szerverpéldány megnyitása', () => { if (!confirm('A helyi szerkesztést a szerverpéldány váltja fel. Előbb töltsd le a saját mentést, ha megőriznéd.'))
-        return; this.state = { ...x, dirty: false, saved: this.saved(x) }; this.pending = undefined; this.active = 'base'; void this.persist().catch(() => { }); this.render(); }); })); }
+        return; this.state = { ...x, dirty: false, saved: this.saved(x) }; this.pending = undefined; this.active = 'wizard'; this.step = 0; void this.persist().catch(() => { }); this.render(); }); })); }
     async save(command) { if (this.pending)
         throw Error('Előbb ellenőrizd az eredeti mentés eredményét.'); const s = this.state; this.pending = { organization_id: this.org, reference_id: s.id, project_id: s.project_id, request_id: crypto.randomUUID(), revision: s.revision, command }; await this.persist(); await this.retry(); }
     async retry() { if (!this.state || !this.pending)

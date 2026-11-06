@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.4**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.5**
 
 ## Mi használható?
 
@@ -19,7 +19,7 @@
 
 A teljes ERP fejlesztése folyamatban van. [Szakaszolás és rendezés – rövid használat](docs/szakaszolas-hasznalat.md). [Állapot](docs/specifikacio-allapot.md) · [Referenciák használata](docs/referenciamunkak.md) · [Keddi bemutató](docs/bemutato-2026-11-10.md).
 
-A referenciakészítést négy lépés és Tovább gombok vezetik; az irodai menü választás után becsukódik. A WordPress-kapcsolat ellenőrizhető; jóváhagyott referenciából piszkozat készíthető. A nyilvános közzététel külön megjelenési jóváhagyást és kézi megerősítést igényel.
+A referenciakészítés oldalanként egy teendővel, Vissza/Tovább gombokkal halad; az irodai menü választás után becsukódik. A WordPress-kapcsolat ellenőrizhető; jóváhagyott referenciából piszkozat készíthető. A nyilvános közzététel külön megjelenési jóváhagyást és kézi megerősítést igényel.
 
 Az irodai kezdőlapon négy feladat közül választhatsz; a ritkább műveletek az **Iroda és beállítások** alatt találhatók.
 

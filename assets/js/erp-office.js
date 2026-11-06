@@ -5,31 +5,32 @@ const clientSetupOpening = clientSetupToken !== null;
 if (clientSetupOpening)
     history.replaceState(null, '', location.pathname + location.search);
 const setupOpening = clientSetupOpening || new URLSearchParams(location.hash.slice(1)).has('office_setup') || document.documentElement.dataset.erpSetup === 'true';
-const apiUrl = new URL('./erp-api.js?v=0.16.3', import.meta.url);
-const datesUrl = new URL('./erp-dates.js?v=0.16.3', import.meta.url);
-const { ErpApi, ApiError } = await import(apiUrl.href);
-const { projectPeriod, todayBudapest, periodLabel } = await import(datesUrl.href);
-const { projectRoleNames: roleNames, selectableProjectRoles } = await import(new URL('./erp-project-roles.js?v=0.16.3', import.meta.url).href);
+const apiUrl = new URL('./erp-api.js?v=0.16.4', import.meta.url);
+const datesUrl = new URL('./erp-dates.js?v=0.16.4', import.meta.url);
+const [{ ErpApi, ApiError }, { projectPeriod, todayBudapest, periodLabel }, { projectRoleNames: roleNames, selectableProjectRoles }] = await Promise.all([import(apiUrl.href), import(datesUrl.href), import(new URL('./erp-project-roles.js?v=0.16.4', import.meta.url).href)]);
 const api = new ErpApi();
-const { CustomerDirectory } = await import(new URL('./erp-customers.js?v=0.16.3', import.meta.url).href);
-const { SiteWorks } = await import(new URL('./erp-site-works.js?v=0.16.3', import.meta.url).href);
-const { QuoteDesk } = await import(new URL('./erp-quotes.js?v=0.16.3', import.meta.url).href);
-const { SurveyDesk, surveysEnabled } = await import(new URL('./erp-surveys.js?v=0.16.3', import.meta.url).href);
-const { ClientAdmin, ClientPortal } = await import(new URL('./erp-clients.js?v=0.16.3', import.meta.url).href);
-const { StaffAdmin } = await import(new URL('./erp-staff.js?v=0.16.3', import.meta.url).href);
-const { WorkPlanDesk } = await import(new URL('./erp-workplans.js?v=0.16.3', import.meta.url).href);
-const { MaterialDesk } = await import(new URL('./erp-materials.js?v=0.16.3', import.meta.url).href);
-const { WorksheetDesk } = await import(new URL('./erp-worksheets.js?v=0.16.3', import.meta.url).href);
-const { EntryDesk } = await import(new URL('./erp-entries.js?v=0.16.3', import.meta.url).href);
-const { FinanceDesk } = await import(new URL('./erp-finance.js?v=0.16.3', import.meta.url).href);
+const [{ CustomerDirectory }, { SiteWorks }, { QuoteDesk }, { SurveyDesk, surveysEnabled }, { ClientAdmin, ClientPortal }, { StaffAdmin }, { WorkPlanDesk }, { MaterialDesk }, { WorksheetDesk }, { EntryDesk }, { FinanceDesk }, { WorkpackDesk }, { CalendarDesk }, { ReferenceDesk }, { MaintenanceDesk }, { OfficeNavigation }] = await Promise.all([
+    import(new URL('./erp-customers.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-site-works.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-quotes.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-surveys.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-clients.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-staff.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-workplans.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-materials.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-worksheets.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-entries.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-finance.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-workpack.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-calendar.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-references.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-maintenance.js?v=0.16.4', import.meta.url).href),
+    import(new URL('./erp-office-navigation.js?v=0.16.4', import.meta.url).href)
+]);
 const finance = new FinanceDesk(api, showError);
-const { WorkpackDesk } = await import(new URL('./erp-workpack.js?v=0.16.3', import.meta.url).href);
 const workpack = new WorkpackDesk(api, showError);
-const { CalendarDesk } = await import(new URL('./erp-calendar.js?v=0.16.3', import.meta.url).href);
 const calendar = new CalendarDesk(api, showError);
-const { ReferenceDesk } = await import(new URL('./erp-references.js?v=0.16.3', import.meta.url).href);
 const references = new ReferenceDesk(api, showError);
-const { MaintenanceDesk } = await import(new URL('./erp-maintenance.js?v=0.16.3', import.meta.url).href);
 const maintenance = new MaintenanceDesk(api, showError);
 maintenance.setFinanceHandler(project => { void finance.showProject(project); });
 const staffAdmin = new StaffAdmin(api);
@@ -54,7 +55,6 @@ const works = new SiteWorks(api, error => { if (!api.signedIn)
     showError(error); }, loadWorkspace, () => { customers.open(); get('customer-search').focus(); });
 const quotes = new QuoteDesk(api, error => { if (!api.signedIn)
     showError(error); }, () => { customers.open(); get('customer-search').focus(); }, loadWorkspace, media => surveys.showMedia(media));
-const { OfficeNavigation } = await import(new URL('./erp-office-navigation.js?v=0.16.3', import.meta.url).href);
 let officeNavigation;
 const surveys = new SurveyDesk(api, error => { if (!api.signedIn)
     showError(error); }, () => { customers.open(); get('customer-search').focus(); }, async (payload) => { await quotes.selectSurvey(payload); });
@@ -494,7 +494,7 @@ for (const form of [workerForm, roleForm])
 window.addEventListener('erp:before-update', event => {
     if (mutations || loading || restoring || workplans.busy || workplans.entryBusy || staffAdmin.busy || clientAdmin.busy || clientPortal.busy || customers.busy || works.busy || quotes.busy || surveys.busy) {
         event.preventDefault();
-        message('Várd meg a folyamatban lévő művelet végét.');
+        message(restoring ? 'Az automatikus belépés még folyamatban van.' : loading ? 'A munkatér adatai még töltődnek.' : 'Mentés vagy más művelet van folyamatban. Várd meg a visszajelzést.');
     }
     else if ((dirty || clientAdmin.dirty || customers.dirty || works.dirty || quotes.dirty || surveys.dirty) && !confirm('Frissíted az alkalmazást? A még nem mentett mezők tartalma elvész.'))
         event.preventDefault();
@@ -591,8 +591,10 @@ if (clientSetupOpening) {
 }
 get('assignment-from').value = todayBudapest();
 async function restoreOffice() {
-    if (setupOpening || restoring || api.signedIn)
+    if (setupOpening || restoring || api.signedIn) {
+        window.dispatchEvent(new Event('erp:startup-ready'));
         return;
+    }
     restoring = true;
     const epoch = generation;
     formBusy(loginForm, true);
@@ -616,6 +618,7 @@ async function restoreOffice() {
     finally {
         restoring = false;
         formBusy(loginForm, false);
+        window.dispatchEvent(new Event('erp:startup-ready'));
     }
 }
 void restoreOffice();

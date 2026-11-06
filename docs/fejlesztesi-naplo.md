@@ -505,3 +505,11 @@ A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontos
 - Négy lépéses lenyitható használati segítség, aktuális teendő és a mentések melletti Tovább gombok vezetik végig a szöveg/képek → weboldal-változat → irodai ellenőrzés → WordPress-piszkozat folyamatot. A mentést vagy ellenőrzést nem hagyják észrevétlenül ki.
 - 19 célzott helyi teszt és frontendfordítás sikeres. Saját helyi böngészőben, szintetikus adatokkal: becsukott rész újranyitása, mentés előtti továbblépés jelzése, alap/változat mentése, 3–4. lépés célzott megnyitása, bezárás ellenőrizve. Mobil 390 px: clientWidth=scrollWidth=358 px. Asztali és mobilos képernyőkép készült; a használati leírásban az asztali próba látható.
 - Csak ERP-felület és saját dokumentáció változott. Nincs adatbázis-, kiszolgáló-, Auth- vagy más alkalmazást érintő módosítás; valódi WordPress-bejegyzés nem készült.
+
+## 2026. november 6. – Folyamatos automatikus indulás (0.16.4)
+
+- Megjegyzett munkamenetnél korábban a belépőoldal már a szerveres helyreállítás előtt látszott; a részenként megjelenő nézetek ugrálást okoztak. Korai, külön betöltési jelzés takarja az indulást a végleges nézet elkészültéig. A jogosultságvizsgálat és tokenkezelés változatlan.
+- A független frontendmodulok két párhuzamos csoportban töltődnek a hosszú soros importlánc helyett. Nincs mesterséges várakozás vagy új függőség. A hálózati ellenőrzés idejének megszűnését nem ígérjük.
+- Harminc másodperc után külön elakadási jelzés és újrapróbálás; belépési hibánál normál belépő és érthető hiba. Az indulás alatti frissítés nem szakítja félbe a folyamatot. A korábbi általános várakozási üzenet helyett belépési/adatbetöltési/mentési magyarázat látszik.
+- Fordítás és 46 célzott helyi teszt sikeres. Teljes frontend saját helyi szintetikus végponttal: késleltetett helyreállítás alatt csak a megnyitási jelzés, utána közvetlen kezdőlap, első látogatásnál belépő, lejárt munkamenetnél belépő és hiba; nincs konzolhiba. A dinamikus Referenciamunkák menüpont kiválasztása után a menü becsukódását a tényleges böngészőben is ellenőriztük.
+- Kizárólag ERP-frontend és dokumentáció változott; nincs szerver-/adatbázis-/jogosultságmódosítás. Képernyőkép: [indulás](kepek/erp-indulas-0164.png).

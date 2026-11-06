@@ -1,6 +1,6 @@
 import type {LocalSurvey,LocalMedia} from './erp-survey-store.js';
 import type {SurveyDocument} from './erp-survey-model.js';
-const {validateSurvey,checkMediaBytes,surveyMime,surveyUuid}=await import(new URL('./erp-survey-model.js?v=0.16.3',import.meta.url).href) as typeof import('./erp-survey-model.js');
+const {validateSurvey,checkMediaBytes,surveyMime,surveyUuid}=await import(new URL('./erp-survey-model.js?v=0.16.4',import.meta.url).href) as typeof import('./erp-survey-model.js');
 type ZipModule={zipSync:(files:Record<string,Uint8Array>,options?:{level:number})=>Uint8Array;unzipSync:(data:Uint8Array,options:{filter:(file:{name:string;originalSize:number})=>boolean})=>Record<string,Uint8Array>};
 const zip=async()=>await import(new URL('../vendor/fflate-0.8.2.js',import.meta.url).href) as ZipModule;
 export async function surveyHash(blob:Blob){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))).map(x=>x.toString(16).padStart(2,'0')).join('');}

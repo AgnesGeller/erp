@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.3**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.4**
 
 ## Mi használható?
 
@@ -15,7 +15,7 @@
 - **Kertkarbantartás:** igény, irodai jóváhagyás, napi munkalap, közzétett PDF és elszámolás.
 - **Naptár és Napi feladatok:** napi/heti/havi nézet, szerkesztés, PDF, saját mentés és ellenőrzött adatátvétel.
 - Referenciamunkák, négy helyi képcsoport, külön web/Facebook/Instagram-változat és letölthető posztcsomag.
-- Telepítés/frissítés a felső menüből; mobilon is használható felület.
+- Telepítés/frissítés a felső menüből; megjegyzett belépésnél folyamatos indulási jelzés, mobilon is használható felület.
 
 A teljes ERP fejlesztése folyamatban van. [Szakaszolás és rendezés – rövid használat](docs/szakaszolas-hasznalat.md). [Állapot](docs/specifikacio-allapot.md) · [Referenciák használata](docs/referenciamunkak.md) · [Keddi bemutató](docs/bemutato-2026-11-10.md).
 

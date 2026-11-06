@@ -45,3 +45,7 @@ A 0.1.5 böngészős kapcsolódási hibáját a 0.1.6 javítja: a fetch hívása
 
 
 Publikus ellenőrzés: a 7942c55 GitHub Pages-telepítése sikeres. A https://agnesgeller.github.io/erp/ címen mindkét fiókkal működött a belépés, az újratöltés utáni automatikus belépés és a kijelentkezés. A felső Frissítés a /erp/?app-version=0.1.6 címre töltött újra, Sikeres frissítés és Sikeres automatikus belépés visszajelzéssel. Új konzolhiba nem volt. A teszt után kijelentkeztünk a tesztböngészőből. A nyilvános dokumentáció képe a belépési oldalt mutatja.
+
+## Alkalmazás megnyitása
+
+Megjegyzett belépésnél az **Alkalmazás megnyitása…** jelzés után közvetlenül a munkatér jelenik meg. A belépőoldal közben nem villan fel. A szerver a belépést és a hozzáférést továbbra is ellenőrzi; a várakozás ideje az internetkapcsolattól is függ. Lejárt belépésnél a belépőoldal és a hibaüzenet jelenik meg. Elakadt betöltésnél az Újrapróbálás gomb használható.

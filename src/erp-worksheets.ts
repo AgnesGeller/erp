@@ -1,9 +1,9 @@
 import type {ErpApi} from './erp-api.js';
 import type {MaterialDesk} from './erp-materials.js';
-const {normalizeWorksheet,clockMinute,sheetUuid,worksheetCsv}=await import(new URL('./erp-worksheet-model.js?v=0.16.3',import.meta.url).href) as typeof import('./erp-worksheet-model.js');
-const {quoteNumber,EditHistory}=await import(new URL('./erp-quote-tools.js?v=0.16.3',import.meta.url).href) as typeof import('./erp-quote-tools.js');
-const {todayBudapest}=await import(new URL('./erp-dates.js?v=0.16.3',import.meta.url).href) as typeof import('./erp-dates.js');
-const {addDialogDismiss}=await import(new URL('./erp-dialogs.js?v=0.16.3',import.meta.url).href) as typeof import('./erp-dialogs.js');
+const {normalizeWorksheet,clockMinute,sheetUuid,worksheetCsv}=await import(new URL('./erp-worksheet-model.js?v=0.16.4',import.meta.url).href) as typeof import('./erp-worksheet-model.js');
+const {quoteNumber,EditHistory}=await import(new URL('./erp-quote-tools.js?v=0.16.4',import.meta.url).href) as typeof import('./erp-quote-tools.js');
+const {todayBudapest}=await import(new URL('./erp-dates.js?v=0.16.4',import.meta.url).href) as typeof import('./erp-dates.js');
+const {addDialogDismiss}=await import(new URL('./erp-dialogs.js?v=0.16.4',import.meta.url).href) as typeof import('./erp-dialogs.js');
 type Row=Record<string,any>;
 const n=(tag:string,text='')=>{const el=document.createElement(tag);el.textContent=text;return el;};
 const hour=(v:unknown)=>v==null?'—':quoteNumber(Number(v)/60)+' óra';

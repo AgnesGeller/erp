@@ -477,3 +477,14 @@ A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontos
 - Az éles saját gateway kiinduló 32 fájlja SHA-256 szerint egyezett a kiadott Git-verzióval. A referenciamigráció és saját fedőindex települt; gateway v29, 35 fájl visszaolvasva és pontosan egyező. A védett irodai olvasás sikeres; megfelelő Origin mellett auth_options 200, bejelentkezés nélküli reference_list 401. Auth és más alkalmazás nem módosult.
 - A Supabase ellenőrző egy új [hiányzó fedőindexet](https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys) talált a reference_variants alapváltozat-kapcsolatánál; saját indexmigrációval javítva. A [policy nélküli RLS INFO](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) a kizárólag védett függvényekkel elérhető saját modell része; a közvetlen jogok tiltása külön igazolva. A régi indexekhez és más appokhoz nem nyúltunk.
 - A rövid magyar README és az állapotlista frissült; [referenciahasználat](referenciamunkak.md) és [november 10-i bemutatási útmutató](bemutato-2026-11-10.md) készült. A helyi tesztadatok nem kerültek az éles ügyfél-/pénzügyi táblákba.
+
+
+## 2026. november 6. – WordPress hozzáférés és csak olvasási ellenőrzés (0.16.1)
+
+- A felhasználó jóváhagyta a külön, Szerző jogosultságú diszkertek_erp WordPress-fiókot és a Wordfence alkalmazásjelszó-tiltásának feloldását. A beállításokat saját maga végezte; a kapott képen a két ERP-titok mentése látszik. Titokérték nem került a beszélgetésbe vagy a repositoryba.
+- A szerver külön jelzi a beállított hitelesítést és a jóváhagyott megjelenéshez kötött küldési készültséget. Az irodai kapcsolatpróba mentett referencia nélkül is hívható; továbbra is ellenőrzött ERP-felhasználó és friss adatbázisoldali irodai jogosultság kell.
+- Megjelenési jóváhagyás előtt kizárólag GET/OPTIONS megengedett a rögzített WordPress-célhoz; minden feltöltés, piszkozatírás és publikálás tiltott. Az ellenőrzés nem kapcsolja be automatikusan a küldést. A felhasználó kérése szerinti külön kézi közzétételi gomb és megerősítés megmaradt.
+- Fordítás és kiszolgáló-típusellenőrzés sikeres; 70 célzott API-, gateway-, WordPress- és offline regressziós teszt sikeres. A korábbi teljes kiadás 576 tesztje megmaradt; a két új esetre fókuszáltunk, a teljes készletet nem ismételtük indokolatlanul. Nincs új adatbázis-, Auth-, jogosultság- vagy más alkalmazást érintő változtatás.
+- A valódi WordPress-belépés és a sablon-/SEO-illesztés ellenőrzése még hátravan; a titokbeállítások képe önmagában nem bizonyítja a sikeres kapcsolatot.
+
+- Az éles saját gateway kiinduló v30 csomaglenyomata egyezett a korábban teljesen visszaellenőrzött v29 kiadással. A csak olvasási próba v31-ként települt; mind a 35 fájl visszaolvasva és egyezőnek ellenőrizve.

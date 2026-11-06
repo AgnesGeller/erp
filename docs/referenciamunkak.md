@@ -1,6 +1,6 @@
 # Referenciamunkák – rövid használat
 
-**ERP 0.16.0.** A referencia-szerkesztő az **Iroda és beállítások → Referenciamunkák** pontban nyílik meg. A fejléc × gombjával bármikor bezárható; mentés közben várd meg a visszajelzést.
+**ERP 0.16.1.** A referencia-szerkesztő az **Iroda és beállítások → Referenciamunkák** pontban nyílik meg. A fejléc × gombjával bármikor bezárható; mentés közben várd meg a visszajelzést.
 
 1. Válassz meglévő kertépítést, majd **Referencia készítése**. Az alap a kapcsolt felmérésből, ténylegesen átvett munkákból és valóban beépített anyagokból készül. A beszerzett, de be nem épített anyag nem kerül automatikusan bele.
 2. Az **Alap és képek** részen nevezd el, javítsd a szöveget, majd **Alap mentése**. A **Forrás ellenőrzése** megmutatja az átvett és még függő munkákat. A friss forrás javaslata külön nyílik meg; a saját szöveget csak kifejezett átvétellel cseréli le.
@@ -15,7 +15,9 @@ Hálózati hibánál a saját piszkozat és az eredeti mentési kérés az eszk�
 
 ## WordPress – külön beállítás szükséges
 
-A közvetlen WordPress-adapter és a védett küldési napló elkészült és helyi szimulátorral tesztelt. **A valódi WordPress-kapcsolat nincs még beállítva és kipróbálva.** A felület ezt jelzi; nincs automatikus közzététel. Biztonságos, kizárólag szerveroldali hozzáférés és a meglévő oldal sablon-/SEO-illesztésének igazolása kell a bekapcsoláshoz.
+A referencialista elején a **WordPress-kapcsolat → WordPress-kapcsolat ellenőrzése** gomb már mentett referencia nélkül ellenőrzi a szerveroldali hozzáférést és jogosultságokat. Ez kizárólag olvas; a megjelenés jóváhagyása előtt a képfeltöltés és bejegyzésküldés tiltott.
+
+A közvetlen WordPress-adapter és a védett küldési napló elkészült és helyi szimulátorral tesztelt. **A WordPress-hozzáférés két titka a felhasználó képe szerint mentve van; a valódi hitelesítési és megjelenési próba még hátravan.** A felület ezt jelzi; nincs automatikus közzététel. Biztonságos, kizárólag szerveroldali hozzáférés és a meglévő oldal sablon-/SEO-illesztésének igazolása kell a bekapcsoláshoz.
 
 Bekapcsolás után is: pontos változathoz kötött **irodai ellenőrzés → képfeltöltés → WordPress-piszkozat → külön közzététel**. Név, cím, arc, rendszám és más felismerhető adat csak megfelelő jóváhagyással kerülhet nyilvánosságra. Már a piszkozat képfájljai is hozzáférhetővé válhatnak, ezért ellenőrzés a feltöltés előtt kell. Közben máshol szerkesztett cikket nem írunk felül; bizonytalan küldést nem ismétlünk vakon.
 

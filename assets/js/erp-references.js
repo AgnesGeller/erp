@@ -123,6 +123,7 @@ export class ReferenceDesk {
         this.body.replaceChildren();
         const s = this.state;
         if (!s) {
+            this.connection(this.body);
             const make = fold(this.body, 'Új referencia kertépítésből', true), project = this.choice(make, 'Kertépítés', '', [['', 'Válassz munkát'], ...this.list.projects.map((p) => [p.id, p.name + ' · ' + p.address])], () => { });
             button(make, 'Referencia készítése', () => void this.run(() => this.create(project.value)));
             const list = fold(this.body, 'Mentett referenciák', true);
@@ -312,10 +313,15 @@ export class ReferenceDesk {
         if (platform === 'web')
             this.wordpress(box);
     }
-    wordpress(parent) { const s = this.state, box = fold(parent, 'WordPress-piszkozat és közzététel'); if (!this.list.wordpress_ready) {
-        box.append(n('p', 'A WordPress-kapcsolat beállítására vár. A referencia mentése, előnézete és letöltése már használható.'));
+    connection(parent) { const box = fold(parent, 'WordPress-kapcsolat', true); if (!this.list.wordpress_configured) {
+        box.append(n('p', 'A WordPress-hozzáférés még nincs beállítva.'));
         return;
-    } button(box, 'WordPress-kapcsolat ellenőrzése', () => void this.run(() => this.wp('reference_wp_check'))); button(box, 'Kijelölt képek feltöltése', () => void this.run(async () => { const id = s.id, epoch = this.epoch; for (const p of s.variants.web.document.photos) {
+    } button(box, 'WordPress-kapcsolat ellenőrzése', () => void this.run(async () => { const epoch = this.epoch, result = await this.api.reference('reference_wp_check', { organization_id: this.org }); if (epoch !== this.epoch)
+        return; this.message(result.ready ? 'A WordPress-belépés és jogosultság ellenőrizve. Közzététel továbbra is csak külön gombbal és megerősítéssel.' : 'A WordPress-belépés és jogosultság ellenőrizve. A küldés a megjelenés jóváhagyására vár.', true); })); box.append(n('p', 'Ez az ellenőrzés csak olvas; nem tölt fel képet és nem hoz létre bejegyzést.')); }
+    wordpress(parent) { const s = this.state, box = fold(parent, 'WordPress-piszkozat és közzététel'); this.connection(box); if (!this.list.wordpress_ready) {
+        box.append(n('p', this.list.wordpress_configured ? 'A WordPress-küldés a megjelenés ellenőrzésére vár.' : 'A WordPress-kapcsolat beállítására vár. A referencia mentése, előnézete és letöltése már használható.'));
+        return;
+    } button(box, 'Kijelölt képek feltöltése', () => void this.run(async () => { const id = s.id, epoch = this.epoch; for (const p of s.variants.web.document.photos) {
         const m = s.document.media.find((m) => m.id === p.media_id), blob = await this.files.read(this.owner, id, m);
         if (!blob)
             throw Error('Hiányzó helyi kép. Töltsd vissza a mentési csomagot.');

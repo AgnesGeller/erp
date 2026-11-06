@@ -2,7 +2,7 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.0**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.1**
 
 ## Mi használható?
 
@@ -18,6 +18,8 @@
 - Telepítés/frissítés a felső menüből; mobilon is használható felület.
 
 A teljes ERP fejlesztése folyamatban van. [Szakaszolás és rendezés – rövid használat](docs/szakaszolas-hasznalat.md). [Állapot](docs/specifikacio-allapot.md) · [Referenciák használata](docs/referenciamunkak.md) · [Keddi bemutató](docs/bemutato-2026-11-10.md).
+
+A referencialistán külön WordPress-kapcsolatpróba érhető el; a közzététel kézi jóváhagyású.
 
 Az irodai kezdőlapon négy feladat közül választhatsz; a ritkább műveletek az **Iroda és beállítások** alatt találhatók.
 

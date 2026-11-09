@@ -1,6 +1,6 @@
 import { ExecutionDesk } from './erp-execution-editor.js';
-const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.16.8', import.meta.url).href);
-const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.16.8', import.meta.url).href);
+const { quoteNumber, EditHistory } = await import(new URL('./erp-quote-tools.js?v=0.16.9', import.meta.url).href);
+const { WorkMedia } = await import(new URL('./erp-workplan-media.js?v=0.16.9', import.meta.url).href);
 const el = (id) => document.getElementById(id);
 const node = (tag, text = '') => { const x = document.createElement(tag); x.textContent = text; return x; };
 const names = { office: 'Iroda', construction_lead: 'Építésvezető', construction_worker: 'Kertépítő', gardener: 'Kertész', client: 'Megrendelő' };

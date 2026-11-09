@@ -556,3 +556,12 @@ A főnöki irodai pipa utáni megrendelői kapu a tervben jelzett üzleti pontos
 - Rövid magyar README, használati útmutató és vezetői összefoglaló frissült. Nincs adatbázis-, Auth-, éles WordPress- vagy más alkalmazást érintő módosítás.
 
 - Folytatásként előkészítve a [külön építésvezetői munkacsomag](epitesvezetoi-munkacsomag-terv.md) megvalósítása: jelenlegi három export és szerveres kapuk célzott ellenőrzése, negyedik korlátozott adatnézet, meglévő megbízás, új adatbázis/Auth nélkül. Ez még terv, nem elkészült funkció.
+
+
+## 2026. november 9. – Külön építésvezetői munkacsomag (0.16.9)
+
+- A jóváhagyott terv szerint negyedik exportmód: külön vezetői fejléc minden oldalon, beszerzési áttekintés várható egységárral/beszállítóval, meglévő munkaidő- és anyagmozgás-adatok, közös visszautasítások indoklással. A PDF ugyanaz a digitális előnézetben és letöltve.
+- Iroda és az adott kertépítés kiosztott építésvezetője kérheti; dolgozói/ügyfélkérés és szerephamisítás tiltott. A vezetői adatmodell kizárja a belső eredményt, jutalékot, ügyfél-pénzügyi kimutatást és irodai/személyes bejegyzést. Az iroda által kért vezetői export is ezt a korlátozott nézetet használja.
+- 40 kapcsolódó modell/gateway/UI/export/kivitelezési integráció/PWA teszt és teljes kiszolgáló-típusellenőrzés sikeres. Négy szintetikus PDF elkészült; a vezetői csomag 19 oldalas hosszúlistás próbája és minden oldal szerepfelirata ellenőrizve, borító és beszerzési oldal vizuálisan átnézve.
+- Az ERP saját gateway-jének 32-es éles alapjához ellenőrizve kizárólag a három munkacsomag-fájl került cserére; erp-gateway 33-as verzió ACTIVE. Auth-beállítás, adatbázis, titok és a többi alkalmazás változatlan. A frontend külön 0.16.9 kiadás.
+- Rövid magyar README és munkacsomag-használat frissítve. A jutalékarány, központi földtérfogat-ráhagyás és munkatársi színek továbbra is külön nyitott feladatok.

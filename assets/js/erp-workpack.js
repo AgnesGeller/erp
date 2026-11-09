@@ -48,10 +48,10 @@ export class WorkpackDesk {
         this.make.textContent = 'Munkacsomag elkészítése';
         this.make.onclick = () => { void this.generate(); };
         this.controls.append(this.make);
-        this.mode.onchange = () => { days.hidden = this.mode.value !== 'team'; this.clearPreview(); };
+        this.mode.onchange = () => { days.hidden = !['team', 'lead'].includes(this.mode.value); this.clearPreview(); };
         this.days.oninput = () => this.clearPreview();
         const help = document.createElement('p');
-        help.textContent = 'A csapatcsomag árak nélkül készül. A megrendelő saját ügyfélárai külön csomagban szerepelnek; a belső eredménylap kizárólag irodai.';
+        help.textContent = 'A csapatcsomag árak nélkül készül. Az építésvezetői csomag külön műszaki és beszerzési áttekintést ad. A megrendelő saját ügyfélárai külön csomagban szerepelnek; a belső eredménylap kizárólag irodai.';
         this.dialog.append(head, help, this.controls, this.status, this.preview);
         this.dialog.addEventListener('cancel', e => { e.preventDefault(); this.close(); });
         document.body.append(this.dialog);
@@ -65,13 +65,13 @@ export class WorkpackDesk {
     clearPreview() { if (this.url)
         URL.revokeObjectURL(this.url); this.url = undefined; this.preview.replaceChildren(); }
     close() { this.epoch++; this.busy = false; this.make.disabled = false; this.mode.disabled = false; this.days.disabled = false; this.dialog.close(); this.clearPreview(); }
-    show(owner, org, scope) { this.setOwner(owner, org); this.epoch++; this.busy = false; this.make.disabled = false; this.mode.disabled = false; this.days.disabled = false; this.scope = { project_id: scope.project_id, role: scope.role }; this.clearPreview(); const role = scope.role; this.mode.replaceChildren(...(role === 'office' ? [['team', 'Munkatársaknak – árak nélkül'], ['client', 'Megrendelőnek – ügyfélárakkal'], ['office', 'Belső irodai eredménylap']] : role === 'client' ? [['client', 'Saját megrendelői munkacsomag']] : [['team', 'Munkatársi munkacsomag – árak nélkül']]).map(([v, t]) => new Option(t, v))); this.days.parentElement.hidden = this.mode.value !== 'team'; this.days.value = '20'; this.status.textContent = 'Válaszd ki a csomagot, majd készítsd el a friss PDF-et.'; if (!this.dialog.open)
+    show(owner, org, scope) { this.setOwner(owner, org); this.epoch++; this.busy = false; this.make.disabled = false; this.mode.disabled = false; this.days.disabled = false; this.scope = { project_id: scope.project_id, role: scope.role }; this.clearPreview(); const role = scope.role; this.mode.replaceChildren(...(role === 'office' ? [['team', 'Munkatársaknak – árak nélkül'], ['lead', 'Építésvezetőnek – műszaki és beszerzési adatok'], ['client', 'Megrendelőnek – ügyfélárakkal'], ['office', 'Belső irodai eredménylap']] : role === 'construction_lead' ? [['lead', 'Építésvezetői munkacsomag'], ['team', 'Munkatársi munkacsomag – árak nélkül']] : role === 'client' ? [['client', 'Saját megrendelői munkacsomag']] : [['team', 'Munkatársi munkacsomag – árak nélkül']]).map(([v, t]) => new Option(t, v))); this.days.parentElement.hidden = !['team', 'lead'].includes(this.mode.value); this.days.value = '20'; this.status.textContent = 'Válaszd ki a csomagot, majd készítsd el a friss PDF-et.'; if (!this.dialog.open)
         this.dialog.showModal(); }
     async generate() { if (this.busy || !this.owner || !this.org || !this.scope)
         return; if (!navigator.onLine) {
         this.status.textContent = 'A munkacsomag elkészítéséhez internetkapcsolat és friss jogosultság-ellenőrzés szükséges.';
         return;
-    } const days = this.mode.value === 'team' ? Number(this.days.value) : 0; if (!Number.isSafeInteger(days) || days < 0 || days > 100) {
+    } const days = ['team', 'lead'].includes(this.mode.value) ? Number(this.days.value) : 0; if (!Number.isSafeInteger(days) || days < 0 || days > 100) {
         this.status.textContent = '0 és 100 közötti egész napszámot adj meg.';
         return;
     } const epoch = this.epoch; this.busy = true; this.make.disabled = true; this.mode.disabled = true; this.days.disabled = true; this.clearPreview(); this.status.textContent = 'A friss munkaadatok és a PDF összeállítása…'; try {

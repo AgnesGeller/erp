@@ -31,3 +31,8 @@ A kezdőlap négy útja: **Ügyfelek**, **Árajánlat készítése**, **Kertép�
 ## Ellenőrzés és korlátok
 
 463 automatizált teszt, TypeScript-fordítás, kiszolgáló-típusellenőrzés, asztali/mobil böngészőpróba és három PDF vizuális ellenőrzése. A helyi minták kitalált adatokkal készültek; nem valódi ajánlatok. A PDF készítése online történik, a meglévő szerveroldali jogosultságokkal. Közben változó forrásadatnál új készítést kér. Új adatbázistábla, jogosultság, Auth-beállítás, függőség és előfizetés nem készült; más alkalmazást nem módosítottunk. A közös üzleti átadási próba továbbra is szükséges.
+
+
+## Külön építésvezetői csomag – 0.16.9
+
+Munkaterv → Munkacsomag és PDF → **Építésvezetőnek – műszaki és beszerzési adatok** → Munkacsomag elkészítése. A kijelölt építésvezető saját belépésével is eléri. Az előnézet megnyitható és letölthető. Külön beszerzési áttekintést ad a várható egységárral és beszállítóval, a számára engedélyezett munkaidővel, valamint a közös visszautasítások indoklásával. Az irodai eredmény, jutalék és személyes/irodai bejegyzések kimaradnak. A másik három csomag megmarad.

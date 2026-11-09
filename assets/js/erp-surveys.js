@@ -1,7 +1,7 @@
-const { validateSurvey, surveyToQuote, surveyMime } = await import(new URL('./erp-survey-model.js?v=0.16.8', import.meta.url).href);
-const { SurveyStore } = await import(new URL('./erp-survey-store.js?v=0.16.8', import.meta.url).href);
-const { surveyHash, downloadSurveyFile, exportSurvey, importSurvey } = await import(new URL('./erp-survey-archive.js?v=0.16.8', import.meta.url).href);
-const { quoteNumber } = await import(new URL('./erp-quote-tools.js?v=0.16.8', import.meta.url).href);
+const { validateSurvey, surveyToQuote, surveyMime } = await import(new URL('./erp-survey-model.js?v=0.16.9', import.meta.url).href);
+const { SurveyStore } = await import(new URL('./erp-survey-store.js?v=0.16.9', import.meta.url).href);
+const { surveyHash, downloadSurveyFile, exportSurvey, importSurvey } = await import(new URL('./erp-survey-archive.js?v=0.16.9', import.meta.url).href);
+const { quoteNumber } = await import(new URL('./erp-quote-tools.js?v=0.16.9', import.meta.url).href);
 export const surveysEnabled = true;
 const el = (id) => document.getElementById(id);
 const n = (tag, text = '') => { const e = document.createElement(tag); e.textContent = text; return e; };

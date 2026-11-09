@@ -52,3 +52,8 @@ A korábban rögzített további főnöki kérésekből az önálló negyedik, �
 ## 0.16.0 – Referenciamunkák és összefüggő bemutatóteszt
 
 Kilenc saját ERP-tábla, védett irodai műveletek, ténylegesen átvett munkák és beépített anyagok, szerkeszthető szöveg, négy helyi képcsoport, három független platformváltozat, előnézet/ZIP, helyi mentés és megőrzött változatelőzmények. A WordPress-adapter alapból kikapcsolt; nem történt valódi képfeltöltés vagy publikálás. A teljes helyi üzleti lánc külön tesztben végigfutott; [bemutatási útmutató és ellenőrzési határok](bemutato-2026-11-10.md).
+
+
+## 0.16.9 – Külön építésvezetői munkacsomag
+
+Elkészült a negyedik digitális/nyomtatható változat, külön beszerzési áttekintéssel és közös visszautasítási indokokkal, meglévő munkamegbízáshoz kötött szerveres ellenőrzéssel. Belső eredményt és jutalékot nem tartalmaz. A korábbi hiánylistából ez a pont lezárult; a jutalékarány és a központi beállítások továbbra is nyitottak. [Rövid használat](munkacsomag.md).

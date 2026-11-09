@@ -2,14 +2,14 @@
 
 **Integrált vállalatirányítási és ügyfélkapcsolati alkalmazás**
 
-[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.8**
+[Alkalmazás megnyitása](https://agnesgeller.github.io/erp/) · **0.16.9**
 
 ## Mi használható?
 
 - Saját irodai, dolgozói és ügyfélbelépés; munkánkénti megbízás és kijelölt ügyfélcímek.
 - Ügyfelek, munkavégzési címek, helyszíni felmérések és helyi fájlcsomagok.
 - Excel-alapú árajánlat, árlisták/sablonok, PDF-előnézet és kézi levélküldés.
-- Kertépítési szakaszok, részfolyamatok, húzással rendezés, négyszintű átvétel és nyomtatható munkacsomag.
+- Kertépítési szakaszok, részfolyamatok, húzással rendezés, négyszintű átvétel és négy külön szerepköri munkacsomag.
 - Saját munkalap, tényleges munkaidő; munkanapi beszállítás/beépítés, közvetlen anyagtörzs és anyagelőrehaladás.
 - Előleg, részfizetés, irodai pénzigazolás, kertépítési eredmény és éves jutalék.
 - **Kertkarbantartás:** igény, irodai jóváhagyás, napi munkalap, közzétett PDF és elszámolás.

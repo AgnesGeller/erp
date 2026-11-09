@@ -1,6 +1,6 @@
 # Következő fejlesztés: külön építésvezetői munkacsomag
 
-2026. november 6. – előkészített megvalósítási terv, még nem elkészült funkció.
+2026. november 6-i terv; megvalósítva 2026. november 9-én, ERP 0.16.9. [Használat](munkacsomag.md).
 
 ## Kiindulás
 
